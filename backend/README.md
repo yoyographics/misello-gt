@@ -1,98 +1,173 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# misello.gt — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend de la plataforma misello.gt, desarrollado con **NestJS** + **PostgreSQL** + **Prisma**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requisitos previos
 
-## Description
+- Node.js 20 LTS (o superior)
+- PostgreSQL 16 (local o via Docker)
+- Cuenta en GitHub
+- Cuenta en Railway (para deploy de pruebas)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Estructura del proyecto
 
-## Project setup
-
-```bash
-$ npm install
+```
+backend/
+├── prisma/
+│   └── schema.prisma      # Esquema de base de datos
+├── src/
+│   ├── auth/              # Módulo 1 — Autenticación
+│   ├── catalog/           # Módulo 2 — Catálogo
+│   ├── design/            # Módulo 3 — Asistente de diseño
+│   ├── orders/            # Módulo 4 — Órdenes
+│   ├── payments/          # Módulo 5 — Pagos y facturación
+│   ├── inventory/         # Módulo 6 — Inventario
+│   ├── notifications/     # Módulo 7 — Notificaciones
+│   ├── admin/             # Módulo 8 — Panel de control
+│   └── main.ts            # Punto de entrada
+├── uploads/               # Archivos subidos (fuentes, logos, diseños, etc.)
+├── .env.example           # Ejemplo de variables de entorno
+├── docker-compose.yml     # PostgreSQL + backend local
+├── Dockerfile             # Imagen para producción
+├── railway.toml           # Configuración de deploy en Railway
+└── package.json
 ```
 
-## Compile and run the project
+## Instalación local (paso a paso)
+
+### 1. Clonar el repositorio
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/yoyographics/misello-gt.git
+cd misello-gt/backend
 ```
 
-## Run tests
+### 2. Instalar dependencias
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 3. Configurar variables de entorno
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Editá el archivo `.env` y completá los valores reales (Google OAuth, JWT, APIs externas, etc.).
 
-## Resources
+### 4. Levantar PostgreSQL con Docker Compose
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+docker-compose up -d postgres
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Esto crea un contenedor de PostgreSQL 16 con:
+- Usuario: `misello_user`
+- Contraseña: `misello_password`
+- Base de datos: `misello_db`
+- Puerto: `5432`
 
-## Support
+### 5. Ejecutar migraciones de Prisma
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npx prisma migrate dev --name init
+```
 
-## Stay in touch
+### 6. Generar el cliente de Prisma
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+npx prisma generate
+```
 
-## License
+### 7. Cargar datos iniciales del catálogo (seed)
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```bash
+npx prisma db seed
+```
+
+### 8. Iniciar el servidor en modo desarrollo
+
+```bash
+npm run start:dev
+```
+
+El servidor estará disponible en: `http://localhost:3000/api/v1`
+
+La documentación Swagger estará en: `http://localhost:3000/api/docs`
+
+---
+
+## Deploy en Railway
+
+### 1. Conectar el repositorio
+
+1. Andá a [railway.app](https://railway.app) y creá un nuevo proyecto.
+2. Seleccioná **"Deploy from GitHub repo"**.
+3. Elegí el repositorio `yoyographics/misello-gt`.
+
+### 2. Agregar PostgreSQL
+
+En el panel de Railway, hacé clic en **"New" → "Database" → "Add PostgreSQL"**.
+
+Railway genera automáticamente la variable `DATABASE_URL`.
+
+### 3. Configurar variables de entorno
+
+En la sección **Variables** del servicio backend, agregá todas las variables del archivo `.env.example`:
+
+| Variable | Descripción |
+|----------|-------------|
+| `GOOGLE_CLIENT_ID` | Client ID de Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | Client Secret de Google OAuth |
+| `GOOGLE_CALLBACK_URL` | URL de callback de Google (ej: `https://tu-app.up.railway.app/api/v1/auth/google/callback`) |
+| `JWT_SECRET` | Clave secreta para firmar tokens JWT |
+| `ANTHROPIC_API_KEY` | API Key de Claude (Anthropic) |
+| `PAGALO_API_KEY` | API Key de Pagalo.gt |
+| `PAGALO_BUSINESS_UUID` | UUID del negocio en Pagalo.gt |
+| `TEKRA_USUARIO`, `TEKRA_CLAVE`, `TEKRA_CLIENTE`, `TEKRA_CONTRATO` | Credenciales de Tekra S.A. |
+| `MAIL_HOST`, `MAIL_USER`, `MAIL_PASSWORD` | Servidor SMTP para emails |
+| `FRONTEND_URL` | URL del frontend (para CORS) |
+
+### 4. Deploy automático
+
+Cada vez que hacés `git push` a la rama `main`, Railway reconstruye y despliega automáticamente.
+
+### 5. Crear el primer administrador
+
+Una vez desplegado, ejecutá el script de creación de admin (desde tu máquina local conectada a la BD de Railway, o desde el panel de Railway):
+
+```bash
+npx ts-node src/scripts/create-admin.ts
+```
+
+---
+
+## Comandos útiles
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run start:dev` | Inicia en modo desarrollo con hot-reload |
+| `npm run build` | Compila el proyecto para producción |
+| `npm run start:prod` | Inicia el servidor compilado |
+| `npm run test` | Ejecuta los tests unitarios |
+| `npm run lint` | Ejecuta el linter |
+| `npx prisma migrate dev` | Crea y aplica migraciones en desarrollo |
+| `npx prisma migrate deploy` | Aplica migraciones en producción |
+| `npx prisma db seed` | Carga datos iniciales del catálogo |
+| `npx prisma studio` | Abre Prisma Studio (interfaz visual de la BD) |
+| `npx prisma validate` | Valida que el schema.prisma sea correcto |
+
+---
+
+## Seguridad
+
+- Nunca commitear el archivo `.env` (ya está en `.gitignore`).
+- Las contraseñas de panel se hashean con bcrypt.
+- Los tokens JWT nunca se almacenan en la base de datos.
+- Todos los endpoints públicos tienen rate limiting.
+- Los datos de tarjeta (CVV, número completo) nunca se guardan.
+
+---
+
+**Powered by YOYO GRAPHICS — misello.gt**

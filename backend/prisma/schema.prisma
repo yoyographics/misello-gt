@@ -1,0 +1,258 @@
+// Este archivo es la fuente de verdad del esquema de base de datos.
+// Siempre usar Prisma para acceder a la BD — nunca SQL raw.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum AdminRole {
+  ADMIN
+  CONTABILIDAD
+  IT
+  RECEPCION
+  DISENO
+  PRODUCCION
+}
+
+enum ProductCategory {
+  MONTURA_AUTOMATICA
+  FECHADOR
+  PORTATIL
+  MADERA
+  EMBOSADORA
+  ALMOHADILLA_AUTOMATICA
+  ALMOHADILLA_MADERA
+  TINTA
+}
+
+enum ProductShape {
+  RECTANGULAR
+  CIRCULAR
+  OVAL
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAYMENT_RECEIVED
+  CONFIRMED
+  IN_PRODUCTION
+  FINISHED
+  SHIPPED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CARD
+  TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum EmailStage {
+  PAYMENT_RECEIVED
+  ORDER_CONFIRMED
+  ORDER_FINISHED
+}
+
+// ============================================================
+// MODELOS
+// ============================================================
+
+model User {
+  id        String   @id @default(uuid())
+  googleId  String   @unique
+  email     String   @unique
+  name      String?
+  picture   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         AdminRole @default(PRODUCCION)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  approvedOrders Order[] @relation("AdminApprovedBy")
+}
+
+model Product {
+  id        String          @id @default(uuid())
+  sku       String          @unique
+  name      String
+  category  ProductCategory
+  shape     ProductShape?
+  widthMm   Float?
+  heightMm  Float?
+  widthPx   Int?
+  heightPx  Int?
+  basePrice Float
+  isActive  Boolean         @default(true)
+  stock     Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  orderItems     OrderItem[]
+  inventoryLogs  InventoryLog[]
+  waitlist       WaitlistEntry[]
+  discounts      Discount[]
+}
+
+model Ink {
+  id        String  @id @default(uuid())
+  code      String  @unique
+  color     String
+  hexCode   String
+  price     Float
+  stock     Int     @default(0)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+}
+
+model Font {
+  id        String   @id @default(uuid())
+  name      String
+  fileName  String
+  uploadedAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
+
+model Order {
+  id                   String        @id @default(uuid())
+  orderNumber          String        @unique
+  userId               String
+  status               OrderStatus   @default(DRAFT)
+  paymentMethod        PaymentMethod?
+  totalAmount          Float         @default(0)
+  shippingAddress      Json?
+  nitOrCui             String?
+  invoiceName          String?
+  pagaloTransactionId  String?
+  tekraInvoiceUuid     String?
+  courierTracking      String?
+  isGovernment         Boolean       @default(false)
+  isLawyerReplica      Boolean       @default(false)
+  requiresAdminApproval Boolean      @default(false)
+  adminApprovedAt      DateTime?
+  adminApprovedBy      String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  user          User        @relation(fields: [userId], references: [id])
+  approvedBy    AdminUser?  @relation("AdminApprovedBy", fields: [adminApprovedBy], references: [id])
+  items         OrderItem[]
+  payments      Payment[]
+}
+
+model OrderItem {
+  id                String  @id @default(uuid())
+  orderId           String
+  productId         String
+  inkId             String?
+  quantity          Int     @default(1)
+  unitPrice         Float
+  designJson        Json?
+  previewPngUrl     String?
+  productionSvgUrl  String?
+  notes             String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+  ink     Ink?    @relation(fields: [inkId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  method        PaymentMethod
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  referenceCode String?
+  receiptUrl    String?
+  confirmedAt   DateTime?
+  confirmedBy   String?
+  createdAt     DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model InventoryLog {
+  id        String   @id @default(uuid())
+  productId String
+  delta     Int
+  reason    String
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Discount {
+  id          String       @id @default(uuid())
+  name        String
+  type        DiscountType
+  value       Float
+  minQuantity Int          @default(1)
+  productId   String?
+  startsAt    DateTime
+  endsAt      DateTime
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model WaitlistEntry {
+  id        String   @id @default(uuid())
+  productId String
+  email     String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([productId, email])
+}
+
+model EmailTemplate {
+  id        String     @id @default(uuid())
+  stage     EmailStage @unique
+  subject   String
+  htmlBody  String
+  updatedAt DateTime   @updatedAt
+}
+
+model SiteSettings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
