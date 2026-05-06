@@ -1,9 +1,7 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm run build"
+builder = "docker"
 
 [deploy]
-startCommand = "npm run start:prod"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
