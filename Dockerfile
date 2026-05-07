@@ -18,7 +18,7 @@ COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
 # Instalar dependencias (incluyendo devDependencies para compilar)
-RUN npm ci
+RUN npm install
 
 # Generar cliente Prisma
 RUN npx prisma generate
@@ -42,7 +42,7 @@ COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
 # Instalar SOLO dependencias de producción
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
 
 # Generar cliente Prisma (necesario en runtime)
 RUN npx prisma generate
