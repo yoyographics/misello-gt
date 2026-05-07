@@ -39,4 +39,4 @@ RUN mkdir -p uploads/fonts uploads/logos uploads/designs uploads/receipts upload
 EXPOSE 3000
 
 # Comando de inicio (migraciones + servidor)
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]
