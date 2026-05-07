@@ -13,19 +13,28 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
-# Copiar archivos de dependencias desde backend/
+# Copiar solo archivos de dependencias primero (mejor cache de Docker)
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
-# Instalar dependencias (incluyendo devDependencies para compilar)
+# Instalar dependencias
 RUN npm install
 
 # Generar cliente Prisma
 RUN npx prisma generate
 
-# Copiar código fuente desde backend/ y compilar
-COPY backend/. .
+# Copiar código fuente (ignorando node_modules gracias a .dockerignore)
+COPY backend/src ./src/
+COPY backend/tsconfig*.json ./
+COPY backend/nest-cli.json ./
+COPY backend/.prettierrc ./
+COPY backend/eslint.config.mjs ./
+
+# Compilar el proyecto
 RUN npm run build
+
+# Verificar que se generó el build correctamente
+RUN ls -la dist/
 
 # --------------------------------------------------
 # Etapa 2: Producción
