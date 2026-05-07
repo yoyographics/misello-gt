@@ -32,12 +32,12 @@ services:
       NODE_ENV: development
       PORT: 3000
     env_file:
-      - .env
+      - backend/.env
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ./uploads:/app/uploads
+      - ./backend/uploads:/app/uploads
 
 volumes:
   postgres_data:
