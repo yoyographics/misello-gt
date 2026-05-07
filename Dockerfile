@@ -1,13 +1,15 @@
 # ============================================================
 # Dockerfile en raíz para Railway
 # Railway detecta automáticamente este archivo en la raíz del repo
-# y usa el builder Docker en lugar de Railpack.
 # ============================================================
 
 # --------------------------------------------------
 # Etapa 1: Build
 # --------------------------------------------------
 FROM node:20-alpine AS builder
+
+# Instalar herramientas de compilación para paquetes nativos (bcrypt, sharp, etc.)
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
@@ -29,6 +31,9 @@ RUN npm run build
 # Etapa 2: Producción
 # --------------------------------------------------
 FROM node:20-alpine AS production
+
+# Instalar herramientas de compilación (necesarias para algunos paquetes nativos en runtime)
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
