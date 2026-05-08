@@ -6,6 +6,8 @@ import { ProductsModule } from './products/products.module';
 import { InksModule } from './inks/inks.module';
 import { FontsModule } from './fonts/fonts.module';
 import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -20,6 +22,8 @@ import { AppService } from './app.service';
     InksModule,
     FontsModule,
     OrdersModule,
+    PaymentsModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
