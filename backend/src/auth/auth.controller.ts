@@ -10,7 +10,7 @@ import {
   HttpStatus,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -41,7 +41,7 @@ export class AuthController {
    * Redirige al usuario a la página de login de Google.
    */
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   googleAuth() {
     // Este endpoint solo redirige a Google. El guard maneja todo.
   }
@@ -51,7 +51,7 @@ export class AuthController {
    * Genera un JWT de cliente y redirige al frontend con el token.
    */
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const user = req.user as any;
     const token = this.authService.generateClientToken(user);

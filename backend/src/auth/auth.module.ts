@@ -40,7 +40,8 @@ import { RolesGuard } from './guards/roles.guard';
   ],
   providers: [
     AuthService,
-    GoogleStrategy,
+    // GoogleStrategy solo se carga si hay credenciales configuradas
+    ...(process.env.GOOGLE_CLIENT_ID ? [GoogleStrategy] : []),
     JwtClientGuard,
     JwtAdminGuard,
     RolesGuard,
