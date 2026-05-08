@@ -103,20 +103,22 @@ model AdminUser {
 }
 
 model Product {
-  id        String          @id @default(uuid())
-  sku       String          @unique
-  name      String
-  category  ProductCategory
-  shape     ProductShape?
-  widthMm   Float?
-  heightMm  Float?
-  widthPx   Int?
-  heightPx  Int?
-  basePrice Float
-  isActive  Boolean         @default(true)
-  stock     Int             @default(0)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id          String          @id @default(uuid())
+  sku         String          @unique
+  name        String
+  description String?
+  category    ProductCategory
+  shape       ProductShape?
+  widthMm     Float?
+  heightMm    Float?
+  widthPx     Int?
+  heightPx    Int?
+  imageUrl    String?
+  basePrice   Float
+  isActive    Boolean         @default(true)
+  stock       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   orderItems     OrderItem[]
   inventoryLogs  InventoryLog[]
@@ -139,11 +141,13 @@ model Ink {
 }
 
 model Font {
-  id        String   @id @default(uuid())
-  name      String
-  fileName  String
+  id         String   @id @default(uuid())
+  name       String
+  fileName   String
   uploadedAt DateTime @default(now())
-  isActive  Boolean  @default(true)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Order {

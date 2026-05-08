@@ -1,0 +1,57 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateFontDto } from './dto/create-font.dto';
+import { UpdateFontDto } from './dto/update-font.dto';
+
+@Injectable()
+export class FontsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async findAllPublic() {
+    return this.prisma.font.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async findAllAdmin() {
+    return this.prisma.font.findMany({ orderBy: { name: 'asc' } });
+  }
+
+  async findOnePublic(id: string) {
+    const font = await this.prisma.font.findFirst({
+      where: { id, isActive: true },
+    });
+    if (!font) throw new NotFoundException('Tipografía no encontrada');
+    return font;
+  }
+
+  async findOneAdmin(id: string) {
+    const font = await this.prisma.font.findUnique({ where: { id } });
+    if (!font) throw new NotFoundException('Tipografía no encontrada');
+    return font;
+  }
+
+  async create(dto: CreateFontDto, fileName: string) {
+    return this.prisma.font.create({
+      data: {
+        name: dto.name,
+        fileName,
+        isActive: dto.isActive ?? true,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateFontDto) {
+    await this.findOneAdmin(id);
+    return this.prisma.font.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOneAdmin(id);
+    return this.prisma.font.update({ where: { id }, data: { isActive: false } });
+  }
+}
