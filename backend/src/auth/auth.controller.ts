@@ -10,6 +10,7 @@ import {
   HttpStatus,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -110,6 +111,7 @@ export class AuthController {
    */
   @Get('admin/me')
   @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
   adminMe(@Req() req: Request) {
     const user = req.user as any;
     return {
@@ -127,6 +129,7 @@ export class AuthController {
   @Post('admin/logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
   adminLogout() {
     return { message: 'Logout exitoso' };
   }
