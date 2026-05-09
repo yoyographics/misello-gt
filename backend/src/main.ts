@@ -16,7 +16,33 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // ── Seguridad: headers OWASP vía Helmet ──
-  app.use(helmet());
+  // CSP relajado para permitir CDNs del panel de admin (Tailwind, Alpine, FontAwesome)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'", 'https:', 'data:'],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            'https://cdn.tailwindcss.com',
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com',
+          ],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://cdn.tailwindcss.com',
+            'https://cdnjs.cloudflare.com',
+          ],
+          fontSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'https:'],
+        },
+      },
+    }),
+  );
 
   // ── CORS: solo permitir el origen del frontend ──
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
