@@ -19,8 +19,9 @@ RUN npm install
 # Generar cliente Prisma
 RUN npx prisma generate
 
-# Copiar código fuente
+# Copiar código fuente y archivos estáticos
 COPY backend/src ./src/
+COPY backend/public ./public/
 COPY backend/tsconfig*.json ./
 COPY backend/nest-cli.json ./
 COPY backend/.prettierrc ./
