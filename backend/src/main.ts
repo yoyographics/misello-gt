@@ -3,8 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as express from 'express';
-import { join } from 'path';
 import { AppModule } from './app.module';
 
 /**
@@ -60,11 +58,8 @@ async function bootstrap() {
     }),
   );
 
-  // ── Archivos estáticos (panel de admin) ──
-  app.use(express.static(join(process.cwd(), 'public')));
-
-  // ── Prefijo global para todas las rutas ──
-  app.setGlobalPrefix('api/v1');
+  // ── Prefijo global para todas las rutas (excepto admin) ──
+  app.setGlobalPrefix('api/v1', { exclude: ['/admin', '/admin/(.*)'] });
 
   // ── Swagger: documentación automática de la API (solo en desarrollo) ──
   const nodeEnv = configService.get<string>('NODE_ENV');

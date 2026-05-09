@@ -33,6 +33,10 @@ RUN npm run build
 # Verificar que el build se generó correctamente
 RUN ls -la dist/
 
+# Verificar que los archivos estáticos existen
+RUN ls -la public/ || echo "WARNING: public folder not found"
+RUN ls -la public/admin/ || echo "WARNING: public/admin folder not found"
+
 # Crear carpetas para uploads
 RUN mkdir -p uploads/fonts uploads/logos uploads/designs uploads/receipts uploads/product-photos
 
