@@ -78,6 +78,19 @@ async function bootstrap() {
   const port = configService.get<number>('PORT') || 3000;
   await app.listen(port);
 
+  // Log all registered routes for debugging
+  const server = app.getHttpServer();
+  const router = server._events.request._router;
+  if (router && router.stack) {
+    const routes = router.stack
+      .filter((layer: any) => layer.route)
+      .map((layer: any) => ({
+        path: layer.route.path,
+        methods: Object.keys(layer.route.methods).map(m => m.toUpperCase()),
+      }));
+    console.log('📋 Registered routes:', JSON.stringify(routes, null, 2));
+  }
+
   console.log(`🚀 Servidor corriendo en: http://localhost:${port}/api/v1`);
   if (nodeEnv === 'development') {
     console.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
