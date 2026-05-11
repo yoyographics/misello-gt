@@ -15,9 +15,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private readonly prisma: PrismaService,
   ) {
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID')!,
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET')!,
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!,
+      clientID: configService.get<string>('GOOGLE_CLIENT_ID')?.trim() || '',
+      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET')?.trim() || '',
+      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')?.trim() || '',
       scope: ['email', 'profile'],
     });
   }

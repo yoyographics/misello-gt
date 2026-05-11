@@ -59,7 +59,7 @@ async function bootstrap() {
   );
 
   // ── Prefijo global para todas las rutas (excepto admin) ──
-  app.setGlobalPrefix('api/v1', { exclude: ['/admin', '/admin/(.*)'] });
+  app.setGlobalPrefix('api/v1', { exclude: ['/admin', '/admin/(.*)', '/client', '/client/(.*)'] });
 
   // ── Swagger: documentación automática de la API (solo en desarrollo) ──
   const nodeEnv = configService.get<string>('NODE_ENV');

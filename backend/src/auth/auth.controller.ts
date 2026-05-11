@@ -73,9 +73,8 @@ export class AuthController {
     const token = this.authService.generateClientToken(user);
 
     // Redirigir al frontend con el token en la URL
-    // El frontend debe leer el token y guardarlo
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    return res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+    const frontendUrl = process.env.FRONTEND_URL || 'https://misello-gt-production.up.railway.app/client';
+    return res.redirect(`${frontendUrl}?token=${token}`);
   }
 
   // ============================================================

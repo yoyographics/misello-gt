@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>misello.gt — Sellos Personalizados</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    [x-cloak] { display: none !important; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800" x-data="clientApp()" x-init="init()" x-cloak>
+
+  <!-- Navbar -->
+  <nav class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <a @click="page='home'" class="text-2xl font-bold text-indigo-600 cursor-pointer">misello.gt</a>
+        <div class="flex items-center space-x-4">
+          <button @click="page='cart'" class="relative p-2 text-gray-600 hover:text-indigo-600">
+            <i class="fas fa-shopping-cart text-xl"></i>
+            <span x-show="cart.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" x-text="cart.length"></span>
+          </button>
+          <button @click="page='orders'; loadOrders()" x-show="clientToken" class="p-2 text-gray-600 hover:text-indigo-600">
+            <i class="fas fa-box text-xl"></i>
+          </button>
+          <template x-if="!clientToken">
+            <a :href="googleLoginUrl" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+              <i class="fab fa-google mr-2"></i>Entrar
+            </a>
+          </template>
+          <template x-if="clientToken">
+            <div class="flex items-center space-x-2">
+              <img x-show="clientUser?.picture" :src="clientUser.picture" class="w-8 h-8 rounded-full">
+              <span class="text-sm text-gray-600 hidden sm:inline" x-text="clientUser?.name || 'Cliente'"></span>
+              <button @click="logoutClient()" class="text-gray-400 hover:text-red-600"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==================== HOME / CATALOGO ==================== -->
+  <div x-show="page === 'home'" class="fade-in">
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white py-20">
+      <div class="max-w-7xl mx-auto px-4 text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">Diseñá tu sello personalizado</h1>
+        <p class="text-xl text-indigo-100 mb-8">Sellos automáticos, fechadores, portátiles y más. Envíos a todo Guatemala.</p>
+        <button @click="document.getElementById('catalogo').scrollIntoView({behavior:'smooth'})" class="bg-white text-indigo-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition">
+          Ver catálogo
+        </button>
+      </div>
+    </div>
+    <div id="catalogo" class="max-w-7xl mx-auto px-4 py-12">
+      <h2 class="text-3xl font-bold mb-8 text-center">Nuestros Productos</h2>
+      <div x-show="loading" class="text-center py-12"><i class="fas fa-spinner fa-spin text-3xl text-indigo-600"></i></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <template x-for="p in products" :key="p.id">
+          <div class="bg-white rounded-xl shadow-sm border hover:shadow-lg transition cursor-pointer" @click="viewProduct(p)">
+            <div class="h-48 bg-gray-100 rounded-t-xl flex items-center justify-center overflow-hidden">
+              <img x-show="p.imageUrl" :src="p.imageUrl" class="w-full h-full object-cover">
+              <i x-show="!p.imageUrl" class="fas fa-stamp text-6xl text-gray-300"></i>
+            </div>
+            <div class="p-5">
+              <div class="text-xs text-indigo-600 font-medium uppercase mb-1" x-text="p.category"></div>
+              <h3 class="text-lg font-bold mb-2" x-text="p.name"></h3>
+              <p class="text-gray-500 text-sm mb-3 line-clamp-2" x-text="p.description || ''"></p>
+              <div class="flex justify-between items-center">
+                <span class="text-xl font-bold text-indigo-600" x-text="'Q'+p.basePrice"></span>
+                <span class="text-sm text-gray-400" x-text="p.stock > 0 ? p.stock + ' disponibles' : 'Agotado'"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DETALLE DE PRODUCTO ==================== -->
+  <div x-show="page === 'product'" class="fade-in max-w-4xl mx-auto px-4 py-8">
+    <button @click="page='home'" class="text-indigo-600 mb-4 hover:underline"><i class="fas fa-arrow-left mr-1"></i> Volver</button>
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div class="md:flex">
+        <div class="md:w-1/2 h-80 bg-gray-100 flex items-center justify-center">
+          <img x-show="selectedProduct?.imageUrl" :src="selectedProduct.imageUrl" class="w-full h-full object-cover">
+          <i x-show="!selectedProduct?.imageUrl" class="fas fa-stamp text-8xl text-gray-300"></i>
+        </div>
+        <div class="md:w-1/2 p-8">
+          <div class="text-sm text-indigo-600 font-medium uppercase mb-2" x-text="selectedProduct?.category"></div>
+          <h1 class="text-3xl font-bold mb-4" x-text="selectedProduct?.name"></h1>
+          <p class="text-gray-600 mb-6" x-text="selectedProduct?.description || 'Sello personalizado de alta calidad.'"></p>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Color de tinta</label>
+            <select x-model="cartItem.inkId" class="w-full border rounded-lg px-3 py-2">
+              <option value="">— Sin tinta extra —</option>
+              <template x-for="ink in inks" :key="ink.id">
+                <option :value="ink.id" x-text="ink.color + ' (+Q' + ink.price + ')'"></option>
+              </template>
+            </select>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
+            <div class="flex items-center space-x-3">
+              <button @click="cartItem.quantity = Math.max(1, cartItem.quantity - 1)" class="w-10 h-10 rounded-lg border hover:bg-gray-50">-</button>
+              <span class="text-xl font-bold w-8 text-center" x-text="cartItem.quantity"></span>
+              <button @click="cartItem.quantity++" class="w-10 h-10 rounded-lg border hover:bg-gray-50">+</button>
+            </div>
+          </div>
+          <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div class="flex justify-between mb-2"><span>Precio unitario</span><span x-text="'Q'+selectedProduct?.basePrice"></span></div>
+            <div class="flex justify-between mb-2" x-show="cartItem.inkId"><span>Tinta extra</span><span x-text="'Q'+selectedInkPrice()"></span></div>
+            <div class="flex justify-between text-xl font-bold border-t pt-2"><span>Total</span><span x-text="'Q'+itemTotal()"></span></div>
+          </div>
+          <button @click="addToCart()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition" :disabled="selectedProduct?.stock < cartItem.quantity">
+            <span x-show="selectedProduct?.stock >= cartItem.quantity">Agregar al carrito</span>
+            <span x-show="selectedProduct?.stock < cartItem.quantity">Agotado</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CARRITO ==================== -->
+  <div x-show="page === 'cart'" class="fade-in max-w-3xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Carrito</h1>
+    <div x-show="cart.length === 0" class="text-center py-12 text-gray-500">
+      <i class="fas fa-shopping-cart text-6xl mb-4 text-gray-300"></i>
+      <p class="text-xl">Tu carrito está vacío</p>
+      <button @click="page='home'" class="mt-4 text-indigo-600 hover:underline">Ver catálogo</button>
+    </div>
+    <div x-show="cart.length > 0" class="space-y-4">
+      <template x-for="(item, idx) in cart" :key="idx">
+        <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center">
+          <div>
+            <div class="font-bold" x-text="item.product.name"></div>
+            <div class="text-sm text-gray-500">Cantidad: <span x-text="item.quantity"></span></div>
+            <div class="text-sm text-gray-500" x-show="item.ink">Tinta: <span x-text="item.ink.color"></span></div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="font-bold text-indigo-600" x-text="'Q'+(item.unitPrice * item.quantity)"></span>
+            <button @click="removeFromCart(idx)" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </template>
+      <div class="bg-white p-6 rounded-xl shadow-sm border">
+        <div class="flex justify-between text-xl font-bold"><span>Total</span><span x-text="'Q'+cartTotal()"></span></div>
+        <button @click="page='checkout'" class="w-full mt-4 bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition">Proceder al pago</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CHECKOUT ==================== -->
+  <div x-show="page === 'checkout'" class="fade-in max-w-xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Checkout</h1>
+    <div class="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Dirección de envío</label>
+        <textarea x-model="checkout.address" placeholder="Zona, ciudad, dirección completa" class="w-full border rounded-lg px-3 py-2" rows="3"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+        <input x-model="checkout.phone" placeholder="5555-5555" class="w-full border rounded-lg px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">NIT o CUI (opcional)</label>
+        <input x-model="checkout.nitOrCui" placeholder="1234567-8" class="w-full border rounded-lg px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre para factura (opcional)</label>
+        <input x-model="checkout.invoiceName" placeholder="Nombre o razón social" class="w-full border rounded-lg px-3 py-2">
+      </div>
+      <div class="border-t pt-4">
+        <div class="flex justify-between text-xl font-bold mb-4"><span>Total a pagar</span><span x-text="'Q'+cartTotal()"></span></div>
+        <button @click="createOrder()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition" :disabled="loading || !checkout.address">
+          <span x-show="!loading">Crear pedido</span>
+          <span x-show="loading"><i class="fas fa-spinner fa-spin"></i> Procesando...</span>
+        </button>
+        <p x-show="error" class="text-red-600 text-sm mt-2" x-text="error"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MIS PEDIDOS ==================== -->
+  <div x-show="page === 'orders'" class="fade-in max-w-4xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Mis Pedidos</h1>
+    <div x-show="!clientToken" class="text-center py-12">
+      <p class="text-gray-500 mb-4">Iniciá sesión para ver tus pedidos</p>
+      <a :href="googleLoginUrl" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition">
+        <i class="fab fa-google mr-2"></i>Entrar con Google
+      </a>
+    </div>
+    <div x-show="clientToken && orders.length === 0" class="text-center py-12 text-gray-500">
+      <p class="text-xl">No tenés pedidos aún</p>
+      <button @click="page='home'" class="mt-4 text-indigo-600 hover:underline">Ir al catálogo</button>
+    </div>
+    <div x-show="clientToken && orders.length > 0" class="space-y-4">
+      <template x-for="o in orders" :key="o.id">
+        <div class="bg-white p-5 rounded-xl shadow-sm border hover:shadow-md transition cursor-pointer" @click="viewOrder(o)">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-bold text-lg" x-text="o.orderNumber"></div>
+              <div class="text-sm text-gray-500" x-text="formatDate(o.createdAt)"></div>
+            </div>
+            <span class="px-3 py-1 rounded text-xs font-medium" :class="statusColor(o.status)" x-text="o.status"></span>
+          </div>
+          <div class="mt-3 flex justify-between items-center">
+            <div class="text-sm text-gray-600" x-text="o.items.length + ' item(s)'"></div>
+            <div class="font-bold text-indigo-600" x-text="'Q'+o.totalAmount"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ==================== DETALLE DE PEDIDO ==================== -->
+  <div x-show="page === 'orderDetail'" class="fade-in max-w-3xl mx-auto px-4 py-8">
+    <button @click="page='orders'" class="text-indigo-600 mb-4 hover:underline"><i class="fas fa-arrow-left mr-1"></i> Volver</button>
+    <div class="bg-white p-6 rounded-xl shadow-sm border">
+      <div class="flex justify-between items-start mb-4">
+        <h1 class="text-2xl font-bold" x-text="selectedOrder?.orderNumber"></h1>
+        <span class="px-3 py-1 rounded text-xs font-medium" :class="statusColor(selectedOrder?.status)" x-text="selectedOrder?.status"></span>
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-sm mb-6">
+        <div><span class="text-gray-500">Fecha:</span> <span x-text="formatDate(selectedOrder?.createdAt)"></span></div>
+        <div><span class="text-gray-500">Total:</span> <span class="font-bold" x-text="'Q'+selectedOrder?.totalAmount"></span></div>
+        <div x-show="selectedOrder?.nitOrCui"><span class="text-gray-500">NIT/CUI:</span> <span x-text="selectedOrder?.nitOrCui"></span></div>
+        <div x-show="selectedOrder?.courierTracking"><span class="text-gray-500">Tracking:</span> <span x-text="selectedOrder?.courierTracking"></span></div>
+      </div>
+      <h3 class="font-semibold mb-3">Items</h3>
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-600"><tr><th class="text-left px-3 py-2">Producto</th><th class="text-right px-3 py-2">Cant.</th><th class="text-right px-3 py-2">Precio</th></tr></thead>
+        <tbody>
+          <template x-for="item in selectedOrder?.items" :key="item.id">
+            <tr class="border-b"><td class="px-3 py-2" x-text="item.product?.name"></td><td class="px-3 py-2 text-right" x-text="item.quantity"></td><td class="px-3 py-2 text-right" x-text="'Q'+item.unitPrice"></td></tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-8 mt-12">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+      <div class="text-xl font-bold mb-2">misello.gt</div>
+      <p class="text-gray-400 text-sm">Sellos personalizados — YOYO GRAPHICS</p>
+    </div>
+  </footer>
+
+  <script>
+    function clientApp() {
+      return {
+        API: '/api/v1',
+        page: 'home',
+        loading: false,
+        error: '',
+        products: [],
+        inks: [],
+        orders: [],
+        selectedProduct: null,
+        selectedOrder: null,
+        cart: JSON.parse(localStorage.getItem('cart') || '[]'),
+        cartItem: { inkId: '', quantity: 1 },
+        checkout: { address: '', phone: '', nitOrCui: '', invoiceName: '' },
+        clientToken: localStorage.getItem('client_token') || '',
+        clientUser: JSON.parse(localStorage.getItem('client_user') || 'null'),
+        googleLoginUrl: '',
+
+        init() {
+          this.loadProducts();
+          this.loadInks();
+          this.checkUrlToken();
+          this.buildGoogleUrl();
+        },
+
+        async api(method, path, body, token) {
+          const opts = { method, headers: { 'Content-Type': 'application/json' } };
+          if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+          if (body) opts.body = JSON.stringify(body);
+          const res = await fetch(this.API + path, opts);
+          return res.json();
+        },
+
+        buildGoogleUrl() {
+          fetch(this.API + '/auth/google/debug')
+            .then(r => r.json())
+            .then(d => { if (d.fullAuthUrl) this.googleLoginUrl = d.fullAuthUrl; });
+        },
+
+        checkUrlToken() {
+          const params = new URLSearchParams(window.location.search);
+          const token = params.get('token');
+          if (token) {
+            this.clientToken = token;
+            localStorage.setItem('client_token', token);
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              this.clientUser = { email: payload.email, name: payload.name, picture: payload.picture };
+              localStorage.setItem('client_user', JSON.stringify(this.clientUser));
+            } catch (e) {}
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        },
+
+        logoutClient() {
+          this.clientToken = ''; this.clientUser = null;
+          localStorage.removeItem('client_token');
+          localStorage.removeItem('client_user');
+        },
+
+        async loadProducts() {
+          this.loading = true;
+          const data = await this.api('GET', '/products');
+          this.products = data?.items || [];
+          this.loading = false;
+        },
+
+        async loadInks() {
+          const data = await this.api('GET', '/inks');
+          this.inks = data || [];
+        },
+
+        viewProduct(p) {
+          this.selectedProduct = p;
+          this.cartItem = { inkId: '', quantity: 1 };
+          this.page = 'product';
+        },
+
+        selectedInkPrice() {
+          const ink = this.inks.find(i => i.id === this.cartItem.inkId);
+          return ink ? ink.price : 0;
+        },
+
+        itemTotal() {
+          if (!this.selectedProduct) return 0;
+          return (this.selectedProduct.basePrice + this.selectedInkPrice()) * this.cartItem.quantity;
+        },
+
+        addToCart() {
+          const ink = this.inks.find(i => i.id === this.cartItem.inkId);
+          this.cart.push({
+            product: this.selectedProduct,
+            ink: ink || null,
+            quantity: this.cartItem.quantity,
+            unitPrice: this.selectedProduct.basePrice + (ink ? ink.price : 0),
+          });
+          this.saveCart();
+          alert('Agregado al carrito');
+          this.page = 'cart';
+        },
+
+        removeFromCart(idx) {
+          this.cart.splice(idx, 1);
+          this.saveCart();
+        },
+
+        saveCart() {
+          localStorage.setItem('cart', JSON.stringify(this.cart));
+        },
+
+        cartTotal() {
+          return this.cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+        },
+
+        async createOrder() {
+          if (!this.clientToken) { this.error = 'Debés iniciar sesión'; return; }
+          if (!this.checkout.address) { this.error = 'La dirección es obligatoria'; return; }
+          this.loading = true; this.error = '';
+          const items = this.cart.map(item => ({
+            productId: item.product.id,
+            inkId: item.ink?.id,
+            quantity: item.quantity,
+          }));
+          const body = {
+            items,
+            shippingAddress: { address: this.checkout.address, phone: this.checkout.phone },
+            nitOrCui: this.checkout.nitOrCui || undefined,
+            invoiceName: this.checkout.invoiceName || undefined,
+          };
+          try {
+            const res = await fetch(this.API + '/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.clientToken },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) { this.error = data.message || 'Error'; this.loading = false; return; }
+            this.cart = []; this.saveCart();
+            this.selectedOrder = data;
+            this.page = 'orderDetail';
+          } catch (e) { this.error = 'Error de conexión'; }
+          this.loading = false;
+        },
+
+        async loadOrders() {
+          if (!this.clientToken) return;
+          this.loading = true;
+          const data = await this.api('GET', '/orders/my', null, this.clientToken);
+          this.orders = data || [];
+          this.loading = false;
+        },
+
+        viewOrder(o) {
+          this.selectedOrder = o;
+          this.page = 'orderDetail';
+        },
+
+        formatDate(d) {
+          if (!d) return '—';
+          return new Date(d).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' });
+        },
+
+        statusColor(s) {
+          const map = { DRAFT:'bg-gray-100', PENDING_PAYMENT:'bg-yellow-100 text-yellow-700', CONFIRMED:'bg-green-100 text-green-700', IN_PRODUCTION:'bg-indigo-100', FINISHED:'bg-teal-100', SHIPPED:'bg-purple-100', CANCELLED:'bg-red-100' };
+          return map[s] || 'bg-gray-100';
+        },
+      };
+    }
+  </script>
+</body>
+</html>
