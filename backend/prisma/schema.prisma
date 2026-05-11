@@ -260,3 +260,10 @@ model SiteSettings {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+model RoleConfig {
+  id          String    @id @default(uuid())
+  role        AdminRole @unique
+  permissions Json      // { orders: true, inventory: true, payments: true, design: true, notifications: true, admin: true, discounts: true, fonts: true }
+  updatedAt   DateTime  @updatedAt
+}

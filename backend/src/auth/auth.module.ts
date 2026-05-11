@@ -9,6 +9,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtClientGuard } from './guards/jwt-client.guard';
 import { JwtAdminGuard } from './guards/jwt-admin.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { PermissionsGuard } from './guards/permissions.guard';
 
 /**
  * Módulo 1 — Autenticación.
@@ -45,8 +46,9 @@ import { RolesGuard } from './guards/roles.guard';
     JwtClientGuard,
     JwtAdminGuard,
     RolesGuard,
+    PermissionsGuard,
   ],
   controllers: [AuthController],
-  exports: [AuthService, JwtClientGuard, JwtAdminGuard, RolesGuard, JwtModule],
+  exports: [AuthService, JwtClientGuard, JwtAdminGuard, RolesGuard, PermissionsGuard, JwtModule],
 })
 export class AuthModule {}

@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import * as express from 'express';
+import { join } from 'path';
 
 /**
  * Punto de entrada principal de la aplicación NestJS.
@@ -57,6 +59,9 @@ async function bootstrap() {
       transform: true,             // transforma tipos automáticamente
     }),
   );
+
+  // ── Servir archivos subidos (disenos, logos, fuentes, recibos) ──
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
   // ── API prefix handled by RouterModule in AppModule ──
 

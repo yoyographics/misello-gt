@@ -7,6 +7,9 @@ import { FontsModule } from './fonts/fonts.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { DesignModule } from './design/design.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -17,6 +20,9 @@ import { InventoryModule } from './inventory/inventory.module';
     OrdersModule,
     PaymentsModule,
     InventoryModule,
+    DesignModule,
+    NotificationsModule,
+    AdminModule,
     RouterModule.register([
       { path: 'api/v1', module: AuthModule },
       { path: 'api/v1', module: ProductsModule },
@@ -25,6 +31,9 @@ import { InventoryModule } from './inventory/inventory.module';
       { path: 'api/v1', module: OrdersModule },
       { path: 'api/v1', module: PaymentsModule },
       { path: 'api/v1', module: InventoryModule },
+      { path: 'api/v1', module: DesignModule },
+      { path: 'api/v1', module: NotificationsModule },
+      { path: 'api/v1', module: AdminModule },
     ]),
   ],
 })
