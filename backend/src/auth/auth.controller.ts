@@ -73,7 +73,15 @@ export class AuthController {
     const token = this.authService.generateClientToken(user);
 
     // Redirigir al frontend con el token en la URL
-    const frontendUrl = process.env.FRONTEND_URL || 'https://misello-gt-production.up.railway.app/client';
+    // Normalizar la URL para evitar typos como /clien en vez de /client
+    let frontendUrl = (process.env.FRONTEND_URL || 'https://misello-gt-production.up.railway.app/client').trim();
+    frontendUrl = frontendUrl.replace(/\/+$/, ''); // quitar trailing slashes
+    if (frontendUrl.endsWith('/clien')) {
+      frontendUrl = frontendUrl + 't'; // corregir typo común
+    }
+    if (!frontendUrl.endsWith('/client')) {
+      frontendUrl = frontendUrl + '/client';
+    }
     return res.redirect(`${frontendUrl}?token=${token}`);
   }
 
