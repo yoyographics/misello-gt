@@ -44,7 +44,7 @@ export class TechValidatorService {
   private readonly MIN_CHAR_SIZE_MM = 2;      // 2mm minimo
   private readonly MIN_CHAR_SIZE_PX = 41;     // 41px a 600dpi
   private readonly MIN_LINE_THICKNESS_PT = 1; // 1pt minimo
-  private readonly MIN_LINE_THICKNESS_PX = 9; // ~9px a 600dpi
+  private readonly MIN_LINE_THICKNESS_PX = 6; // ~6px a 600dpi (mas permisivo para texto tipografico)
 
   validate(params: ValidationParams): ValidationResult {
     const checks = {
@@ -78,8 +78,9 @@ export class TechValidatorService {
     // 2. Validar grosor minimo de linea
     for (const line of params.textLines) {
       const fontSizePx = Math.round(line.fontSizePt * 4.1667);
-      // Grosor de trazo estimado: ~12% del tamano de fuente para fuentes normales
-      const estimatedStrokeWidth = fontSizePx * 0.12;
+      // Grosor de trazo estimado: fuente normal ~8% del tamano, bold ~12%
+      const isBold = line.fontSizePt >= 14; // Asumir bold o tamano grande = trazo mas grueso
+      const estimatedStrokeWidth = fontSizePx * (isBold ? 0.12 : 0.08);
 
       if (estimatedStrokeWidth < this.MIN_LINE_THICKNESS_PX) {
         checks.minLineThickness = false;
