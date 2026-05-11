@@ -4,11 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PrismaModule } from './prisma/prisma.module';
 import { ApiModule } from './api.module';
-import { AppController } from './app.controller';
-import { AdminController } from './admin.controller';
-import { ClientController } from './client.controller';
-import { DebugController } from './debug.controller';
-import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -42,7 +37,5 @@ import { AppService } from './app.service';
       },
     ]),
   ],
-  controllers: [AppController, AdminController, ClientController, DebugController],
-  providers: [AppService],
 })
 export class AppModule {}

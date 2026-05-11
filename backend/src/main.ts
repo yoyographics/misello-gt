@@ -60,6 +60,9 @@ async function bootstrap() {
     }),
   );
 
+  // ── Servir frontend estatico (Next.js exportado) ──
+  app.use(express.static(join(process.cwd(), 'public')));
+
   // ── Servir archivos subidos (disenos, logos, fuentes, recibos) ──
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
