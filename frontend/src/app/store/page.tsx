@@ -39,7 +39,7 @@ export default function StorePage() {
   const [categoryFilter, setCategoryFilter] = useState('');
 
   useEffect(() => {
-    api.get('/products').then((res) => setProducts(res.data.data || res.data));
+    api.get('/products').then((res) => setProducts(res.data.items || res.data));
   }, []);
 
   const categories = Array.from(new Set(products.map((p) => p.category)));

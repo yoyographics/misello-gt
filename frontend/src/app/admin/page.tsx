@@ -52,7 +52,7 @@ export default function AdminPage() {
     ])
       .then(([statsRes, ordersRes]) => {
         setStats(statsRes.data);
-        setOrders(ordersRes.data.data || ordersRes.data);
+        setOrders(ordersRes.data.items || ordersRes.data);
       })
       .catch(() => {
         // Si no tiene permisos, redirigir

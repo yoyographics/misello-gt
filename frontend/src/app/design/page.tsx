@@ -79,9 +79,9 @@ export default function DesignPage() {
   const baseUrl = apiUrl.replace('/api/v1', '');
 
   useEffect(() => {
-    api.get('/products').then((res) => setProducts(res.data.data || res.data));
-    api.get('/fonts').then((res) => setFonts(res.data.data || res.data));
-    api.get('/inks').then((res) => setInks(res.data.data || res.data));
+    api.get('/products').then((res) => setProducts(res.data.items || res.data));
+    api.get('/fonts').then((res) => setFonts(res.data));
+    api.get('/inks').then((res) => setInks(res.data));
   }, []);
 
   const filteredProducts = category
