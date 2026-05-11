@@ -74,14 +74,35 @@ export default function DesignPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiError, setApiError] = useState('');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const baseUrl = apiUrl.replace('/api/v1', '');
 
   useEffect(() => {
-    api.get('/products').then((res) => setProducts(res.data.items || res.data));
-    api.get('/fonts').then((res) => setFonts(res.data));
-    api.get('/inks').then((res) => setInks(res.data));
+    Promise.all([
+      api.get('/products'),
+      api.get('/fonts'),
+      api.get('/inks'),
+    ])
+      .then(([productsRes, fontsRes, inksRes]) => {
+        console.log('Products API response:', productsRes.data);
+        console.log('Fonts API response:', fontsRes.data);
+        console.log('Inks API response:', inksRes.data);
+        const p = productsRes.data?.items || productsRes.data || [];
+        const f = fontsRes.data || [];
+        const i = inksRes.data || [];
+        setProducts(Array.isArray(p) ? p : []);
+        setFonts(Array.isArray(f) ? f : []);
+        setInks(Array.isArray(i) ? i : []);
+        setApiLoading(false);
+      })
+      .catch((err) => {
+        console.error('API error:', err);
+        setApiError(err.response?.data?.message || err.message || 'Error cargando datos');
+        setApiLoading(false);
+      });
   }, []);
 
   const filteredProducts = category
@@ -198,12 +219,41 @@ export default function DesignPage() {
     </div>
   );
 
+  const displayProducts = filteredProducts.length > 0 ? filteredProducts : products;
+
   const renderStep2 = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 2: Elige tu modelo</h2>
       <p className="text-gray-600">Selecciona el modelo que se ajuste a tus necesidades.</p>
+
+      {apiLoading && (
+        <div className="text-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500" />
+          <p className="mt-4 text-gray-500">Cargando modelos...</p>
+        </div>
+      )}
+
+      {apiError && (
+        <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+          <p className="font-medium">Error cargando modelos:</p>
+          <p className="text-sm">{apiError}</p>
+        </div>
+      )}
+
+      {!apiLoading && !apiError && products.length === 0 && (
+        <div className="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
+          <p>No hay productos disponibles.</p>
+        </div>
+      )}
+
+      {!apiLoading && !apiError && filteredProducts.length === 0 && products.length > 0 && (
+        <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">
+          <p>No hay modelos para esta categoria. Mostrando todos los disponibles:</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredProducts.map((product) => (
+        {displayProducts.map((product) => (
           <Card
             key={product.id}
             className={`p-4 cursor-pointer transition hover:shadow-lg ${
