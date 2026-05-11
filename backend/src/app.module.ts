@@ -1,18 +1,12 @@
 import { Module } from '@nestjs/common';
+import { RouterModule } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { ProductsModule } from './products/products.module';
-import { InksModule } from './inks/inks.module';
-import { FontsModule } from './fonts/fonts.module';
-import { OrdersModule } from './orders/orders.module';
-import { PaymentsModule } from './payments/payments.module';
-import { InventoryModule } from './inventory/inventory.module';
+import { ApiModule } from './api.module';
 import { AppController } from './app.controller';
 import { AdminController } from './admin.controller';
 import { ClientController } from './client.controller';
 import { DebugController } from './debug.controller';
-
 import { AppService } from './app.service';
 
 @Module({
@@ -21,13 +15,13 @@ import { AppService } from './app.service';
       isGlobal: true,
     }),
     PrismaModule,
-    AuthModule,
-    ProductsModule,
-    InksModule,
-    FontsModule,
-    OrdersModule,
-    PaymentsModule,
-    InventoryModule,
+    ApiModule,
+    RouterModule.register([
+      {
+        path: 'api/v1',
+        module: ApiModule,
+      },
+    ]),
   ],
   controllers: [AppController, AdminController, ClientController, DebugController],
   providers: [AppService],
