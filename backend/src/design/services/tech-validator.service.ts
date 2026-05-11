@@ -61,7 +61,7 @@ export class TechValidatorService {
 
     // 1. Validar tamano minimo de caracter
     for (const line of params.textLines) {
-      const fontSizePx = Math.round(line.fontSizePt * 4.1667); // pt → px @ 600dpi
+      const fontSizePx = Math.round(line.fontSizePt * 8.333); // pt → px @ 600dpi (600/72)
       // Un caracter tipico mide ~0.6x el font-size en altura
       const estimatedCharHeight = fontSizePx * 0.6;
 
@@ -78,8 +78,8 @@ export class TechValidatorService {
     // 2. Validar grosor minimo de linea
     for (const line of params.textLines) {
       const fontSizePx = Math.round(line.fontSizePt * 4.1667);
-      // Grosor de trazo estimado: ~8% del tamano de fuente para fuentes normales
-      const estimatedStrokeWidth = fontSizePx * 0.08;
+      // Grosor de trazo estimado: ~12% del tamano de fuente para fuentes normales
+      const estimatedStrokeWidth = fontSizePx * 0.12;
 
       if (estimatedStrokeWidth < this.MIN_LINE_THICKNESS_PX) {
         checks.minLineThickness = false;

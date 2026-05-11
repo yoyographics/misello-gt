@@ -100,7 +100,7 @@ export class SvgRendererService {
 
     // Construir elementos de texto
     const textElements = params.textLines.map((line, i) => {
-      const fontSizePx = Math.round(line.fontSizePt * 4.1667); // 1pt ≈ 4.1667px a 600dpi (600/72*0.5)
+      const fontSizePx = Math.round(line.fontSizePt * 8.333); // 1pt = 8.333px a 600dpi (600/72)
       const transform = line.rotationDegrees
         ? `transform="rotate(${line.rotationDegrees}, ${line.xPosition}, ${line.yPosition})"`
         : '';
@@ -172,7 +172,7 @@ ${textElements}
     const viewBox = `0 0 ${widthPx} ${heightPx}`;
 
     const textElements = params.textLines.map((line, i) => {
-      const fontSizePx = Math.round(line.fontSizePt * 4.1667);
+      const fontSizePx = Math.round(line.fontSizePt * 8.333);
       const transform = line.rotationDegrees
         ? `transform="rotate(${line.rotationDegrees}, ${line.xPosition}, ${line.yPosition})"`
         : '';
