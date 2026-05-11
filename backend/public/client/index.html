@@ -116,6 +116,9 @@
             <div class="flex justify-between mb-2" x-show="cartItem.inkId"><span>Tinta extra</span><span x-text="'Q'+selectedInkPrice()"></span></div>
             <div class="flex justify-between text-xl font-bold border-t pt-2"><span>Total</span><span x-text="'Q'+itemTotal()"></span></div>
           </div>
+          <button @click="openDesigner()" class="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition mb-3">
+            <i class="fas fa-paint-brush mr-2"></i>Diseñar mi sello
+          </button>
           <button @click="addToCart()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition" :disabled="selectedProduct?.stock < cartItem.quantity">
             <span x-show="selectedProduct?.stock >= cartItem.quantity">Agregar al carrito</span>
             <span x-show="selectedProduct?.stock < cartItem.quantity">Agotado</span>
@@ -240,6 +243,153 @@
           </template>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ==================== EDITOR DE SELLOS ==================== -->
+  <div x-show="page === 'design'" class="fade-in" style="height: calc(100vh - 64px);">
+    <div class="flex h-full">
+      <!-- Toolbar -->
+      <aside class="w-16 bg-gray-900 text-white flex flex-col items-center py-4 space-y-4">
+        <button @click="addText()" title="Texto" class="p-2 rounded hover:bg-gray-700"><i class="fas fa-font"></i></button>
+        <button @click="addShape('circle')" title="Círculo" class="p-2 rounded hover:bg-gray-700"><i class="fas fa-circle"></i></button>
+        <button @click="addShape('rect')" title="Rectángulo" class="p-2 rounded hover:bg-gray-700"><i class="far fa-square"></i></button>
+        <button @click="addShape('star')" title="Estrella" class="p-2 rounded hover:bg-gray-700"><i class="fas fa-star"></i></button>
+        <button @click="addShape('line')" title="Línea" class="p-2 rounded hover:bg-gray-700"><i class="fas fa-minus"></i></button>
+        <div class="flex-1"></div>
+        <button @click="exportSvg()" title="Exportar SVG" class="p-2 rounded bg-green-600 hover:bg-green-700"><i class="fas fa-download"></i></button>
+        <button @click="clearCanvas()" title="Limpiar" class="p-2 rounded bg-red-600 hover:bg-red-700"><i class="fas fa-trash"></i></button>
+      </aside>
+
+      <!-- Canvas Area -->
+      <div class="flex-1 bg-gray-200 relative overflow-auto flex items-center justify-center p-8">
+        <div class="bg-white shadow-lg relative" :style="canvasStyle()">
+          <svg id="stamp-canvas" :viewBox="'0 0 ' + canvasWidth + ' ' + canvasHeight" class="w-full h-full" @mousedown="onCanvasMouseDown($event)" @mousemove="onCanvasMouseMove($event)" @mouseup="onCanvasMouseUp()">
+            <!-- Grid -->
+            <defs>
+              <pattern id="grid" :width="mmToPx(10)" :height="mmToPx(10)" patternUnits="userSpaceOnUse">
+                <path :d="'M ' + mmToPx(10) + ' 0 L 0 0 0 ' + mmToPx(10)" fill="none" stroke="#e5e7eb" stroke-width="0.5"/>
+              </pattern>
+            </defs>
+            <rect :width="canvasWidth" :height="canvasHeight" fill="url(#grid)"/>
+            <!-- Border -->
+            <rect x="1" y="1" :width="canvasWidth-2" :height="canvasHeight-2" fill="none" stroke="#1B2A6B" stroke-width="2"/>
+            <!-- Layers -->
+            <template x-for="(layer, idx) in layers" :key="layer.id">
+              <g :transform="'translate(' + layer.x + ',' + layer.y + ') rotate(' + (layer.rotation || 0) + ')'" @mousedown.stop="selectLayer(idx)" class="cursor-move" :class="selectedLayer === idx ? 'ring-2 ring-indigo-500' : ''">
+                <!-- Text -->
+                <template x-if="layer.type === 'text'">
+                  <text :x="0" :y="0" :font-size="layer.fontSize || 24" :font-family="layer.fontFamily || 'Arial'" :fill="layer.fill || '#000'" text-anchor="middle" dominant-baseline="middle" x-text="layer.text"></text>
+                </template>
+                <!-- Curved Text -->
+                <template x-if="layer.type === 'curvedText'">
+                  <g>
+                    <path :id="'path-' + layer.id" :d="describeArc(0, 0, layer.radius || 80, layer.startAngle || 0, layer.endAngle || 360)" fill="none"/>
+                    <text :font-size="layer.fontSize || 20" :font-family="layer.fontFamily || 'Arial'" :fill="layer.fill || '#000'">
+                      <textPath :href="'#path-' + layer.id" startOffset="50%" text-anchor="middle" x-text="layer.text"></textPath>
+                    </text>
+                  </g>
+                </template>
+                <!-- Circle -->
+                <template x-if="layer.type === 'circle'">
+                  <circle :r="layer.radius || 30" :fill="layer.fill || '#000'" :stroke="layer.stroke || 'none'" :stroke-width="layer.strokeWidth || 0"/>
+                </template>
+                <!-- Rect -->
+                <template x-if="layer.type === 'rect'">
+                  <rect :width="layer.width || 60" :height="layer.height || 40" :fill="layer.fill || '#000'" :stroke="layer.stroke || 'none'" :stroke-width="layer.strokeWidth || 0" x="0" y="0"/>
+                </template>
+                <!-- Star -->
+                <template x-if="layer.type === 'star'">
+                  <polygon :points="starPoints(layer.points || 5, layer.outerRadius || 30, layer.innerRadius || 15)" :fill="layer.fill || '#000'" :stroke="layer.stroke || 'none'" :stroke-width="layer.strokeWidth || 0"/>
+                </template>
+                <!-- Line -->
+                <template x-if="layer.type === 'line'">
+                  <line :x1="0" :y1="0" :x2="layer.x2 || 50" :y2="layer.y2 || 0" :stroke="layer.stroke || '#000'" :stroke-width="layer.strokeWidth || 2"/>
+                </template>
+                <!-- Selection indicator -->
+                <rect x="-4" y="-4" :width="(layer.type==='circle'?(layer.radius||30)*2:(layer.type==='rect'?(layer.width||60):(layer.type==='line'?(layer.x2||50):100)))+8" :height="(layer.type==='circle'?(layer.radius||30)*2:(layer.type==='rect'?(layer.height||40):(layer.type==='line'?(layer.y2||0):40)))+8" fill="none" stroke="none" pointer-events="all"/>
+              </g>
+            </template>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Properties Panel -->
+      <aside class="w-72 bg-white border-l p-4 overflow-auto">
+        <h2 class="text-lg font-bold mb-4">Propiedades</h2>
+        <div x-show="selectedLayer === null" class="text-gray-500 text-sm">
+          Seleccioná un elemento para editar
+        </div>
+        <div x-show="selectedLayer !== null" class="space-y-3">
+          <template x-if="selectedLayerObj?.type === 'text' || selectedLayerObj?.type === 'curvedText'">
+            <div>
+              <label class="text-xs text-gray-500">Texto</label>
+              <input x-model="selectedLayerObj.text" class="w-full border rounded px-2 py-1 text-sm">
+            </div>
+          </template>
+          <div>
+            <label class="text-xs text-gray-500">Posición X (px)</label>
+            <input type="number" x-model.number="selectedLayerObj.x" class="w-full border rounded px-2 py-1 text-sm">
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">Posición Y (px)</label>
+            <input type="number" x-model.number="selectedLayerObj.y" class="w-full border rounded px-2 py-1 text-sm">
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">Rotación (grados)</label>
+            <input type="number" x-model.number="selectedLayerObj.rotation" class="w-full border rounded px-2 py-1 text-sm">
+          </div>
+          <template x-if="selectedLayerObj?.type === 'text' || selectedLayerObj?.type === 'curvedText'">
+            <div>
+              <label class="text-xs text-gray-500">Tamaño fuente (px)</label>
+              <input type="number" x-model.number="selectedLayerObj.fontSize" class="w-full border rounded px-2 py-1 text-sm">
+            </div>
+          </template>
+          <template x-if="selectedLayerObj?.type === 'curvedText'">
+            <div>
+              <label class="text-xs text-gray-500">Radio (px)</label>
+              <input type="number" x-model.number="selectedLayerObj.radius" class="w-full border rounded px-2 py-1 text-sm">
+            </div>
+          </template>
+          <div>
+            <label class="text-xs text-gray-500">Color</label>
+            <input type="color" x-model="selectedLayerObj.fill" class="w-full border rounded px-2 py-1 text-sm h-8">
+          </div>
+          <template x-if="selectedLayerObj?.type === 'circle'">
+            <div>
+              <label class="text-xs text-gray-500">Radio (px)</label>
+              <input type="number" x-model.number="selectedLayerObj.radius" class="w-full border rounded px-2 py-1 text-sm">
+            </div>
+          </template>
+          <template x-if="selectedLayerObj?.type === 'rect'">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs text-gray-500">Ancho (px)</label>
+                <input type="number" x-model.number="selectedLayerObj.width" class="w-full border rounded px-2 py-1 text-sm">
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Alto (px)</label>
+                <input type="number" x-model.number="selectedLayerObj.height" class="w-full border rounded px-2 py-1 text-sm">
+              </div>
+            </div>
+          </template>
+          <button @click="deleteLayer(selectedLayer)" class="w-full bg-red-500 text-white py-2 rounded text-sm hover:bg-red-600">Eliminar capa</button>
+        </div>
+
+        <hr class="my-4">
+
+        <h3 class="font-semibold text-sm mb-2">Capas</h3>
+        <div class="space-y-1">
+          <template x-for="(layer, idx) in layers" :key="layer.id">
+            <div @click="selectLayer(idx)" class="flex items-center justify-between p-2 rounded cursor-pointer text-sm" :class="selectedLayer === idx ? 'bg-indigo-100' : 'hover:bg-gray-100'">
+              <span x-text="(idx+1) + '. ' + layerTypeLabel(layer.type)"></span>
+              <button @click.stop="toggleLayerVisible(idx)" class="text-gray-400 hover:text-gray-600">
+                <i class="fas" :class="layer.visible !== false ? 'fa-eye' : 'fa-eye-slash'"></i>
+              </button>
+            </div>
+          </template>
+        </div>
+      </aside>
     </div>
   </div>
 
@@ -407,6 +557,179 @@
         viewOrder(o) {
           this.selectedOrder = o;
           this.page = 'orderDetail';
+        },
+
+        // ==================== EDITOR DE SELLOS ====================
+        layers: [],
+        selectedLayer: null,
+        canvasWidth: 400,
+        canvasHeight: 300,
+        mmToPxRatio: 11.81,
+        isDragging: false,
+        dragStart: { x: 0, y: 0 },
+        designProduct: null,
+
+        openDesigner() {
+          this.designProduct = this.selectedProduct;
+          this.layers = [];
+          this.selectedLayer = null;
+          // Set canvas size based on product dimensions
+          if (this.designProduct?.widthMm && this.designProduct?.heightMm) {
+            this.canvasWidth = this.mmToPx(this.designProduct.widthMm);
+            this.canvasHeight = this.mmToPx(this.designProduct.heightMm);
+          } else if (this.designProduct?.shape === 'CIRCULAR') {
+            const r = this.mmToPx(this.designProduct.widthMm || 30);
+            this.canvasWidth = r * 2 + 40;
+            this.canvasHeight = r * 2 + 40;
+          } else {
+            this.canvasWidth = 400;
+            this.canvasHeight = 300;
+          }
+          this.page = 'design';
+        },
+
+        canvasStyle() {
+          return `width: ${this.canvasWidth}px; height: ${this.canvasHeight}px;`;
+        },
+
+        mmToPx(mm) {
+          return Math.round(mm * this.mmToPxRatio);
+        },
+
+        addText() {
+          const id = Date.now() + Math.random();
+          this.layers.push({
+            id, type: 'text', text: 'TEXTO', x: this.canvasWidth / 2, y: this.canvasHeight / 2,
+            fontSize: 24, fontFamily: 'Arial', fill: '#000000', rotation: 0, visible: true,
+          });
+          this.selectedLayer = this.layers.length - 1;
+        },
+
+        addShape(type) {
+          const id = Date.now() + Math.random();
+          const centerX = this.canvasWidth / 2;
+          const centerY = this.canvasHeight / 2;
+          if (type === 'circle') {
+            this.layers.push({ id, type: 'circle', x: centerX, y: centerY, radius: 30, fill: '#000000', rotation: 0, visible: true });
+          } else if (type === 'rect') {
+            this.layers.push({ id, type: 'rect', x: centerX - 30, y: centerY - 20, width: 60, height: 40, fill: '#000000', rotation: 0, visible: true });
+          } else if (type === 'star') {
+            this.layers.push({ id, type: 'star', x: centerX, y: centerY, points: 5, outerRadius: 30, innerRadius: 15, fill: '#000000', rotation: 0, visible: true });
+          } else if (type === 'line') {
+            this.layers.push({ id, type: 'line', x: centerX - 25, y: centerY, x2: 50, y2: 0, stroke: '#000000', strokeWidth: 2, rotation: 0, visible: true });
+          }
+          this.selectedLayer = this.layers.length - 1;
+        },
+
+        selectLayer(idx) {
+          this.selectedLayer = idx;
+        },
+
+        deleteLayer(idx) {
+          this.layers.splice(idx, 1);
+          if (this.selectedLayer === idx) this.selectedLayer = null;
+          else if (this.selectedLayer > idx) this.selectedLayer--;
+        },
+
+        toggleLayerVisible(idx) {
+          this.layers[idx].visible = this.layers[idx].visible !== false ? false : true;
+        },
+
+        clearCanvas() {
+          if (confirm('¿Eliminar todo el diseño?')) {
+            this.layers = [];
+            this.selectedLayer = null;
+          }
+        },
+
+        get selectedLayerObj() {
+          return this.selectedLayer !== null ? this.layers[this.selectedLayer] : null;
+        },
+
+        layerTypeLabel(type) {
+          const map = { text: 'Texto', curvedText: 'Texto curvo', circle: 'Círculo', rect: 'Rectángulo', star: 'Estrella', line: 'Línea' };
+          return map[type] || type;
+        },
+
+        describeArc(x, y, radius, startAngle, endAngle) {
+          const start = this.polarToCartesian(x, y, radius, endAngle);
+          const end = this.polarToCartesian(x, y, radius, startAngle);
+          const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+          return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+        },
+
+        polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+          const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+          return {
+            x: centerX + (radius * Math.cos(angleInRadians)),
+            y: centerY + (radius * Math.sin(angleInRadians)),
+          };
+        },
+
+        starPoints(points, outerRadius, innerRadius) {
+          let pts = '';
+          for (let i = 0; i < points * 2; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const angle = (Math.PI * i) / points - Math.PI / 2;
+            const x = radius * Math.cos(angle);
+            const y = radius * Math.sin(angle);
+            pts += `${x},${y} `;
+          }
+          return pts;
+        },
+
+        onCanvasMouseDown(e) {
+          if (this.selectedLayer === null) return;
+          this.isDragging = true;
+          const svg = document.getElementById('stamp-canvas');
+          const pt = svg.createSVGPoint();
+          pt.x = e.clientX;
+          pt.y = e.clientY;
+          const cursorPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+          this.dragStart = { x: cursorPt.x - this.layers[this.selectedLayer].x, y: cursorPt.y - this.layers[this.selectedLayer].y };
+        },
+
+        onCanvasMouseMove(e) {
+          if (!this.isDragging || this.selectedLayer === null) return;
+          const svg = document.getElementById('stamp-canvas');
+          const pt = svg.createSVGPoint();
+          pt.x = e.clientX;
+          pt.y = e.clientY;
+          const cursorPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+          this.layers[this.selectedLayer].x = cursorPt.x - this.dragStart.x;
+          this.layers[this.selectedLayer].y = cursorPt.y - this.dragStart.y;
+        },
+
+        onCanvasMouseUp() {
+          this.isDragging = false;
+        },
+
+        exportSvg() {
+          const svg = document.getElementById('stamp-canvas').cloneNode(true);
+          // Remove grid
+          const defs = svg.querySelector('defs');
+          if (defs) defs.remove();
+          const bg = svg.querySelector('rect[fill="url(#grid)"]');
+          if (bg) bg.remove();
+          // Add xmlns
+          svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+          // Set real dimensions in mm
+          const widthMm = this.designProduct?.widthMm || Math.round(this.canvasWidth / this.mmToPxRatio);
+          const heightMm = this.designProduct?.heightMm || Math.round(this.canvasHeight / this.mmToPxRatio);
+          svg.setAttribute('width', widthMm + 'mm');
+          svg.setAttribute('height', heightMm + 'mm');
+          // Serialize
+          const serializer = new XMLSerializer();
+          const source = serializer.serializeToString(svg);
+          const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'sello-' + (this.designProduct?.sku || 'personalizado') + '.svg';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         },
 
         formatDate(d) {
