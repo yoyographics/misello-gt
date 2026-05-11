@@ -3,6 +3,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
+import * as express from 'express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 /**
