@@ -10,6 +10,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend/ ./
+ENV NEXT_PUBLIC_API_URL=/api/v1
 RUN npm run build
 
 # ── ETAPA 2: Build del Backend NestJS ──
