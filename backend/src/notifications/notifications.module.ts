@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { AuthJwtModule } from '../auth/auth-jwt.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
@@ -9,7 +9,7 @@ import { NotificationsService } from './notifications.service';
  * Envio automatico (etapa 1) y manual desde panel (etapas 2 y 3).
  */
 @Module({
-  imports: [JwtModule],
+  imports: [AuthJwtModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],

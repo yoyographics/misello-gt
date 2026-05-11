@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { AuthJwtModule } from '../auth/auth-jwt.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
@@ -8,7 +8,7 @@ import { AdminService } from './admin.service';
  * Admin completo: discounts, waitlist, settings, user management, roles configurables.
  */
 @Module({
-  imports: [JwtModule],
+  imports: [AuthJwtModule],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

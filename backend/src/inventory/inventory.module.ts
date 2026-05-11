@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { AuthJwtModule } from '../auth/auth-jwt.module';
 import { AuthModule } from '../auth/auth.module';
 import { InventoryService } from './inventory.service';
 import { InventoryController } from './inventory.controller';
 
 @Module({
-  imports: [JwtModule, AuthModule],
+  imports: [AuthJwtModule, AuthModule],
   controllers: [InventoryController],
   providers: [InventoryService],
 })
