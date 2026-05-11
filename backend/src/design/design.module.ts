@@ -12,6 +12,7 @@ import { TechValidatorService } from './services/tech-validator.service';
  * renderer determinista SVG/PNG, y validador tecnico.
  */
 @Module({
+  imports: [JwtModule],
   controllers: [DesignController],
   providers: [DesignService, ClaudeDesignService, SvgRendererService, TechValidatorService],
   exports: [DesignService, SvgRendererService, TechValidatorService],

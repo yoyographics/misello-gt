@@ -9,6 +9,7 @@ import { NotificationsService } from './notifications.service';
  * Envio automatico (etapa 1) y manual desde panel (etapas 2 y 3).
  */
 @Module({
+  imports: [JwtModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],
