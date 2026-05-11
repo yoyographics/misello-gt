@@ -38,6 +38,21 @@ export class AuthController {
   // ============================================================
 
   /**
+   * Diagnóstico: muestra la configuración de Google OAuth (sin secret).
+   */
+  @Get('google/debug')
+  googleDebug() {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || '';
+    return {
+      clientIdConfigured: !!clientId,
+      clientIdPrefix: clientId.substring(0, 20) + '...',
+      callbackUrl,
+      fullAuthUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&scope=email profile`,
+    };
+  }
+
+  /**
    * Inicia el flujo de autenticación con Google.
    * Redirige al usuario a la página de login de Google.
    */
