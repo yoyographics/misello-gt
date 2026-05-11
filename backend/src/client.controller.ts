@@ -5,9 +5,12 @@ import { join } from 'path';
 @Controller('client')
 export class ClientController {
   @Get()
+  serveClientRoot(@Res() res: Response) {
+    res.sendFile(join(process.cwd(), 'public', 'client', 'index.html'));
+  }
+
   @Get('*')
-  @All('*')
-  serveClient(@Req() req: Request, @Res() res: Response) {
+  serveClientPath(@Res() res: Response) {
     res.sendFile(join(process.cwd(), 'public', 'client', 'index.html'));
   }
 }

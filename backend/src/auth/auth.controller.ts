@@ -73,7 +73,7 @@ export class AuthController {
     const token = this.authService.generateClientToken(user);
 
     // Redirigir al frontend con el token en la URL
-    const frontendUrl = process.env.FRONTEND_URL || 'https://misello-gt-production.up.railway.app/client/index.html';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://misello-gt-production.up.railway.app/client';
     return res.redirect(`${frontendUrl}?token=${token}`);
   }
 
