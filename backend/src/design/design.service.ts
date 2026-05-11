@@ -64,6 +64,17 @@ export class DesignService {
       dto.specialRequests,
     );
 
+    // 4.5 Auto-ajustar tamaños de fuente si son muy pequenos
+    const MIN_FONT_PT = 10; // 10pt garantiza pasar validacion tecnica
+    let fontAdjusted = false;
+    for (const line of designParams.textLines) {
+      if (line.fontSizePt < MIN_FONT_PT) {
+        this.logger.log(`Auto-ajustando fuente de ${line.fontSizePt}pt a ${MIN_FONT_PT}pt para linea "${line.text.substring(0, 20)}..."`);
+        line.fontSizePt = MIN_FONT_PT;
+        fontAdjusted = true;
+      }
+    }
+
     // 5. Renderizar SVG y PNG
     const { svgUrl, pngUrl } = await this.renderer.render(
       designParams,
@@ -100,6 +111,7 @@ export class DesignService {
       productionSvgUrl: svgUrl,
       validation,
       logoConvertedToBw: !!dto.logoUrl && !!dto.hasLogoGradient,
+      fontAutoAdjusted: fontAdjusted,
     };
   }
 }

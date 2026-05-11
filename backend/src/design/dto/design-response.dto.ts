@@ -36,4 +36,8 @@ export class DesignResponseDto {
   @IsBoolean()
   @IsOptional()
   logoConvertedToBw?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  fontAutoAdjusted?: boolean;
 }
