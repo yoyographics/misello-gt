@@ -10,6 +10,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { AppController } from './app.controller';
 import { AdminController } from './admin.controller';
+import { ClientController } from './client.controller';
 
 import { AppService } from './app.service';
 
@@ -27,7 +28,7 @@ import { AppService } from './app.service';
     PaymentsModule,
     InventoryModule,
   ],
-  controllers: [AppController, AdminController],
+  controllers: [AppController, AdminController, ClientController],
   providers: [AppService],
 })
 export class AppModule {}
