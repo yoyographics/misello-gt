@@ -17,6 +17,67 @@ interface Font {
   isActive: boolean;
 }
 
+function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
+  const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fonts.forEach(async (font) => {
+      if (!font.fileData) return;
+      try {
+        const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
+        const mime = isOtf ? 'font/otf' : 'font/ttf';
+        const fontFace = new FontFace(
+          `admin-font-${font.id}`,
+          `url("data:${mime};base64,${font.fileData}") format("${isOtf ? 'opentype' : 'truetype'}")`
+        );
+        await fontFace.load();
+        document.fonts.add(fontFace);
+        setLoadedFonts((prev) => new Set(prev).add(font.id));
+      } catch (err) {
+        console.error(`Error cargando fuente ${font.name}:`, err);
+      }
+    });
+  }, [fonts]);
+
+  if (fonts.length === 0) {
+    return (
+      <Card className="p-6">
+        <h2 className="font-semibold mb-4">Vista previa de fuentes</h2>
+        <p className="text-gray-500 text-center py-8">No hay fuentes para previsualizar.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-6">
+      <h2 className="font-semibold mb-4">Vista previa de fuentes</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {fonts.map((font) => {
+          const hasData = !!font.fileData;
+          const isLoaded = loadedFonts.has(font.id);
+          return (
+            <Card key={font.id} className="p-4 border-2 border-blue-100 rounded-xl">
+              <div
+                className="text-xl mb-2 min-h-[3rem] flex items-center justify-center bg-gray-50 rounded-lg px-2"
+                style={hasData && isLoaded ? { fontFamily: `"admin-font-${font.id}"` } : {}}
+                title={font.name}
+              >
+                {hasData ? 'Lorem ipsum' : <span className="text-sm text-gray-400">Sin datos de preview</span>}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium truncate">{font.name}</span>
+                <Badge className={font.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                  {font.isActive ? 'Activa' : 'Inactiva'}
+                </Badge>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 export default function AdminFontsPage() {
   const [fonts, setFonts] = useState<Font[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,50 +166,7 @@ export default function AdminFontsPage() {
       </Card>
 
       {/* Preview de fuentes */}
-      <Card className="p-6">
-        <h2 className="font-semibold mb-4">Vista previa de fuentes</h2>
-        {fonts.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay fuentes para previsualizar.</p>
-        ) : (
-          <>
-            <style>
-              {fonts
-                .filter((f) => f.fileData)
-                .map((f) => {
-                  const isOtf = f.fileName?.toLowerCase().endsWith('.otf');
-                  const mime = isOtf ? 'font/otf' : 'font/ttf';
-                  return `
-                    @font-face {
-                      font-family: "admin-font-${f.id}";
-                      src: url("data:${mime};base64,${f.fileData}") format("${isOtf ? 'opentype' : 'truetype'}");
-                    }
-                  `;
-                })
-                .join('\n')}
-            </style>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {fonts.map((font) => (
-                <Card key={font.id} className="p-4 border-2 border-blue-100 rounded-xl">
-                  <div
-                    className="text-xl mb-2 min-h-[3rem] flex items-center justify-center bg-gray-50 rounded-lg"
-                    style={font.fileData ? { fontFamily: `"admin-font-${font.id}"` } : {}}
-                    title={font.name}
-                  >
-                    Lorem ipsum
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium truncate">{font.name}</span>
-                    <Badge className={font.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
-                      {font.isActive ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1 truncate">{font.originalName || font.fileName}</p>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
-      </Card>
+      <FontPreviewGrid fonts={fonts} />
 
       {/* List */}
       <Card className="p-6">

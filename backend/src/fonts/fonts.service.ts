@@ -68,6 +68,6 @@ export class FontsService {
 
   async remove(id: string) {
     await this.findOneAdmin(id);
-    return this.prisma.font.update({ where: { id }, data: { isActive: false } });
+    return this.prisma.font.delete({ where: { id } });
   }
 }
