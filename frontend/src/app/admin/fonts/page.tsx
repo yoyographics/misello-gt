@@ -67,6 +67,16 @@ export default function AdminFontsPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar esta fuente permanentemente?')) return;
+    try {
+      await api.delete(`/fonts/admin/${id}`);
+      fetchFonts();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error eliminando fuente');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -145,13 +155,23 @@ export default function AdminFontsPage() {
                       </Badge>
                     </td>
                     <td className="py-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleActive(font.id, font.isActive)}
-                      >
-                        {font.isActive ? 'Desactivar' : 'Activar'}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleActive(font.id, font.isActive)}
+                        >
+                          {font.isActive ? 'Desactivar' : 'Activar'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(font.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
