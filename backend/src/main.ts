@@ -12,8 +12,13 @@ import { join } from 'path';
  * Configura seguridad, validación, CORS, Swagger y el prefijo global de rutas.
  */
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // bodyParser deshabilitado para configurar límite manualmente (uploads base64 grandes)
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   const configService = app.get(ConfigService);
+
+  // ── Body parser con límite aumentado (10MB para uploads base64) ──
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // ── Seguridad: headers OWASP vía Helmet ──
   // CSP relajado para permitir CDNs del panel de admin (Tailwind, Alpine, FontAwesome)
