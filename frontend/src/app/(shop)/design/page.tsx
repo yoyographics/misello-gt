@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -16,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowRight, ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, Upload, X } from 'lucide-react';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
 interface Product {
@@ -36,6 +37,8 @@ interface Product {
 interface Font {
   id: string;
   name: string;
+  fileName: string;
+  fileData?: string;
 }
 
 interface Ink {
@@ -48,21 +51,21 @@ const SHAPES = [
   {
     id: 'RECTANGULAR',
     name: 'Rectangular',
-    description: 'Sello con forma de rectangulo',
+    description: 'Forma alargada',
     svg: (
-      <svg viewBox="0 0 120 80" className="w-20 h-14">
-        <rect x="8" y="8" width="104" height="64" rx="12" fill="none" stroke="currentColor" strokeWidth="4" />
-        <rect x="22" y="22" width="76" height="36" rx="6" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+      <svg viewBox="0 0 120 70" className="w-20 h-12">
+        <rect x="5" y="5" width="110" height="60" rx="8" fill="none" stroke="currentColor" strokeWidth="4" />
+        <rect x="25" y="20" width="70" height="30" rx="4" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
       </svg>
     ),
   },
   {
     id: 'CIRCULAR',
     name: 'Redondo',
-    description: 'Sello con forma de circulo',
+    description: 'Forma circular',
     svg: (
       <svg viewBox="0 0 100 100" className="w-16 h-16">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="4" />
+        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="4" />
         <circle cx="50" cy="50" r="24" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
       </svg>
     ),
@@ -70,23 +73,14 @@ const SHAPES = [
   {
     id: 'OVAL',
     name: 'Oval',
-    description: 'Sello con forma ovalada',
+    description: 'Forma ovalada',
     svg: (
       <svg viewBox="0 0 120 70" className="w-20 h-12">
-        <ellipse cx="60" cy="35" rx="52" ry="28" fill="none" stroke="currentColor" strokeWidth="4" />
-        <ellipse cx="60" cy="35" rx="32" ry="16" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+        <ellipse cx="60" cy="35" rx="54" ry="30" fill="none" stroke="currentColor" strokeWidth="4" />
+        <ellipse cx="60" cy="35" rx="34" ry="18" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
       </svg>
     ),
   },
-];
-
-const CATEGORIES = [
-  { id: 'PROFESIONAL', name: 'Profesional / Colegiado', icon: '👨‍⚕️' },
-  { id: 'EMPRESA', name: 'Empresa / Negocio', icon: '🏢' },
-  { id: 'DIRECCION', name: 'Direccion / Contacto', icon: '📍' },
-  { id: 'FIRMA', name: 'Firma personal', icon: '✍️' },
-  { id: 'INSTITUCIONAL', name: 'Institucional / Gobierno', icon: '🏛️' },
-  { id: 'OTRO', name: 'Otro uso', icon: '🔧' },
 ];
 
 const CARD_BASE =
@@ -94,12 +88,16 @@ const CARD_BASE =
 
 const CARD_SELECTED = 'ring-2 ring-orange-500 bg-orange-50 border-orange-300';
 
+function getImageUrl(url?: string, base?: string) {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${base || ''}${url}`;
+}
+
 export default function DesignPage() {
   const { token } = useAuth();
   const { addItem } = useCart();
   const [step, setStep] = useState(1);
   const [shape, setShape] = useState('');
-  const [category, setCategory] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [fonts, setFonts] = useState<Font[]>([]);
   const [inks, setInks] = useState<Ink[]>([]);
@@ -108,6 +106,7 @@ export default function DesignPage() {
   const [selectedFont, setSelectedFont] = useState('');
   const [selectedInk, setSelectedInk] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
   const [hasLogoGradient, setHasLogoGradient] = useState(false);
   const [specialRequests, setSpecialRequests] = useState('');
   const [designResult, setDesignResult] = useState<any>(null);
@@ -138,17 +137,9 @@ export default function DesignPage() {
   }, []);
 
   const filteredProducts = products.filter((p) => {
-    const catMap: Record<string, string[]> = {
-      PROFESIONAL: ['MONTURA_AUTOMATICA'],
-      EMPRESA: ['MONTURA_AUTOMATICA'],
-      DIRECCION: ['MONTURA_AUTOMATICA'],
-      FIRMA: ['MONTURA_AUTOMATICA', 'PORTATIL'],
-      INSTITUCIONAL: ['MONTURA_AUTOMATICA', 'FECHADOR'],
-      OTRO: ['MONTURA_AUTOMATICA', 'FECHADOR', 'PORTATIL', 'MADERA', 'EMBOSADORA'],
-    };
-    const shapeMatch = !shape || p.shape === shape;
-    const categoryMatch = !category || catMap[category]?.includes(p.category);
-    return shapeMatch && categoryMatch;
+    // Solo mostrar productos que tengan shape definido (sellos, no accesorios)
+    if (!p.shape) return false;
+    return !shape || p.shape === shape;
   });
 
   const addLine = () => {
@@ -169,6 +160,22 @@ export default function DesignPage() {
     setLines(newLines);
   };
 
+  const handleLogoUpload = async (file: File) => {
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('logo', file);
+      const res = await api.post('/design/upload-logo', fd, {
+        headers: { 'Content-Type': undefined },
+      });
+      setLogoUrl(res.data.logoUrl);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error subiendo logo');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   const handleGenerateDesign = async () => {
     if (!selectedProduct || !selectedFont) {
       setError('Selecciona un modelo y fuente');
@@ -179,7 +186,6 @@ export default function DesignPage() {
     try {
       const res = await api.post('/design', {
         productId: selectedProduct.id,
-        category,
         lines: lines.map((l) => ({
           text: l.text,
           fontSize: l.fontSize,
@@ -194,7 +200,7 @@ export default function DesignPage() {
         specialRequests: specialRequests || undefined,
       });
       setDesignResult(res.data);
-      setStep(5);
+      setStep(4);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error generando el diseno');
     } finally {
@@ -217,11 +223,6 @@ export default function DesignPage() {
       inkName: inks.find((i) => i.id === selectedInk)?.color,
     });
     alert('Agregado al carrito!');
-  };
-
-  const getImageUrl = (url?: string) => {
-    if (!url) return '';
-    return url.startsWith('http') ? url : `${baseUrl}${url}`;
   };
 
   const renderStep1 = () => {
@@ -260,11 +261,7 @@ export default function DesignPage() {
           ))}
         </div>
         <div className="flex justify-end">
-          <Button
-            disabled={!shape}
-            onClick={() => setStep(2)}
-            className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
-          >
+          <Button disabled={!shape} onClick={() => setStep(2)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
             Continuar <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -274,40 +271,7 @@ export default function DesignPage() {
 
   const renderStep2 = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 2: ¿Para que es tu sello?</h2>
-      <p className="text-gray-600">Selecciona la categoria que mejor describa el uso de tu sello.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {CATEGORIES.map((cat) => (
-          <Card
-            key={cat.id}
-            className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${category === cat.id ? CARD_SELECTED : ''}`}
-            onClick={() => setCategory(cat.id)}
-          >
-            <div className="text-4xl mb-3">{cat.icon}</div>
-            <h3 className="font-semibold">{cat.name}</h3>
-          </Card>
-        ))}
-      </div>
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setStep(1)}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Atras
-        </Button>
-        <Button
-          disabled={!category}
-          onClick={() => setStep(3)}
-          className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
-        >
-          Continuar <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
-  const displayProducts = filteredProducts.length > 0 ? filteredProducts : products;
-
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Elige tu modelo</h2>
+      <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 2: Elige tu modelo</h2>
       <p className="text-gray-600">Selecciona el modelo que se ajuste a tus necesidades.</p>
 
       {apiLoading && (
@@ -332,12 +296,12 @@ export default function DesignPage() {
 
       {!apiLoading && !apiError && filteredProducts.length === 0 && products.length > 0 && (
         <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">
-          <p>No hay modelos para esta combinacion. Mostrando todos los disponibles:</p>
+          <p>No hay modelos para esta forma. Mostrando todos los disponibles:</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayProducts.map((product) => (
+        {(filteredProducts.length > 0 ? filteredProducts : products.filter((p) => !!p.shape)).map((product) => (
           <Card
             key={product.id}
             className={`group p-4 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
@@ -347,19 +311,19 @@ export default function DesignPage() {
               {product.imageUrl ? (
                 <>
                   <img
-                    src={getImageUrl(product.imageUrl)}
+                    src={getImageUrl(product.imageUrl, baseUrl)}
                     alt={product.name}
                     className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
                   />
                   {product.imageUrlHover ? (
                     <img
-                      src={getImageUrl(product.imageUrlHover)}
+                      src={getImageUrl(product.imageUrlHover, baseUrl)}
                       alt={`${product.name} - hover`}
                       className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     />
                   ) : (
                     <img
-                      src={getImageUrl(product.imageUrl)}
+                      src={getImageUrl(product.imageUrl, baseUrl)}
                       alt={product.name}
                       className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
                     />
@@ -379,148 +343,205 @@ export default function DesignPage() {
         ))}
       </div>
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setStep(2)}>
+        <Button variant="outline" onClick={() => setStep(1)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Atras
         </Button>
-        <Button disabled={!selectedProduct} onClick={() => setStep(4)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+        <Button disabled={!selectedProduct} onClick={() => setStep(3)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
           Continuar <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
     </div>
   );
 
-  const renderStep4 = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 4: Personaliza tu diseno</h2>
-      <p className="text-gray-600">Ingresa el texto, elige fuente, color de tinta y sube tu logo si lo deseas.</p>
+  const renderStep3 = () => {
+    const previewText = lines[0]?.text || 'Tu texto aqui';
 
-      <Card className="p-6 space-y-6">
-        <div>
-          <label className="text-sm font-medium mb-2 block">Texto del sello</label>
-          {lines.map((line, i) => (
-            <div key={i} className="flex gap-2 mb-2 items-start">
-              <Input
-                value={line.text}
-                onChange={(e) => updateLine(i, 'text', e.target.value)}
-                placeholder={`Linea ${i + 1}`}
-                className="flex-1"
-              />
-              <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="8pt">8pt</SelectItem>
-                  <SelectItem value="10pt">10pt</SelectItem>
-                  <SelectItem value="12pt">12pt</SelectItem>
-                  <SelectItem value="14pt">14pt</SelectItem>
-                  <SelectItem value="16pt">16pt</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
-                <span className="font-bold text-sm">B</span>
-              </Button>
-              <Button variant={line.isItalic ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isItalic', !line.isItalic)}>
-                <span className="italic text-sm">I</span>
-              </Button>
-              {lines.length > 1 && (
-                <Button variant="ghost" size="icon" onClick={() => removeLine(i)}>
-                  <Minus className="h-4 w-4" />
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Personaliza tu diseno</h2>
+        <p className="text-gray-600">Ingresa el texto, elige fuente, color de tinta y sube tu logo si lo deseas.</p>
+
+        <Card className="p-6 space-y-6">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Texto del sello</label>
+            {lines.map((line, i) => (
+              <div key={i} className="flex gap-2 mb-2 items-start">
+                <Input
+                  value={line.text}
+                  onChange={(e) => updateLine(i, 'text', e.target.value)}
+                  placeholder={`Linea ${i + 1}`}
+                  className="flex-1"
+                />
+                <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="8pt">8pt</SelectItem>
+                    <SelectItem value="10pt">10pt</SelectItem>
+                    <SelectItem value="12pt">12pt</SelectItem>
+                    <SelectItem value="14pt">14pt</SelectItem>
+                    <SelectItem value="16pt">16pt</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
+                  <span className="font-bold text-sm">B</span>
                 </Button>
-              )}
-            </div>
-          ))}
-          {lines.length < 5 && (
-            <Button variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4 mr-1" /> Agregar linea
-            </Button>
-          )}
-        </div>
+                <Button variant={line.isItalic ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isItalic', !line.isItalic)}>
+                  <span className="italic text-sm">I</span>
+                </Button>
+                {lines.length > 1 && (
+                  <Button variant="ghost" size="icon" onClick={() => removeLine(i)}>
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            {lines.length < 5 && (
+              <Button variant="outline" size="sm" onClick={addLine}>
+                <Plus className="h-4 w-4 mr-1" /> Agregar linea
+              </Button>
+            )}
+          </div>
 
-        <Separator />
+          <Separator />
 
-        <div>
-          <label className="text-sm font-medium mb-2 block">Fuente</label>
-          <Select value={selectedFont} onValueChange={(v) => setSelectedFont(v || '')}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona una fuente" />
-            </SelectTrigger>
-            <SelectContent>
+          {/* Vista previa de fuentes */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Fuente — Selecciona una tipografia</label>
+            <style>
+              {fonts
+                .filter((f) => f.fileData)
+                .map(
+                  (f) => `
+                @font-face {
+                  font-family: "font-${f.id}";
+                  src: url("data:font/ttf;base64,${f.fileData}");
+                }
+              `
+                )
+                .join('\n')}
+            </style>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {fonts.map((font) => (
-                <SelectItem key={font.id} value={font.id}>{font.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium mb-2 block">Color de tinta</label>
-          <Select value={selectedInk} onValueChange={(v) => setSelectedInk(v || '')}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona un color" />
-            </SelectTrigger>
-            <SelectContent>
-              {inks.map((ink) => (
-                <SelectItem key={ink.id} value={ink.id}>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: ink.hexCode }} />
-                    {ink.color}
+                <Card
+                  key={font.id}
+                  className={`p-3 text-center ${CARD_BASE} ${selectedFont === font.id ? CARD_SELECTED : ''}`}
+                  onClick={() => setSelectedFont(font.id)}
+                >
+                  <div
+                    className="text-lg mb-1 truncate"
+                    style={font.fileData ? { fontFamily: `"font-${font.id}"` } : {}}
+                    title={font.name}
+                  >
+                    {previewText || 'Aa'}
                   </div>
-                </SelectItem>
+                  <p className="text-xs text-gray-500 truncate">{font.name}</p>
+                </Card>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium mb-2 block">Logo (opcional)</label>
-          <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="URL del logo" />
-          {logoUrl && (
-            <div className="mt-2 flex items-center gap-2">
-              <input type="checkbox" id="gradient" checked={hasLogoGradient} onChange={(e) => setHasLogoGradient(e.target.checked)} />
-              <label htmlFor="gradient" className="text-sm text-gray-600">
-                El logo tiene gradientes/sombras (se convertira a B&W)
-              </label>
             </div>
-          )}
-        </div>
+          </div>
 
-        <div>
-          <label className="text-sm font-medium mb-2 block">Solicitudes especiales (opcional)</label>
-          <Input value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} placeholder="Ej: texto curvo, borde especial, etc." />
-        </div>
-      </Card>
+          <Separator />
 
-      {error && (
-        <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
-          <AlertTriangle className="h-5 w-5" />
-          <span className="text-sm">{error}</span>
-        </div>
-      )}
+          {/* Color de tinta */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Color de tinta</label>
+            <div className="flex flex-wrap gap-3">
+              {inks.map((ink) => (
+                <button
+                  key={ink.id}
+                  onClick={() => setSelectedInk(ink.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                    selectedInk === ink.id
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 hover:border-blue-300'
+                  }`}
+                >
+                  <span className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: ink.hexCode }} />
+                  <span className="text-sm font-medium">{ink.color}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setStep(3)}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Atras
-        </Button>
-        <Button
-          onClick={handleGenerateDesign}
-          disabled={loading || lines.some((l) => !l.text.trim()) || !selectedFont}
-          className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
-        >
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-          Generar diseno
-        </Button>
+          <Separator />
+
+          {/* Logo upload */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Logo (opcional)</label>
+            {!logoUrl ? (
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleLogoUpload(file);
+                  }}
+                  className="max-w-xs"
+                />
+                {logoUploading && <Loader2 className="h-5 w-5 animate-spin text-orange-500" />}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <img src={getImageUrl(logoUrl, baseUrl)} alt="Logo subido" className="h-16 w-16 object-contain border rounded-lg" />
+                <Button variant="ghost" size="sm" onClick={() => { setLogoUrl(''); setHasLogoGradient(false); }}>
+                  <X className="h-4 w-4 mr-1" /> Quitar
+                </Button>
+              </div>
+            )}
+            {logoUrl && (
+              <div className="mt-2 flex items-center gap-2">
+                <Checkbox
+                  id="gradient"
+                  checked={hasLogoGradient}
+                  onCheckedChange={(v) => setHasLogoGradient(v as boolean)}
+                />
+                <label htmlFor="gradient" className="text-sm text-gray-600">
+                  El logo tiene gradientes/sombras (se convertira a B&W)
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Solicitudes especiales (opcional)</label>
+            <Input value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} placeholder="Ej: texto curvo, borde especial, etc." />
+          </div>
+        </Card>
+
+        {error && (
+          <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+            <AlertTriangle className="h-5 w-5" />
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
+
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={() => setStep(2)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Atras
+          </Button>
+          <Button
+            onClick={handleGenerateDesign}
+            disabled={loading || lines.some((l) => !l.text.trim()) || !selectedFont}
+            className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+            Generar diseno
+          </Button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const renderStep5 = () => {
+  const renderStep4 = () => {
     if (!designResult) return null;
     const validation = designResult.validation;
 
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 5: Vista final</h2>
+        <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 4: Vista final</h2>
         <p className="text-gray-600">Revisa tu diseno antes de agregarlo al carrito.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -570,7 +591,7 @@ export default function DesignPage() {
         </div>
 
         <div className="flex justify-between">
-          <Button variant="outline" onClick={() => setStep(4)}>
+          <Button variant="outline" onClick={() => setStep(3)}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Atras
           </Button>
           <div className="flex gap-3">
@@ -606,7 +627,7 @@ export default function DesignPage() {
   return (
     <div className="container mx-auto max-w-4xl py-12 px-4">
       <div className="flex items-center justify-center gap-2 mb-8">
-        {[1, 2, 3, 4, 5].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <div key={s} className="flex items-center gap-2">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -615,7 +636,7 @@ export default function DesignPage() {
             >
               {s}
             </div>
-            {s < 5 && <div className={`w-8 h-1 ${s < step ? 'bg-orange-500' : 'bg-gray-200'}`} />}
+            {s < 4 && <div className={`w-8 h-1 ${s < step ? 'bg-orange-500' : 'bg-gray-200'}`} />}
           </div>
         ))}
       </div>
@@ -624,7 +645,6 @@ export default function DesignPage() {
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
       {step === 4 && renderStep4()}
-      {step === 5 && renderStep5()}
     </div>
   );
 }

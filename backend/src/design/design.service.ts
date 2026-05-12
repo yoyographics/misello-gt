@@ -50,7 +50,7 @@ export class DesignService {
 
     // 4. Generar parametros de diseno (Claude o default)
     const designParams = await this.claude.generateDesign(
-      dto.category,
+      dto.category || 'OTRO',
       dto.lines,
       {
         name: product.name,

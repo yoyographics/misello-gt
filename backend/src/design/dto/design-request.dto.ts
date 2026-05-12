@@ -27,7 +27,8 @@ export class DesignRequestDto {
   productId: string;
 
   @IsString()
-  category: string;
+  @IsOptional()
+  category?: string;
 
   @IsArray()
   @ArrayMinSize(1)

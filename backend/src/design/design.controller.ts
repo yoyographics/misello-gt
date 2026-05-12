@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { DesignService } from './design.service';
 import { DesignRequestDto } from './dto/design-request.dto';
@@ -24,5 +25,13 @@ export class DesignController {
   @ApiBearerAuth()
   async createDesign(@Body() dto: DesignRequestDto) {
     return this.designService.createDesign(dto);
+  }
+
+  @Post('upload-logo')
+  @UseGuards(JwtClientGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('logo', { dest: 'uploads/logos' }))
+  uploadLogo(@UploadedFile() file: Express.Multer.File) {
+    return { logoUrl: `/uploads/logos/${file.filename}` };
   }
 }
