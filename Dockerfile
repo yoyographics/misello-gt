@@ -16,7 +16,8 @@ RUN npm run build
 # ── ETAPA 2: Build del Backend NestJS ──
 FROM node:20-alpine AS backend-builder
 
-RUN apk add --no-cache python3 make g++ vips-dev
+RUN apk add --no-cache python3 make g++ vips-dev libc6-compat
+RUN npm install -g node-gyp
 
 WORKDIR /app
 
@@ -40,7 +41,7 @@ RUN npm run build
 # ── ETAPA 3: Imagen final de produccion ──
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache vips-dev
+RUN apk add --no-cache vips-dev libc6-compat
 
 WORKDIR /app
 ENV NODE_ENV=production
