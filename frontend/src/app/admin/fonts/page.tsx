@@ -117,7 +117,6 @@ export default function AdminFontsPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [fontName, setFontName] = useState('');
 
   const fetchFonts = useCallback(() => {
     setLoading(true);
@@ -161,14 +160,12 @@ export default function AdminFontsPage() {
       const payload = {
         fileBase64,
         originalName: file.name,
-        name: fontName.trim() || undefined,
       };
 
       console.log('[Upload Debug] Sending POST /fonts/admin/base64');
       await api.post('/fonts/admin/base64', payload);
       console.log('[Upload Debug] Upload OK');
       setFile(null);
-      setFontName('');
       fetchFonts();
     } catch (err: any) {
       console.error('[Upload Debug] Upload failed:', err.response?.status, err.response?.data);
@@ -211,10 +208,6 @@ export default function AdminFontsPage() {
         <h2 className="font-semibold mb-4">Subir nueva fuente</h2>
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
-            <label className="text-sm font-medium mb-1 block">Nombre (opcional)</label>
-            <Input value={fontName} onChange={(e) => setFontName(e.target.value)} placeholder="Ej: Gabriola" />
-          </div>
-          <div className="flex-1 w-full">
             <label className="text-sm font-medium mb-1 block">Archivo .ttf o .otf</label>
             <Input type="file" accept=".ttf,.otf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </div>
@@ -223,7 +216,7 @@ export default function AdminFontsPage() {
             Subir
           </Button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">Si no pones nombre, se usara el nombre del archivo automaticamente.</p>
+        <p className="text-xs text-gray-500 mt-2">El nombre de la tipografia se detecta automaticamente desde los metadatos del archivo.</p>
       </Card>
 
       {/* Preview de fuentes */}

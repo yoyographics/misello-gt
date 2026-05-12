@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateFontDto } from './dto/create-font.dto';
 import { UpdateFontDto } from './dto/update-font.dto';
 import { readFileSync } from 'fs';
+import * as opentype from 'opentype.js';
 
 @Injectable()
 export class FontsService {
@@ -33,19 +34,48 @@ export class FontsService {
     return font;
   }
 
+  private extractFontName(buffer: Buffer, fallback: string): string {
+    try {
+      const font = opentype.parse(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+      const names = font.names;
+
+      // Intentar obtener fontFamily o fullName en cualquier idioma
+      const candidates = [
+        names.fontFamily?.en,
+        names.fontFamily ? Object.values(names.fontFamily)[0] : undefined,
+        names.fullName?.en,
+        names.fullName ? Object.values(names.fullName)[0] : undefined,
+      ];
+
+      const extracted = candidates.find((n) => typeof n === 'string' && n.trim().length > 0);
+      if (extracted) {
+        return extracted.trim();
+      }
+    } catch {
+      // Si opentype falla al parsear, usar fallback
+    }
+    return fallback;
+  }
+
   async create(dto: CreateFontDto, fileName: string, originalName?: string) {
     // Leer archivo y convertir a base64 para persistencia en BD
     const filePath = `./uploads/fonts/${fileName}`;
     let fileData: string | undefined;
+    let buffer: Buffer | undefined;
     try {
-      const buffer = readFileSync(filePath);
+      buffer = readFileSync(filePath);
       fileData = buffer.toString('base64');
     } catch {
       // Si no se puede leer, continuar sin fileData
       fileData = undefined;
     }
 
-    const name = dto.name || originalName || 'Sin nombre';
+    // Extraer nombre real de la tipografia desde los metadatos del archivo
+    const fallbackName = originalName || 'Sin nombre';
+    const extractedName = buffer ? this.extractFontName(buffer, fallbackName) : fallbackName;
+
+    // Si el usuario no puso nombre manual, usar el extraido del archivo
+    const name = dto.name || extractedName;
 
     return this.prisma.font.create({
       data: {
