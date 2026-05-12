@@ -8,21 +8,13 @@ const api = axios.create({
 });
 
 /**
- * Interceptor que envia el token correcto segun el endpoint:
- * - Admin endpoints → adminToken
- * - Cliente endpoints → clientToken
+ * Interceptor que envia el token correcto segun el endpoint.
+ * Cualquier URL que contenga '/admin/' se considera endpoint de admin.
+ * '/inventory' tambien es admin.
  */
 api.interceptors.request.use((config) => {
   const url = config.url || '';
-  const isAdminEndpoint =
-    url.startsWith('/admin/') ||
-    url.startsWith('/auth/admin/') ||
-    url.startsWith('/orders/admin/') ||
-    url.startsWith('/products/admin/') ||
-    url.startsWith('/fonts/admin/') ||
-    url.startsWith('/inks/admin/') ||
-    url.startsWith('/inventory') ||
-    url.startsWith('/payments/admin/');
+  const isAdminEndpoint = url.includes('/admin/') || url.startsWith('/inventory');
 
   const tokenKey = isAdminEndpoint ? 'adminToken' : 'clientToken';
   const token = localStorage.getItem(tokenKey);
