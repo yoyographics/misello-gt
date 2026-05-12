@@ -45,7 +45,22 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      router.push('/admin/login/');
+      return;
+    }
+    // Verificar que sea token de admin (no CLIENT)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.role === 'CLIENT') {
+        router.push('/admin/login/');
+        return;
+      }
+    } catch {
+      router.push('/admin/login/');
+      return;
+    }
+
     Promise.all([
       api.get('/admin/dashboard'),
       api.get('/orders/admin/all'),
@@ -54,11 +69,14 @@ export default function AdminPage() {
         setStats(statsRes.data);
         setOrders(ordersRes.data.items || ordersRes.data);
       })
-      .catch(() => {
-        // Si no tiene permisos, redirigir
+      .catch((err) => {
+        console.error('Admin API error:', err);
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          router.push('/admin/login/');
+        }
       })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, router]);
 
   if (!user) {
     return (

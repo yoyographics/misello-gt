@@ -17,6 +17,7 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
+import { AdminSetupDto } from './dto/admin-setup.dto';
 import { JwtAdminGuard } from './guards/jwt-admin.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -82,6 +83,39 @@ export class AuthController {
   // ============================================================
   // PARTE B — ADMINISTRADORES DEL PANEL (JWT + Password)
   // ============================================================
+
+  /**
+   * Crear el primer usuario administrador si no existe ninguno.
+   * Endpoint publico pero solo funciona una vez (cuando la tabla esta vacia).
+   */
+  @Post('admin/setup')
+  @HttpCode(HttpStatus.CREATED)
+  async adminSetup(@Body() dto: AdminSetupDto) {
+    const count = await this.prisma.adminUser.count();
+    if (count > 0) {
+      throw new UnauthorizedException('Ya existe al menos un usuario administrador. Usa el login normal.');
+    }
+    const hash = await this.authService.hashPassword(dto.password);
+    const admin = await this.prisma.adminUser.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        passwordHash: hash,
+        role: AdminRole.ADMIN,
+        isActive: true,
+      },
+    });
+    const token = this.authService.generateAdminToken(admin);
+    return {
+      accessToken: token,
+      user: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role,
+      },
+    };
+  }
 
   /**
    * Login para usuarios del panel de administración.
