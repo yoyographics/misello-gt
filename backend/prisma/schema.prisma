@@ -144,6 +144,7 @@ model Font {
   id         String   @id @default(uuid())
   name       String
   fileName   String
+  fileData   String?  @db.Text // Contenido base64 del TTF/OTF para renderizado sin dependencia del filesystem
   uploadedAt DateTime @default(now())
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())

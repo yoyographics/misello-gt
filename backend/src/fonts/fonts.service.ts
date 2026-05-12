@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFontDto } from './dto/create-font.dto';
 import { UpdateFontDto } from './dto/update-font.dto';
+import { readFileSync } from 'fs';
 
 @Injectable()
 export class FontsService {
@@ -32,11 +33,25 @@ export class FontsService {
     return font;
   }
 
-  async create(dto: CreateFontDto, fileName: string) {
+  async create(dto: CreateFontDto, fileName: string, originalName?: string) {
+    // Leer archivo y convertir a base64 para persistencia en BD
+    const filePath = `./uploads/fonts/${fileName}`;
+    let fileData: string | undefined;
+    try {
+      const buffer = readFileSync(filePath);
+      fileData = buffer.toString('base64');
+    } catch {
+      // Si no se puede leer, continuar sin fileData
+      fileData = undefined;
+    }
+
+    const name = dto.name || originalName || 'Sin nombre';
+
     return this.prisma.font.create({
       data: {
-        name: dto.name,
+        name,
         fileName,
+        fileData,
         isActive: dto.isActive ?? true,
       },
     });

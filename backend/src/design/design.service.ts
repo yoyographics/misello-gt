@@ -87,6 +87,8 @@ export class DesignService {
         shape: product.shape || 'RECTANGULAR',
       },
       font.name,
+      font.fileName,
+      font.fileData,
       inkHex,
       dto.logoUrl,
     );

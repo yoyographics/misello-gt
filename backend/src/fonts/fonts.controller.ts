@@ -14,7 +14,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, basename } from 'path';
 import { FontsService } from './fonts.service';
 import { CreateFontDto } from './dto/create-font.dto';
 import { UpdateFontDto } from './dto/update-font.dto';
@@ -82,7 +82,12 @@ export class FontsController {
     if (!file) {
       throw new BadRequestException('El archivo de tipografía es obligatorio');
     }
-    return this.fontsService.create(dto, file.filename);
+    // Si no viene nombre, usar el nombre base del archivo original sin extension
+    const originalName = basename(file.originalname, extname(file.originalname));
+    if (!dto.name || dto.name.trim() === '') {
+      (dto as any).name = originalName;
+    }
+    return this.fontsService.create(dto, file.filename, file.originalname);
   }
 
   @Patch('admin/:id')

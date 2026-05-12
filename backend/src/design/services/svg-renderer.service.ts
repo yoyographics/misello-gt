@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 import { randomUUID } from 'crypto';
+import { readFileSync, existsSync } from 'fs';
+import { extname } from 'path';
 
 interface RenderParams {
   layout: string;
@@ -37,6 +39,7 @@ interface ProductDimensions {
  * Renderer determinista SVG.
  * Genera SVG de produccion (B&W, 600dpi) y PNG de preview (color).
  * Retorna los archivos como data URIs base64 para evitar dependencia del filesystem.
+ * Incrusta la fuente TTF/OTF como base64 dentro del SVG para que sharp la renderice correctamente.
  */
 @Injectable()
 export class SvgRendererService {
@@ -46,22 +49,75 @@ export class SvgRendererService {
     params: RenderParams,
     product: ProductDimensions,
     fontName: string,
+    fontFileName: string | undefined,
+    fontFileData: string | undefined | null,
     inkHex?: string,
     logoUrl?: string,
   ): Promise<{ svgDataUri: string; pngDataUri: string; designId: string }> {
     const designId = randomUUID();
 
+    // Construir @font-face con la fuente incrustada (de BD o disco)
+    const fontFaceCss = this.buildFontFace(fontName, fontFileName, fontFileData);
+
     // 1. Generar SVG de produccion (B&W)
-    const productionSvg = this.buildProductionSvg(params, product, fontName, logoUrl);
+    const productionSvg = this.buildProductionSvg(params, product, fontName, fontFaceCss, logoUrl);
     const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(productionSvg, 'utf-8').toString('base64')}`;
 
     // 2. Generar PNG de preview (color)
-    const previewSvg = this.buildPreviewSvg(params, product, fontName, inkHex, logoUrl);
+    const previewSvg = this.buildPreviewSvg(params, product, fontName, fontFaceCss, inkHex, logoUrl);
     const pngBuffer = await this.svgToPng(previewSvg, product.widthPx, product.heightPx);
     const pngDataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
 
-    this.logger.log(`Renderizado: ${designId} (${product.widthPx}x${product.heightPx}px)`);
+    this.logger.log(`Renderizado: ${designId} (${product.widthPx}x${product.heightPx}px) fuente=${fontName} file=${fontFileName || 'ninguna'}`);
     return { svgDataUri, pngDataUri, designId };
+  }
+
+  /**
+   * Construye la regla @font-face incrustando el archivo TTF/OTF como base64.
+   * Prioriza fileData de la BD; fallback a lectura del disco.
+   */
+  private buildFontFace(
+    fontName: string,
+    fontFileName: string | undefined,
+    fontFileData: string | undefined | null,
+  ): string {
+    let fontBase64: string | undefined;
+    let format = 'truetype';
+
+    if (fontFileData) {
+      fontBase64 = fontFileData;
+      if (fontFileName) {
+        const ext = extname(fontFileName).toLowerCase();
+        format = ext === '.otf' ? 'opentype' : 'truetype';
+      }
+    } else if (fontFileName) {
+      const fontPath = `./uploads/fonts/${fontFileName}`;
+      if (existsSync(fontPath)) {
+        try {
+          const fontBuffer = readFileSync(fontPath);
+          fontBase64 = fontBuffer.toString('base64');
+          const ext = extname(fontFileName).toLowerCase();
+          format = ext === '.otf' ? 'opentype' : 'truetype';
+        } catch (e: any) {
+          this.logger.warn(`Error leyendo fuente ${fontPath}: ${e.message}`);
+        }
+      } else {
+        this.logger.warn(`Archivo de fuente no encontrado: ${fontPath}`);
+      }
+    }
+
+    if (!fontBase64) {
+      return '';
+    }
+
+    return `  <style>
+    @font-face {
+      font-family: "${fontName}";
+      src: url("data:font/${format};base64,${fontBase64}") format("${format}");
+      font-weight: normal;
+      font-style: normal;
+    }
+  </style>`;
   }
 
   /**
@@ -71,6 +127,7 @@ export class SvgRendererService {
     params: RenderParams,
     product: ProductDimensions,
     fontName: string,
+    fontFaceCss: string,
     logoUrl?: string,
   ): string {
     const { widthPx, heightPx, widthMm, heightMm, shape } = product;
@@ -106,13 +163,14 @@ export class SvgRendererService {
       logoElement = `    <image x="${params.logo.x}" y="${params.logo.y}" width="${params.logo.width}" height="${params.logo.height}" href="${logoUrl}" filter="url(#grayscale)" />`;
     }
 
-    const defs = logoUrl && params.logo?.grayscale
-      ? `  <defs>
+    let defs = '';
+    if (logoUrl && params.logo?.grayscale) {
+      defs += `  <defs>
     <filter id="grayscale">
       <feColorMatrix type="saturate" values="0"/>
     </filter>
-  </defs>`
-      : '';
+  </defs>\n`;
+    }
 
     const cutMark = shape === 'CIRCULAR'
       ? `    <circle cx="${widthPx / 2}" cy="${heightPx / 2}" r="${Math.min(widthPx, heightPx) / 2 - 2}" fill="none" stroke="red" stroke-width="1" stroke-dasharray="5,5" />`
@@ -124,7 +182,7 @@ export class SvgRendererService {
   viewBox="${viewBox}"
   shape-rendering="geometricPrecision">
   <title>Sello de Produccion — ${widthMmStr}mm x ${heightMmStr}mm @ 600dpi</title>
-${defs}
+${defs}${fontFaceCss}
   <!-- Marco de corte (no se graba) -->
 ${cutMark}
   <!-- Contenido del sello -->
@@ -140,6 +198,7 @@ ${textElements}
     params: RenderParams,
     product: ProductDimensions,
     fontName: string,
+    fontFaceCss: string,
     inkHex?: string,
     logoUrl?: string,
   ): string {
@@ -184,6 +243,7 @@ ${textElements}
   width="${widthPx}" height="${heightPx}"
   viewBox="${viewBox}">
   <title>Preview del Sello</title>
+${fontFaceCss}
 ${bgElement}
 ${logoElement}
 ${textElements}
