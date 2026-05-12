@@ -7,8 +7,21 @@ const api = axios.create({
   },
 });
 
+/**
+ * Interceptor que envia el token correcto segun el endpoint:
+ * - Admin endpoints (/admin/*, /auth/admin/*, /orders/admin/*) → adminToken
+ * - Cliente endpoints → clientToken
+ */
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const url = config.url || '';
+  const isAdminEndpoint =
+    url.startsWith('/admin/') ||
+    url.startsWith('/auth/admin/') ||
+    url.startsWith('/orders/admin/');
+
+  const tokenKey = isAdminEndpoint ? 'adminToken' : 'clientToken';
+  const token = localStorage.getItem(tokenKey);
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

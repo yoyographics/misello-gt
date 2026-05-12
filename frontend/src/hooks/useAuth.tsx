@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('clientToken');
     if (storedToken) {
       setToken(storedToken);
       try {
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: payload.role,
         });
       } catch {
-        localStorage.removeItem('token');
+        localStorage.removeItem('clientToken');
       }
     }
     setIsLoading(false);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (newToken: string) => {
-    localStorage.setItem('token', newToken);
+    localStorage.setItem('clientToken', newToken);
     setToken(newToken);
     try {
       const payload = JSON.parse(atob(newToken.split('.')[1]));
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('clientToken');
     setToken(null);
     setUser(null);
   };

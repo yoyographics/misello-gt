@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
     try {
       const res = await api.post('/auth/admin/login', { email, password });
       const { accessToken, user } = res.data;
-      localStorage.setItem('token', accessToken);
+      localStorage.setItem('adminToken', accessToken);
       localStorage.setItem('adminUser', JSON.stringify(user));
       router.push('/admin/');
     } catch (err: any) {

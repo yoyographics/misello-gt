@@ -1,19 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Package,
   Users,
-  Tag,
-  Bell,
-  Settings,
   TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
@@ -38,25 +33,31 @@ interface DashboardStats {
 }
 
 export default function AdminPage() {
-  const { user, token } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminUser, setAdminUser] = useState<any>(null);
 
   useEffect(() => {
+    const token = localStorage.getItem('adminToken');
     if (!token) {
       router.push('/admin/login/');
       return;
     }
-    // Verificar que sea token de admin (no CLIENT)
+
+    let userPayload: any = null;
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (payload.role === 'CLIENT') {
+        localStorage.removeItem('adminToken');
         router.push('/admin/login/');
         return;
       }
+      userPayload = payload;
+      setAdminUser(payload);
     } catch {
+      localStorage.removeItem('adminToken');
       router.push('/admin/login/');
       return;
     }
@@ -72,13 +73,20 @@ export default function AdminPage() {
       .catch((err) => {
         console.error('Admin API error:', err);
         if (err.response?.status === 401 || err.response?.status === 403) {
+          localStorage.removeItem('adminToken');
           router.push('/admin/login/');
         }
       })
       .finally(() => setLoading(false));
-  }, [token, router]);
+  }, [router]);
 
-  if (!user) {
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    router.push('/admin/login/');
+  };
+
+  if (!adminUser) {
     return (
       <div className="container mx-auto max-w-2xl py-24 text-center">
         <h1 className="text-2xl font-bold text-[#1B2A6B] mb-4">Acceso restringido</h1>
@@ -113,7 +121,12 @@ export default function AdminPage() {
     <div className="container mx-auto max-w-6xl py-12 px-4">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-[#1B2A6B]">Panel de Administracion</h1>
-        <span className="text-sm text-gray-500">{user.email}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-500">{adminUser?.email}</span>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            Cerrar sesion
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

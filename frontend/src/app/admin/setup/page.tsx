@@ -24,7 +24,7 @@ export default function AdminSetupPage() {
     try {
       const res = await api.post('/auth/admin/setup', { name, email, password });
       const { accessToken, user } = res.data;
-      localStorage.setItem('token', accessToken);
+      localStorage.setItem('adminToken', accessToken);
       localStorage.setItem('adminUser', JSON.stringify(user));
       setSuccess(true);
       setTimeout(() => router.push('/admin/'), 1500);
