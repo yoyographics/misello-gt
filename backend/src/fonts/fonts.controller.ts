@@ -114,4 +114,28 @@ export class FontsController {
   testAuth(@Body() body: any) {
     return { ok: true, bodyKeys: Object.keys(body || {}) };
   }
+
+  /**
+   * Endpoint de debug para ver estado de las fuentes en BD.
+   */
+  @Get('admin/debug')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  async debugFonts() {
+    const fonts = await this.fontsService.findAllAdmin();
+    return {
+      total: fonts.length,
+      withFileData: fonts.filter((f: any) => !!f.fileData && f.fileData.length > 100).length,
+      withoutFileData: fonts.filter((f: any) => !f.fileData || f.fileData.length <= 100).length,
+      fonts: fonts.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        fileName: f.fileName,
+        originalName: f.originalName,
+        hasFileData: !!f.fileData && f.fileData.length > 100,
+        fileDataLength: f.fileData?.length || 0,
+        isActive: f.isActive,
+      })),
+    };
+  }
 }
