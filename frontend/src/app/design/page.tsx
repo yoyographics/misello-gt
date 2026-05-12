@@ -498,9 +498,25 @@ export default function DesignPage() {
             <ArrowLeft className="mr-2 h-4 w-4" /> Atras
           </Button>
           <div className="flex gap-3">
-            <a href={designResult.productionSvgUrl} download target="_blank">
-              <Button variant="outline">Descargar SVG</Button>
-            </a>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const svgUrl = designResult.productionSvgUrl;
+                if (svgUrl.startsWith('data:')) {
+                  const blob = new Blob([atob(svgUrl.split(',')[1])], { type: 'image/svg+xml' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `sello-${designResult.designId}.svg`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } else {
+                  window.open(svgUrl, '_blank');
+                }
+              }}
+            >
+              Descargar SVG
+            </Button>
             <Button onClick={addToCart} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
               <ShoppingCart className="mr-2 h-4 w-4" />
               Agregar al carrito
