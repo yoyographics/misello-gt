@@ -1,9 +1,10 @@
 # ============================================================
 # Dockerfile multi-etapa: Frontend Next.js + Backend NestJS
+# Usa node:20-slim (Debian) para compatibilidad con sharp
 # ============================================================
 
 # ── ETAPA 1: Build del Frontend Next.js ──
-FROM node:20-alpine AS frontend-builder
+FROM node:20-slim AS frontend-builder
 
 WORKDIR /frontend
 COPY frontend/package*.json ./
@@ -14,10 +15,9 @@ ENV NEXT_PUBLIC_API_URL=/api/v1
 RUN npm run build
 
 # ── ETAPA 2: Build del Backend NestJS ──
-FROM node:20-alpine AS backend-builder
+FROM node:20-slim AS backend-builder
 
-RUN apk add --no-cache python3 make g++ vips-dev libc6-compat
-RUN npm install -g node-gyp
+RUN apt-get update && apt-get install -y python3 make g++ libvips-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -39,9 +39,9 @@ COPY --from=frontend-builder /frontend/out ./public/
 RUN npm run build
 
 # ── ETAPA 3: Imagen final de produccion ──
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 
-RUN apk add --no-cache vips-dev libc6-compat
+RUN apt-get update && apt-get install -y libvips-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 ENV NODE_ENV=production
