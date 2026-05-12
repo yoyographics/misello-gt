@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
-import api from '@/lib/api';
+import api, { API_BASE_URL } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -134,32 +134,33 @@ export default function DesignPage() {
         setInks(Array.isArray(i) ? i : []);
         setApiLoading(false);
 
-        // Cargar fuentes con FontFace API usando Blob URLs
-        f.forEach(async (font: Font) => {
+        // Cargar fuentes via @font-face inyectado en <head>
+        f.forEach((font: Font) => {
           if (!font.fileData || font.fileData.length < 100) {
             console.warn(`[Design Font] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
             return;
           }
+
+          const styleId = `design-font-style-${font.id}`;
+          if (document.getElementById(styleId)) {
+            setLoadedFonts((prev) => new Set(prev).add(font.id));
+            return;
+          }
+
           try {
             const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
-            const mime = isOtf ? 'font/otf' : 'font/ttf';
-            console.log(`[Design Font] Cargando ${font.name}, fileData length: ${font.fileData.length}`);
+            const format = isOtf ? 'opentype' : 'truetype';
+            const fontUrl = `${API_BASE_URL}/fonts/${font.id}/file`;
 
-            // Data URI directo — más confiable que Blob URL
-            const dataUrl = `data:${mime};base64,${font.fileData}`;
-            const fontFace = new FontFace(`font-${font.id}`, `url(${dataUrl})`);
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `@font-face { font-family: 'font-${font.id}'; src: url('${fontUrl}') format('${format}'); }`;
+            document.head.appendChild(style);
 
-            const loadPromise = fontFace.load();
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Timeout cargando fuente (>5s)')), 5000)
-            );
-
-            await Promise.race([loadPromise, timeoutPromise]);
-            document.fonts.add(fontFace);
-            console.log(`[Design Font] ${font.name}: cargada OK`);
+            console.log(`[Design Font] ${font.name}: @font-face inyectada`);
             setLoadedFonts((prev) => new Set(prev).add(font.id));
           } catch (err: any) {
-            console.error(`[Design Font] Error cargando fuente ${font.name}:`, err.message || err);
+            console.error(`[Design Font] Error inyectando fuente ${font.name}:`, err.message || err);
           }
         });
       })

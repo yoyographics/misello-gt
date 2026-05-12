@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import api from '@/lib/api';
+import api, { API_BASE_URL } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -21,33 +21,56 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fonts.forEach(async (font) => {
+    // Inyectar @font-face por cada fuente que tenga fileData
+    const injectedIds: string[] = [];
+
+    fonts.forEach((font) => {
       if (!font.fileData || font.fileData.length < 100) {
         console.warn(`[FontPreview] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
         return;
       }
+
+      const styleId = `admin-font-style-${font.id}`;
+      if (document.getElementById(styleId)) {
+        // Ya inyectada
+        setLoadedFonts((prev) => new Set(prev).add(font.id));
+        return;
+      }
+
       try {
         const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
-        const mime = isOtf ? 'font/otf' : 'font/ttf';
-        console.log(`[FontPreview] Cargando ${font.name}, fileData length: ${font.fileData.length}`);
+        const format = isOtf ? 'opentype' : 'truetype';
+        const fontUrl = `${API_BASE_URL}/fonts/${font.id}/file`;
 
-        // Data URI directo — más confiable que Blob URL
-        const dataUrl = `data:${mime};base64,${font.fileData}`;
-        const fontFace = new FontFace(`admin-font-${font.id}`, `url(${dataUrl})`);
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `@font-face { font-family: 'admin-font-${font.id}'; src: url('${fontUrl}') format('${format}'); }`;
+        document.head.appendChild(style);
+        injectedIds.push(font.id);
 
-        const loadPromise = fontFace.load();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout cargando fuente (>5s)')), 5000)
-        );
-
-        await Promise.race([loadPromise, timeoutPromise]);
-        document.fonts.add(fontFace);
-        console.log(`[FontPreview] ${font.name}: cargada OK`);
+        console.log(`[FontPreview] ${font.name}: @font-face inyectada`);
         setLoadedFonts((prev) => new Set(prev).add(font.id));
       } catch (err: any) {
-        console.error(`[FontPreview] Error cargando fuente ${font.name}:`, err.message || err);
+        console.error(`[FontPreview] Error inyectando fuente ${font.name}:`, err.message || err);
       }
     });
+
+    // Cleanup: quitar estilos de fuentes que ya no están en la lista
+    return () => {
+      const currentIds = new Set(fonts.map((f) => f.id));
+      const allStyles = document.querySelectorAll('[id^="admin-font-style-"]');
+      allStyles.forEach((el) => {
+        const fontId = el.id.replace('admin-font-style-', '');
+        if (!currentIds.has(fontId)) {
+          el.remove();
+          setLoadedFonts((prev) => {
+            const next = new Set(prev);
+            next.delete(fontId);
+            return next;
+          });
+        }
+      });
+    };
   }, [fonts]);
 
   if (fonts.length === 0) {

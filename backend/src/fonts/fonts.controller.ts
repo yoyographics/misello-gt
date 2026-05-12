@@ -10,12 +10,15 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  NotFoundException,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import { extname, basename } from 'path';
 import { writeFileSync, mkdirSync } from 'fs';
+import type { Response } from 'express';
 import { FontsService } from './fonts.service';
 import { CreateFontDto } from './dto/create-font.dto';
 import { CreateFontBase64Dto } from './dto/create-font-base64.dto';
@@ -45,6 +48,27 @@ export class FontsController {
   @Get(':id')
   findOnePublic(@Param('id') id: string) {
     return this.fontsService.findOnePublic(id);
+  }
+
+  /**
+   * Sirve el archivo de fuente directamente desde fileData (base64 en BD).
+   * Endpoint público para que @font-face en CSS pueda cargar la fuente.
+   */
+  @Get(':id/file')
+  async serveFontFile(@Param('id') id: string, @Res() res: Response) {
+    const font = await this.fontsService.findOnePublic(id);
+    if (!font.fileData || font.fileData.length < 100) {
+      throw new NotFoundException('Archivo de fuente no disponible');
+    }
+
+    const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
+    const mime = isOtf ? 'font/otf' : 'font/ttf';
+    const buffer = Buffer.from(font.fileData, 'base64');
+
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(buffer);
   }
 
   @Get('admin/all')
