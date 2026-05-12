@@ -266,26 +266,26 @@ export default function AdminProductsPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium">SKU</label>
+                <label className="text-xs font-medium block mb-1.5">SKU</label>
                 <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SELLO-001" />
               </div>
               <div>
-                <label className="text-xs font-medium">Nombre</label>
+                <label className="text-xs font-medium block mb-1.5">Nombre</label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Sello automatico..." />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-medium">Descripcion</label>
+              <label className="text-xs font-medium block mb-1.5">Descripcion</label>
               <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripcion opcional" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium">Categoria</label>
+                <label className="text-xs font-medium block mb-1.5">Categoria</label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona" />
@@ -298,7 +298,7 @@ export default function AdminProductsPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-medium">Forma</label>
+                <label className="text-xs font-medium block mb-1.5">Forma</label>
                 <Select value={form.shape} onValueChange={(v) => setForm({ ...form, shape: v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona" />
@@ -314,22 +314,22 @@ export default function AdminProductsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium">Ancho (mm)</label>
+                <label className="text-xs font-medium block mb-1.5">Ancho (mm)</label>
                 <Input type="number" value={form.widthMm} onChange={(e) => setForm({ ...form, widthMm: e.target.value })} placeholder="58" />
               </div>
               <div>
-                <label className="text-xs font-medium">Alto (mm)</label>
+                <label className="text-xs font-medium block mb-1.5">Alto (mm)</label>
                 <Input type="number" value={form.heightMm} onChange={(e) => setForm({ ...form, heightMm: e.target.value })} placeholder="22" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium">Precio (Q)</label>
+                <label className="text-xs font-medium block mb-1.5">Precio (Q)</label>
                 <Input type="number" step="0.01" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })} placeholder="125.00" />
               </div>
               <div>
-                <label className="text-xs font-medium">Stock inicial</label>
+                <label className="text-xs font-medium block mb-1.5">Stock inicial</label>
                 <Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} placeholder="0" />
               </div>
             </div>
@@ -345,7 +345,7 @@ export default function AdminProductsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium">Imagen principal</label>
+              <label className="text-xs font-medium block mb-1.5">Imagen principal</label>
               <Input
                 type="file"
                 accept="image/*"
@@ -357,7 +357,7 @@ export default function AdminProductsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium">Imagen hover (efecto al pasar el mouse)</label>
+              <label className="text-xs font-medium block mb-1.5">Imagen hover (efecto al pasar el mouse)</label>
               <Input
                 type="file"
                 accept="image/*"
