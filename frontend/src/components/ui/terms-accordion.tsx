@@ -53,7 +53,7 @@ export function TermsAccordion() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+    <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
@@ -62,24 +62,26 @@ export function TermsAccordion() {
           Términos y condiciones de compra
         </span>
         <ChevronDown
-          className={`h-5 w-5 text-gray-400 transition-transform duration-300 ease-out ${
+          className={`h-5 w-5 text-gray-400 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             open ? 'rotate-180' : ''
           }`}
         />
       </button>
 
+      {/* Animación suave con grid-template-rows */}
       <div
-        className="transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+        className="grid transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{
-          maxHeight: open ? '800px' : '0px',
-          opacity: open ? 1 : 0,
-          overflow: 'hidden',
+          gridTemplateRows: open ? '1fr' : '0fr',
         }}
       >
-        <div
-          className="px-5 pb-5 pt-1 text-gray-700"
-          dangerouslySetInnerHTML={{ __html: TERMS_HTML }}
-        />
+        <div className="min-h-0">
+          <div
+            className="px-5 pb-5 pt-1 text-gray-700 overflow-y-auto"
+            style={{ maxHeight: '400px' }}
+            dangerouslySetInnerHTML={{ __html: TERMS_HTML }}
+          />
+        </div>
       </div>
     </div>
   );
