@@ -45,4 +45,26 @@ export class InventoryController {
   getSummary() {
     return this.inventoryService.getStockSummary();
   }
+
+  @Get()
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  async findAll() {
+    const [products, inks] = await Promise.all([
+      this.inventoryService['prisma'].product.findMany({
+        where: { isActive: true },
+        select: { id: true, sku: true, name: true, stock: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.inventoryService['prisma'].ink.findMany({
+        where: { isActive: true },
+        select: { id: true, color: true, stock: true },
+        orderBy: { color: 'asc' },
+      }),
+    ]);
+    return [
+      ...products.map((p: any) => ({ id: p.id, sku: p.sku, productName: p.name, quantity: p.stock, minStock: 5 })),
+      ...inks.map((i: any) => ({ id: i.id, sku: `INK-${i.id.slice(0,4)}`, productName: `Tinta ${i.color}`, quantity: i.stock, minStock: 10 })),
+    ];
+  }
 }

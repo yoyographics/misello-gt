@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
   Package,
@@ -12,7 +10,6 @@ import {
   TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 interface Order {
   id: string;
@@ -32,36 +29,12 @@ interface DashboardStats {
   totalUsers: number;
 }
 
-export default function AdminPage() {
-  const router = useRouter();
+export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adminUser, setAdminUser] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      router.push('/admin/login/');
-      return;
-    }
-
-    let userPayload: any = null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      if (payload.role === 'CLIENT') {
-        localStorage.removeItem('adminToken');
-        router.push('/admin/login/');
-        return;
-      }
-      userPayload = payload;
-      setAdminUser(payload);
-    } catch {
-      localStorage.removeItem('adminToken');
-      router.push('/admin/login/');
-      return;
-    }
-
     Promise.all([
       api.get('/admin/dashboard'),
       api.get('/orders/admin/all'),
@@ -72,28 +45,9 @@ export default function AdminPage() {
       })
       .catch((err) => {
         console.error('Admin API error:', err);
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          localStorage.removeItem('adminToken');
-          router.push('/admin/login/');
-        }
       })
       .finally(() => setLoading(false));
-  }, [router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
-    router.push('/admin/login/');
-  };
-
-  if (!adminUser) {
-    return (
-      <div className="container mx-auto max-w-2xl py-24 text-center">
-        <h1 className="text-2xl font-bold text-[#1B2A6B] mb-4">Acceso restringido</h1>
-        <p className="text-gray-600 mb-4">Debes iniciar sesion como administrador.</p>
-      </div>
-    );
-  }
+  }, []);
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -111,26 +65,18 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-24 text-center">
-        <div className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full mx-auto" />
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto max-w-6xl py-12 px-4">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-[#1B2A6B]">Panel de Administracion</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">{adminUser?.email}</span>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            Cerrar sesion
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-[#1B2A6B]">Dashboard</h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <Package className="h-8 w-8 text-orange-500" />
@@ -169,73 +115,34 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="orders">
-        <TabsList className="mb-6">
-          <TabsTrigger value="orders">Ordenes</TabsTrigger>
-          <TabsTrigger value="products">Productos</TabsTrigger>
-          <TabsTrigger value="discounts">Descuentos</TabsTrigger>
-          <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
-          <TabsTrigger value="settings">Configuracion</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="orders">
-          <Card className="p-6">
-            <h2 className="font-semibold mb-4">Ordenes recientes</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2">Numero</th>
-                    <th className="text-left py-2">Cliente</th>
-                    <th className="text-left py-2">Estado</th>
-                    <th className="text-left py-2">Total</th>
-                    <th className="text-left py-2">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.slice(0, 20).map((order) => (
-                    <tr key={order.id} className="border-b">
-                      <td className="py-2 font-medium">{order.orderNumber}</td>
-                      <td className="py-2">{order.user?.name || order.user?.email || 'N/A'}</td>
-                      <td className="py-2">{getStatusBadge(order.status)}</td>
-                      <td className="py-2">Q{order.totalAmount.toFixed(2)}</td>
-                      <td className="py-2 text-gray-500">{new Date(order.createdAt).toLocaleDateString('es-GT')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="products">
-          <Card className="p-6">
-            <h2 className="font-semibold mb-4">Gestion de productos</h2>
-            <p className="text-gray-600">Usa la API para gestionar productos: /api/v1/products/admin</p>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="discounts">
-          <Card className="p-6">
-            <h2 className="font-semibold mb-4">Descuentos</h2>
-            <p className="text-gray-600">Gestion de descuentos via API: /api/v1/admin/discounts</p>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="waitlist">
-          <Card className="p-6">
-            <h2 className="font-semibold mb-4">Waitlist</h2>
-            <p className="text-gray-600">Clientes esperando productos agotados: /api/v1/admin/waitlist</p>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <Card className="p-6">
-            <h2 className="font-semibold mb-4">Configuracion</h2>
-            <p className="text-gray-600">Gestion de roles, usuarios, T&C, replica price via API: /api/v1/admin/*</p>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Ordenes recientes */}
+      <Card className="p-6">
+        <h2 className="font-semibold mb-4">Ordenes recientes</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Numero</th>
+                <th className="text-left py-2">Cliente</th>
+                <th className="text-left py-2">Estado</th>
+                <th className="text-left py-2">Total</th>
+                <th className="text-left py-2">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.slice(0, 20).map((order) => (
+                <tr key={order.id} className="border-b">
+                  <td className="py-2 font-medium">{order.orderNumber}</td>
+                  <td className="py-2">{order.user?.name || order.user?.email || 'N/A'}</td>
+                  <td className="py-2">{getStatusBadge(order.status)}</td>
+                  <td className="py-2">Q{order.totalAmount.toFixed(2)}</td>
+                  <td className="py-2 text-gray-500">{new Date(order.createdAt).toLocaleDateString('es-GT')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
