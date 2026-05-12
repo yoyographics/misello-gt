@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowRight, ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart } from 'lucide-react';
+import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
 interface Product {
   id: string;
@@ -232,11 +233,9 @@ export default function DesignPage() {
           <div className="max-w-sm mx-auto">
             <Card className={`p-8 ${CARD_BASE}`}>
               <h3 className="font-semibold mb-4">Inicia sesion con Google</h3>
-              <a href={`${baseUrl}/api/v1/auth/google`}>
-                <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-                  Ingresar con Google
-                </Button>
-              </a>
+              <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>
+                Ingresar con Google
+              </Button>
             </Card>
           </div>
         </div>

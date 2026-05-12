@@ -1,11 +1,17 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Stamp, Palette, Truck, ShieldCheck, Clock, Award } from 'lucide-react';
+import { handleGoogleCallback } from '@/lib/auth-utils';
 
 export default function Home() {
+  useEffect(() => {
+    handleGoogleCallback();
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero */}

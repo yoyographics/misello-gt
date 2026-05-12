@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Stamp, ShoppingCart, User, LogOut, Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
+import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -47,12 +48,10 @@ export default function Header() {
               </Button>
             </div>
           ) : (
-            <a href={`${baseUrl}/api/v1/auth/google`}>
-              <Button size="sm" className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-                <User className="h-4 w-4 mr-1" />
-                Ingresar
-              </Button>
-            </a>
+            <Button size="sm" className="bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>
+              <User className="h-4 w-4 mr-1" />
+              Ingresar
+            </Button>
           )}
         </nav>
 
@@ -73,9 +72,7 @@ export default function Header() {
                   <Button onClick={() => { logout(); setOpen(false); }}>Cerrar sesion</Button>
                 </>
               ) : (
-                <a href={`${baseUrl}/api/v1/auth/google`}>
-                  <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">Ingresar con Google</Button>
-                </a>
+                <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>Ingresar con Google</Button>
               )}
             </div>
           </SheetContent>

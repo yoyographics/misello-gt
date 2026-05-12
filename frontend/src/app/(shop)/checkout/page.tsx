@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TermsAccordion } from '@/components/ui/terms-accordion';
 import { Loader2, CreditCard, Building2 } from 'lucide-react';
+import { redirectToGoogleLogin } from '@/lib/auth-utils';
 import { useRouter } from 'next/navigation';
 import {
   Select,
@@ -96,9 +97,7 @@ export default function CheckoutPage() {
     return (
       <div className="container mx-auto max-w-2xl py-24 px-4 text-center">
         <h1 className="text-2xl font-bold text-[#1B2A6B] mb-4">Inicia sesion para continuar</h1>
-        <a href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}/api/v1/auth/google`}>
-          <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">Ingresar con Google</Button>
-        </a>
+        <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>Ingresar con Google</Button>
       </div>
     );
   }
