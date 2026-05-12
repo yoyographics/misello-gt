@@ -23,12 +23,14 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
   useEffect(() => {
     fonts.forEach(async (font) => {
       if (!font.fileData || font.fileData.length < 100) {
-        console.warn(`Fuente ${font.name} sin fileData válido`);
+        console.warn(`[FontPreview] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
         return;
       }
       try {
         const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
         const mime = isOtf ? 'font/otf' : 'font/ttf';
+        console.log(`[FontPreview] Cargando ${font.name}, fileData length: ${font.fileData.length}`);
+
         const byteCharacters = atob(font.fileData);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -37,15 +39,24 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: mime });
         const blobUrl = URL.createObjectURL(blob);
+
         const fontFace = new FontFace(
           `admin-font-${font.id}`,
           `url("${blobUrl}") format("${isOtf ? 'opentype' : 'truetype'}")`
         );
-        await fontFace.load();
+
+        // Timeout para detectar si FontFace.load() se cuelga
+        const loadPromise = fontFace.load();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout cargando fuente (>5s)')), 5000)
+        );
+
+        await Promise.race([loadPromise, timeoutPromise]);
         document.fonts.add(fontFace);
+        console.log(`[FontPreview] ${font.name}: cargada OK`);
         setLoadedFonts((prev) => new Set(prev).add(font.id));
-      } catch (err) {
-        console.error(`Error cargando fuente ${font.name}:`, err);
+      } catch (err: any) {
+        console.error(`[FontPreview] Error cargando fuente ${font.name}:`, err.message || err);
       }
     });
   }, [fonts]);
@@ -111,6 +122,28 @@ export default function AdminFontsPage() {
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
+
+    // Debug: log token being used
+    const token = localStorage.getItem('adminToken');
+    console.log('[Upload Debug] adminToken exists:', !!token);
+    if (token) console.log('[Upload Debug] token prefix:', token.substring(0, 30) + '...');
+
+    // First test auth with a simple POST (no file)
+    try {
+      const testRes = await api.post('/fonts/admin/test', { hello: 'world' });
+      console.log('[Upload Debug] Auth test OK:', testRes.data);
+    } catch (testErr: any) {
+      console.error('[Upload Debug] Auth test FAILED:', testErr.response?.status, testErr.response?.data);
+      alert(
+        'Error de autenticacion en POST. Token: ' +
+        (token ? token.substring(0, 20) + '...' : 'NO HAY TOKEN') +
+        '\nStatus: ' + (testErr.response?.status || 'unknown') +
+        '\nMensaje: ' + (testErr.response?.data?.message || testErr.message)
+      );
+      setUploading(false);
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     if (fontName.trim()) {
@@ -122,7 +155,11 @@ export default function AdminFontsPage() {
       setFontName('');
       fetchFonts();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error subiendo fuente');
+      console.error('[Upload Debug] Upload failed:', err.response?.status, err.response?.data);
+      alert(
+        'Error subiendo fuente. Status: ' + (err.response?.status || 'unknown') +
+        '\nMensaje: ' + (err.response?.data?.message || err.message)
+      );
     } finally {
       setUploading(false);
     }

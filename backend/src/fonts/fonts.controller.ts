@@ -103,4 +103,15 @@ export class FontsController {
   remove(@Param('id') id: string) {
     return this.fontsService.remove(id);
   }
+
+  /**
+   * Endpoint de debug para verificar que el auth funciona en POST.
+   * No requiere archivo, solo valida el JWT.
+   */
+  @Post('admin/test')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  testAuth(@Body() body: any) {
+    return { ok: true, bodyKeys: Object.keys(body || {}) };
+  }
 }

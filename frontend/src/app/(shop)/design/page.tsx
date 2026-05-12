@@ -137,12 +137,14 @@ export default function DesignPage() {
         // Cargar fuentes con FontFace API usando Blob URLs
         f.forEach(async (font: Font) => {
           if (!font.fileData || font.fileData.length < 100) {
-            console.warn(`Fuente ${font.name} sin fileData válido`);
+            console.warn(`[Design Font] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
             return;
           }
           try {
             const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
             const mime = isOtf ? 'font/otf' : 'font/ttf';
+            console.log(`[Design Font] Cargando ${font.name}, fileData length: ${font.fileData.length}`);
+
             const byteCharacters = atob(font.fileData);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
@@ -155,11 +157,18 @@ export default function DesignPage() {
               `font-${font.id}`,
               `url("${blobUrl}") format("${isOtf ? 'opentype' : 'truetype'}")`
             );
-            await fontFace.load();
+
+            const loadPromise = fontFace.load();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout cargando fuente (>5s)')), 5000)
+            );
+
+            await Promise.race([loadPromise, timeoutPromise]);
             document.fonts.add(fontFace);
+            console.log(`[Design Font] ${font.name}: cargada OK`);
             setLoadedFonts((prev) => new Set(prev).add(font.id));
-          } catch (err) {
-            console.error(`Error cargando fuente ${font.name}:`, err);
+          } catch (err: any) {
+            console.error(`[Design Font] Error cargando fuente ${font.name}:`, err.message || err);
           }
         });
       })

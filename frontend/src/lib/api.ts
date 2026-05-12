@@ -16,6 +16,11 @@ api.interceptors.request.use((config) => {
   const tokenKey = isAdminEndpoint ? 'adminToken' : 'clientToken';
   const token = localStorage.getItem(tokenKey);
 
+  // DEBUG logging (temporal)
+  if (isAdminEndpoint) {
+    console.log(`[API Interceptor] ${config.method?.toUpperCase()} ${url} -> using ${tokenKey}: ${token ? 'YES (' + token.substring(0, 20) + '...)' : 'NO'}`);
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
