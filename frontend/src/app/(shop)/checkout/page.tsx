@@ -10,6 +10,14 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CreditCard, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DEPARTAMENTOS, DEPARTAMENTOS_MUNICIPIOS } from '@/lib/guatemala';
 
 interface CartItem {
   productId: string;
@@ -111,16 +119,39 @@ export default function CheckoutPage() {
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
               />
-              <Input
-                placeholder="Municipio"
-                value={form.municipality}
-                onChange={(e) => setForm({ ...form, municipality: e.target.value })}
-              />
-              <Input
-                placeholder="Departamento"
-                value={form.department}
-                onChange={(e) => setForm({ ...form, department: e.target.value })}
-              />
+              <div>
+                <label className="text-sm font-medium mb-1 block">Departamento</label>
+                <Select
+                  value={form.department}
+                  onValueChange={(v) => setForm({ ...form, department: v || '', municipality: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTAMENTOS.map((dept) => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Municipio</label>
+                <Select
+                  value={form.municipality}
+                  onValueChange={(v) => setForm({ ...form, municipality: v || '' })}
+                  disabled={!form.department}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={form.department ? 'Selecciona un municipio' : 'Primero selecciona un departamento'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.department && DEPARTAMENTOS_MUNICIPIOS[form.department]?.map((mun) => (
+                      <SelectItem key={mun} value={mun}>{mun}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Input
                 placeholder="NIT o CUI"
                 value={form.nitOrCui}
