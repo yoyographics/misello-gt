@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import sharp from 'sharp';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import * as sharp from 'sharp';
 import { randomUUID } from 'crypto';
 
 interface RenderParams {
@@ -37,19 +35,12 @@ interface ProductDimensions {
 
 /**
  * Renderer determinista SVG.
- * Recibe parametros JSON y genera:
- *  - SVG de produccion (B&W, 600dpi, tamano exacto)
- *  - PNG de preview (color, para mostrar al cliente)
+ * Genera SVG de produccion (B&W, 600dpi) y PNG de preview (color).
+ * Retorna los archivos como data URIs base64 para evitar dependencia del filesystem.
  */
 @Injectable()
 export class SvgRendererService {
   private readonly logger = new Logger(SvgRendererService.name);
-  private readonly uploadsDir = join(process.cwd(), 'uploads', 'designs');
-
-  constructor() {
-    // Asegurar que el directorio existe
-    mkdir(this.uploadsDir, { recursive: true }).catch(() => {});
-  }
 
   async render(
     params: RenderParams,
@@ -57,33 +48,24 @@ export class SvgRendererService {
     fontName: string,
     inkHex?: string,
     logoUrl?: string,
-  ): Promise<{ svgPath: string; pngPath: string; svgUrl: string; pngUrl: string }> {
+  ): Promise<{ svgDataUri: string; pngDataUri: string; designId: string }> {
     const designId = randomUUID();
 
     // 1. Generar SVG de produccion (B&W)
     const productionSvg = this.buildProductionSvg(params, product, fontName, logoUrl);
-    const svgFileName = `${designId}-production.svg`;
-    const svgPath = join(this.uploadsDir, svgFileName);
-    await writeFile(svgPath, productionSvg, 'utf-8');
+    const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(productionSvg, 'utf-8').toString('base64')}`;
 
     // 2. Generar PNG de preview (color)
     const previewSvg = this.buildPreviewSvg(params, product, fontName, inkHex, logoUrl);
     const pngBuffer = await this.svgToPng(previewSvg, product.widthPx, product.heightPx);
-    const pngFileName = `${designId}-preview.png`;
-    const pngPath = join(this.uploadsDir, pngFileName);
-    await writeFile(pngPath, pngBuffer);
-
-    const baseUrl = process.env.BACKEND_URL || '';
-    const svgUrl = `${baseUrl}/uploads/designs/${svgFileName}`;
-    const pngUrl = `${baseUrl}/uploads/designs/${pngFileName}`;
+    const pngDataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
 
     this.logger.log(`Renderizado: ${designId} (${product.widthPx}x${product.heightPx}px)`);
-    return { svgPath, pngPath, svgUrl, pngUrl };
+    return { svgDataUri, pngDataUri, designId };
   }
 
   /**
    * SVG de produccion: B&W, 600dpi, medidas exactas del modelo.
-   * Este es el archivo que va a la maquina de grabado laser.
    */
   private buildProductionSvg(
     params: RenderParams,
@@ -92,20 +74,16 @@ export class SvgRendererService {
     logoUrl?: string,
   ): string {
     const { widthPx, heightPx, widthMm, heightMm, shape } = product;
-
-    // Calcular viewBox y tamaño real en mm
     const viewBox = `0 0 ${widthPx} ${heightPx}`;
     const widthMmStr = widthMm.toFixed(2);
     const heightMmStr = heightMm.toFixed(2);
 
-    // Construir elementos de texto
     const textElements = params.textLines.map((line, i) => {
-      const fontSizePx = Math.round(line.fontSizePt * 8.333); // 1pt = 8.333px a 600dpi (600/72)
+      const fontSizePx = Math.round(line.fontSizePt * 8.333);
       const transform = line.rotationDegrees
         ? `transform="rotate(${line.rotationDegrees}, ${line.xPosition}, ${line.yPosition})"`
         : '';
 
-      // Si es layout circular, usar textPath en un circulo
       if (shape === 'CIRCULAR' && params.layout === 'circular') {
         const radius = Math.min(widthPx, heightPx) / 2 - 30;
         const cx = widthPx / 2;
@@ -123,7 +101,6 @@ export class SvgRendererService {
       return `    <text x="${line.xPosition}" y="${line.yPosition}" font-family="${fontName}" font-size="${fontSizePx}" font-weight="${line.fontWeight}" font-style="${line.fontStyle}" fill="black" text-anchor="${line.textAnchor}" ${transform}>${this.escapeXml(line.text)}</text>`;
     }).join('\n');
 
-    // Logo en B&W
     let logoElement = '';
     if (logoUrl && params.logo) {
       logoElement = `    <image x="${params.logo.x}" y="${params.logo.y}" width="${params.logo.width}" height="${params.logo.height}" href="${logoUrl}" filter="url(#grayscale)" />`;
@@ -137,7 +114,6 @@ export class SvgRendererService {
   </defs>`
       : '';
 
-    // Marca de corte para produccion
     const cutMark = shape === 'CIRCULAR'
       ? `    <circle cx="${widthPx / 2}" cy="${heightPx / 2}" r="${Math.min(widthPx, heightPx) / 2 - 2}" fill="none" stroke="red" stroke-width="1" stroke-dasharray="5,5" />`
       : `    <rect x="1" y="1" width="${widthPx - 2}" height="${heightPx - 2}" fill="none" stroke="red" stroke-width="1" stroke-dasharray="5,5" />`;
@@ -199,7 +175,6 @@ ${textElements}
       logoElement = `    <image x="${params.logo.x}" y="${params.logo.y}" width="${params.logo.width}" height="${params.logo.height}" href="${logoUrl}" />`;
     }
 
-    // Fondo blanco con borde suave para el preview
     const bgElement = shape === 'CIRCULAR'
       ? `    <circle cx="${widthPx / 2}" cy="${heightPx / 2}" r="${Math.min(widthPx, heightPx) / 2}" fill="white" stroke="#e5e7eb" stroke-width="2" />`
       : `    <rect x="0" y="0" width="${widthPx}" height="${heightPx}" fill="white" stroke="#e5e7eb" stroke-width="2" rx="4" />`;

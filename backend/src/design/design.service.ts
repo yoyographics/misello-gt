@@ -9,6 +9,7 @@ import { DesignResponseDto } from './dto/design-response.dto';
 /**
  * Servicio principal del modulo de diseno.
  * Orquesta: Claude API → Renderer SVG/PNG → Validador Tecnico.
+ * Retorna archivos como data URIs base64 (no depende del filesystem).
  */
 @Injectable()
 export class DesignService {
@@ -64,7 +65,7 @@ export class DesignService {
       dto.specialRequests,
     );
 
-    // 4.5 Auto-ajustar tamaños de fuente si son muy pequenos
+    // 4.5 Auto-ajustar tamanos de fuente si son muy pequenos
     const MIN_FONT_PT = 10; // 10pt garantiza pasar validacion tecnica
     let fontAdjusted = false;
     for (const line of designParams.textLines) {
@@ -75,8 +76,8 @@ export class DesignService {
       }
     }
 
-    // 5. Renderizar SVG y PNG
-    const { svgUrl, pngUrl } = await this.renderer.render(
+    // 5. Renderizar SVG y PNG como data URIs base64
+    const { svgDataUri, pngDataUri, designId } = await this.renderer.render(
       designParams,
       {
         widthPx: product.widthPx || 300,
@@ -105,10 +106,10 @@ export class DesignService {
     });
 
     return {
-      designId: svgUrl.split('/').pop()?.replace('-production.svg', '') || 'unknown',
+      designId,
       designJson: designParams,
-      previewPngUrl: pngUrl,
-      productionSvgUrl: svgUrl,
+      previewPngUrl: pngDataUri,
+      productionSvgUrl: svgDataUri,
       validation,
       logoConvertedToBw: !!dto.logoUrl && !!dto.hasLogoGradient,
       fontAutoAdjusted: fontAdjusted,
