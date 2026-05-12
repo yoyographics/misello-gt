@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TermsAccordion } from '@/components/ui/terms-accordion';
 import { Loader2, CreditCard, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -178,6 +179,8 @@ export default function CheckoutPage() {
             </div>
           </Card>
 
+          <TermsAccordion />
+
           <div className="flex items-start gap-2">
             <Checkbox
               id="terms"
@@ -185,7 +188,7 @@ export default function CheckoutPage() {
               onCheckedChange={(v) => setTermsAccepted(v as boolean)}
             />
             <label htmlFor="terms" className="text-sm text-gray-600">
-              Acepto los terminos y condiciones de compra.
+              He leído y acepto los términos y condiciones de compra.
             </label>
           </div>
         </div>
