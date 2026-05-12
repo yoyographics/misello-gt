@@ -51,6 +51,7 @@ export class FontsService {
       data: {
         name,
         fileName,
+        originalName: originalName || undefined,
         fileData,
         isActive: dto.isActive ?? true,
       },
