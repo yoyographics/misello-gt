@@ -117,10 +117,7 @@ export default function AdminFontsPage() {
       formData.append('name', fontName.trim());
     }
     try {
-      const token = localStorage.getItem('adminToken');
-      await api.post('/fonts/admin', formData, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      await api.post('/fonts/admin', formData);
       setFile(null);
       setFontName('');
       fetchFonts();
