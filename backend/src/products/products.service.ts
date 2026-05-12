@@ -83,6 +83,15 @@ export class ProductsService {
     return this.prisma.product.update({ where: { id }, data: dto });
   }
 
+  async uploadImage(id: string, file: Express.Multer.File) {
+    await this.findOneAdmin(id);
+    const imageUrl = `/uploads/product-photos/${file.filename}`;
+    return this.prisma.product.update({
+      where: { id },
+      data: { imageUrl },
+    });
+  }
+
   async remove(id: string) {
     await this.findOneAdmin(id);
     return this.prisma.product.update({ where: { id }, data: { isActive: false } });

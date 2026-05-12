@@ -8,7 +8,10 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -55,6 +58,15 @@ export class ProductsController {
   @ApiBearerAuth()
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
+  }
+
+  /** Subir imagen de producto (admin) */
+  @Post('admin/:id/image')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('image', { dest: 'uploads/product-photos' }))
+  uploadImage(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    return this.productsService.uploadImage(id, file);
   }
 
   /** Eliminar producto — soft delete (admin) */

@@ -4,21 +4,32 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Warehouse } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Loader2, Warehouse, Plus, Minus } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
-  productId: string;
-  productName: string;
   sku: string;
+  productName: string;
   quantity: number;
   minStock: number;
-  lastUpdated: string;
 }
 
 export default function AdminInventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
+  const [adjustQty, setAdjustQty] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
   const fetchInventory = useCallback(() => {
     setLoading(true);
@@ -31,6 +42,32 @@ export default function AdminInventoryPage() {
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
+
+  const openAdjust = (item: InventoryItem) => {
+    setAdjustItem(item);
+    setAdjustQty('');
+    setAdjustReason('');
+    setAdjustOpen(true);
+  };
+
+  const handleAdjust = async () => {
+    if (!adjustItem || !adjustQty) return;
+    setAdjusting(true);
+    try {
+      const delta = parseInt(adjustQty);
+      await api.post('/inventory/adjust', {
+        productId: adjustItem.id,
+        delta,
+        reason: adjustReason || 'Ajuste manual',
+      });
+      setAdjustOpen(false);
+      fetchInventory();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error ajustando stock');
+    } finally {
+      setAdjusting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -55,6 +92,7 @@ export default function AdminInventoryPage() {
                   <th className="text-left py-2">Stock actual</th>
                   <th className="text-left py-2">Minimo</th>
                   <th className="text-left py-2">Estado</th>
+                  <th className="text-left py-2">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -69,6 +107,11 @@ export default function AdminInventoryPage() {
                         {item.quantity <= item.minStock ? 'Bajo stock' : 'OK'}
                       </Badge>
                     </td>
+                    <td className="py-2">
+                      <Button variant="outline" size="sm" onClick={() => openAdjust(item)}>
+                        <Plus className="h-3 w-3 mr-1" /> Ajustar
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -76,6 +119,50 @@ export default function AdminInventoryPage() {
           </div>
         )}
       </Card>
+
+      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ajustar stock</DialogTitle>
+          </DialogHeader>
+          {adjustItem && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-3 rounded text-sm">
+                <p><span className="font-medium">{adjustItem.productName}</span></p>
+                <p className="text-gray-500">Stock actual: {adjustItem.quantity}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Cantidad a agregar (+) o quitar (-)</label>
+                <Input
+                  type="number"
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  placeholder="Ej: 10 o -5"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Razon (opcional)</label>
+                <Input
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder="Compra a proveedor, devolucion, etc."
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancelar</Button>
+                <Button
+                  onClick={handleAdjust}
+                  disabled={adjusting || !adjustQty}
+                  className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+                >
+                  {adjusting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
