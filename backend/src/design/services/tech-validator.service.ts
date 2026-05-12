@@ -77,7 +77,7 @@ export class TechValidatorService {
 
     // 2. Validar grosor minimo de linea
     for (const line of params.textLines) {
-      const fontSizePx = Math.round(line.fontSizePt * 4.1667);
+      const fontSizePx = Math.round(line.fontSizePt * 8.333); // pt → px @ 600dpi (600/72)
       // Grosor de trazo estimado: fuente normal ~8% del tamano, bold ~12%
       const isBold = line.fontSizePt >= 14; // Asumir bold o tamano grande = trazo mas grueso
       const estimatedStrokeWidth = fontSizePx * (isBold ? 0.12 : 0.08);
