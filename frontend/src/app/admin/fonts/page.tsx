@@ -44,9 +44,7 @@ export default function AdminFontsPage() {
       formData.append('name', fontName.trim());
     }
     try {
-      await api.post('/fonts/admin', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      await api.post('/fonts/admin', formData);
       setFile(null);
       setFontName('');
       fetchFonts();
