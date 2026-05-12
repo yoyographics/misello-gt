@@ -61,6 +61,11 @@ export class CreateProductDto {
   @IsOptional()
   imageUrl?: string;
 
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/image-hover.png' })
+  @IsString()
+  @IsOptional()
+  imageUrlHover?: string;
+
   @ApiProperty({ example: 125.0 })
   @IsNumber()
   @Min(0)

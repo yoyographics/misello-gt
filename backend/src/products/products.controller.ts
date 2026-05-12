@@ -65,8 +65,12 @@ export class ProductsController {
   @UseGuards(JwtAdminGuard)
   @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('image', { dest: 'uploads/product-photos' }))
-  uploadImage(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
-    return this.productsService.uploadImage(id, file);
+  uploadImage(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('type') type?: string,
+  ) {
+    return this.productsService.uploadImage(id, file, type === 'hover' ? 'imageUrlHover' : 'imageUrl');
   }
 
   /** Eliminar producto — soft delete (admin) */

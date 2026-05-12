@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Warehouse, Plus, Minus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
@@ -28,7 +28,6 @@ export default function AdminInventoryPage() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
   const [adjustQty, setAdjustQty] = useState('');
-  const [adjustReason, setAdjustReason] = useState('');
   const [adjusting, setAdjusting] = useState(false);
 
   const fetchInventory = useCallback(() => {
@@ -46,7 +45,6 @@ export default function AdminInventoryPage() {
   const openAdjust = (item: InventoryItem) => {
     setAdjustItem(item);
     setAdjustQty('');
-    setAdjustReason('');
     setAdjustOpen(true);
   };
 
@@ -58,7 +56,6 @@ export default function AdminInventoryPage() {
       await api.post('/inventory/adjust', {
         productId: adjustItem.id,
         delta,
-        reason: adjustReason || 'Ajuste manual',
       });
       setAdjustOpen(false);
       fetchInventory();
@@ -139,14 +136,6 @@ export default function AdminInventoryPage() {
                   onChange={(e) => setAdjustQty(e.target.value)}
                   placeholder="Ej: 10 o -5"
                   autoFocus
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium">Razon (opcional)</label>
-                <Input
-                  value={adjustReason}
-                  onChange={(e) => setAdjustReason(e.target.value)}
-                  placeholder="Compra a proveedor, devolucion, etc."
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">

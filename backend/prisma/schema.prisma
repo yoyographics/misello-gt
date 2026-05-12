@@ -113,8 +113,9 @@ model Product {
   heightMm    Float?
   widthPx     Int?
   heightPx    Int?
-  imageUrl    String?
-  basePrice   Float
+  imageUrl       String?
+  imageUrlHover  String?
+  basePrice      Float
   isActive    Boolean         @default(true)
   stock       Int             @default(0)
   createdAt   DateTime        @default(now())

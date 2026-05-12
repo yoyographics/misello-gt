@@ -19,6 +19,7 @@ interface Product {
   heightMm: number;
   basePrice: number;
   imageUrl?: string;
+  imageUrlHover?: string;
   stock: number;
 }
 
@@ -32,6 +33,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   ALMOHADILLA_MADERA: 'Almohadillas Madera',
   TINTA: 'Tintas',
 };
+
+function getImageUrl(url?: string) {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
+}
 
 export default function StorePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -103,12 +109,34 @@ export default function StorePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filtered.map((product) => (
-          <Card key={product.id} className="p-4 hover:shadow-lg transition">
-            <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+          <Card
+            key={product.id}
+            className="group p-4 border-2 border-blue-100 hover:border-blue-400 rounded-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgba(59,130,246,0.25)] cursor-pointer"
+          >
+            <div className="relative aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden">
               {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="h-full object-contain" />
+                <>
+                  <img
+                    src={getImageUrl(product.imageUrl)}
+                    alt={product.name}
+                    className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
+                  />
+                  {product.imageUrlHover ? (
+                    <img
+                      src={getImageUrl(product.imageUrlHover)}
+                      alt={`${product.name} - hover`}
+                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    />
+                  ) : (
+                    <img
+                      src={getImageUrl(product.imageUrl)}
+                      alt={product.name}
+                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
+                    />
+                  )}
+                </>
               ) : (
-                <span className="text-4xl">📐</span>
+                <span className="absolute inset-0 flex items-center justify-center text-4xl">📐</span>
               )}
             </div>
             <Badge variant="secondary" className="mb-2">{CATEGORY_LABELS[product.category] || product.category}</Badge>

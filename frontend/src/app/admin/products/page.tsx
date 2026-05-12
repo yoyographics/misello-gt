@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Package, Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -34,6 +34,7 @@ interface Product {
   stock: number;
   isActive: boolean;
   imageUrl?: string;
+  imageUrlHover?: string;
 }
 
 const CATEGORIES = [
@@ -66,6 +67,11 @@ const EMPTY_FORM = {
   isActive: true,
 };
 
+function getImageUrl(url?: string) {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
+}
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +79,7 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, any>>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [hoverImageFile, setHoverImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const fetchProducts = useCallback(() => {
@@ -91,6 +98,7 @@ export default function AdminProductsPage() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setImageFile(null);
+    setHoverImageFile(null);
     setDialogOpen(true);
   };
 
@@ -109,6 +117,7 @@ export default function AdminProductsPage() {
       isActive: product.isActive,
     });
     setImageFile(null);
+    setHoverImageFile(null);
     setDialogOpen(true);
   };
 
@@ -139,6 +148,15 @@ export default function AdminProductsPage() {
       if (imageFile && productId) {
         const fd = new FormData();
         fd.append('image', imageFile);
+        await api.post(`/products/admin/${productId}/image`, fd, {
+          headers: { 'Content-Type': undefined },
+        });
+      }
+
+      if (hoverImageFile && productId) {
+        const fd = new FormData();
+        fd.append('image', hoverImageFile);
+        fd.append('type', 'hover');
         await api.post(`/products/admin/${productId}/image`, fd, {
           headers: { 'Content-Type': undefined },
         });
@@ -204,7 +222,7 @@ export default function AdminProductsPage() {
                     <td className="py-2">
                       {p.imageUrl ? (
                         <img
-                          src={p.imageUrl.startsWith('http') ? p.imageUrl : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}${p.imageUrl}`}
+                          src={getImageUrl(p.imageUrl)}
                           alt={p.name}
                           className="h-10 w-10 object-cover rounded"
                         />
@@ -327,7 +345,7 @@ export default function AdminProductsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium">Imagen del producto</label>
+              <label className="text-xs font-medium">Imagen principal</label>
               <Input
                 type="file"
                 accept="image/*"
@@ -335,6 +353,18 @@ export default function AdminProductsPage() {
               />
               {editingId && !imageFile && (
                 <p className="text-xs text-gray-500 mt-1">Deja vacio para mantener la imagen actual</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium">Imagen hover (efecto al pasar el mouse)</label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setHoverImageFile(e.target.files?.[0] || null)}
+              />
+              {editingId && !hoverImageFile && (
+                <p className="text-xs text-gray-500 mt-1">Deja vacio para mantener la imagen hover actual</p>
               )}
             </div>
 

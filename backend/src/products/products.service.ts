@@ -83,12 +83,12 @@ export class ProductsService {
     return this.prisma.product.update({ where: { id }, data: dto });
   }
 
-  async uploadImage(id: string, file: Express.Multer.File) {
+  async uploadImage(id: string, file: Express.Multer.File, field: 'imageUrl' | 'imageUrlHover' = 'imageUrl') {
     await this.findOneAdmin(id);
     const imageUrl = `/uploads/product-photos/${file.filename}`;
     return this.prisma.product.update({
       where: { id },
-      data: { imageUrl },
+      data: { [field]: imageUrl },
     });
   }
 
