@@ -15,8 +15,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import { extname, basename } from 'path';
+import { writeFileSync, mkdirSync } from 'fs';
 import { FontsService } from './fonts.service';
 import { CreateFontDto } from './dto/create-font.dto';
+import { CreateFontBase64Dto } from './dto/create-font-base64.dto';
 import { UpdateFontDto } from './dto/update-font.dto';
 import { JwtAdminGuard } from '../auth/guards/jwt-admin.guard';
 
@@ -113,6 +115,35 @@ export class FontsController {
   @ApiBearerAuth()
   testAuth(@Body() body: any) {
     return { ok: true, bodyKeys: Object.keys(body || {}) };
+  }
+
+  /**
+   * Upload alternativo que recibe el archivo como base64 en JSON.
+   * Evita problemas con FormData/multer.
+   */
+  @Post('admin/base64')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  createBase64(@Body() dto: CreateFontBase64Dto) {
+    const ext = extname(dto.originalName).toLowerCase();
+    if (!ALLOWED_EXTS.includes(ext)) {
+      throw new BadRequestException('Solo se permiten archivos .ttf y .otf');
+    }
+
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const fileName = `${uniqueSuffix}${ext}`;
+    const uploadDir = './uploads/fonts';
+    const uploadPath = `${uploadDir}/${fileName}`;
+
+    mkdirSync(uploadDir, { recursive: true });
+    writeFileSync(uploadPath, Buffer.from(dto.fileBase64, 'base64'));
+
+    const createDto: CreateFontDto = {
+      name: dto.name,
+      isActive: dto.isActive,
+    };
+
+    return this.fontsService.create(createDto, fileName, dto.originalName);
   }
 
   /**

@@ -20,9 +20,18 @@ export class JwtAdminGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+
+    // Allow CORS preflight requests to pass through
+    if (request.method === 'OPTIONS') {
+      return true;
+    }
+
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn(
+        `[JwtAdminGuard] Missing auth header | method=${request.method} | url=${request.url} | headers=${Object.keys(request.headers).join(',')}`,
+      );
       throw new UnauthorizedException('Token no proporcionado');
     }
 
@@ -44,6 +53,9 @@ export class JwtAdminGuard implements CanActivate {
       request.user = payload;
       return true;
     } catch {
+      console.warn(
+        `[JwtAdminGuard] Invalid token | method=${request.method} | url=${request.url} | tokenPrefix=${token.substring(0, 20)}...`,
+      );
       throw new UnauthorizedException('Token inválido o expirado');
     }
   }

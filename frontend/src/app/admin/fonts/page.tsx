@@ -128,29 +128,33 @@ export default function AdminFontsPage() {
     console.log('[Upload Debug] adminToken exists:', !!token);
     if (token) console.log('[Upload Debug] token prefix:', token.substring(0, 30) + '...');
 
-    // First test auth with a simple POST (no file)
-    try {
-      const testRes = await api.post('/fonts/admin/test', { hello: 'world' });
-      console.log('[Upload Debug] Auth test OK:', testRes.data);
-    } catch (testErr: any) {
-      console.error('[Upload Debug] Auth test FAILED:', testErr.response?.status, testErr.response?.data);
-      alert(
-        'Error de autenticacion en POST. Token: ' +
-        (token ? token.substring(0, 20) + '...' : 'NO HAY TOKEN') +
-        '\nStatus: ' + (testErr.response?.status || 'unknown') +
-        '\nMensaje: ' + (testErr.response?.data?.message || testErr.message)
-      );
-      setUploading(false);
-      return;
-    }
+    // Convert file to base64
+    const toBase64 = (f: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data URL prefix (e.g., "data:font/ttf;base64,")
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+      });
 
-    const formData = new FormData();
-    formData.append('file', file);
-    if (fontName.trim()) {
-      formData.append('name', fontName.trim());
-    }
     try {
-      await api.post('/fonts/admin', formData);
+      const fileBase64 = await toBase64(file);
+      console.log('[Upload Debug] File converted to base64, length:', fileBase64.length);
+
+      const payload = {
+        fileBase64,
+        originalName: file.name,
+        name: fontName.trim() || undefined,
+      };
+
+      console.log('[Upload Debug] Sending POST /fonts/admin/base64');
+      await api.post('/fonts/admin/base64', payload);
+      console.log('[Upload Debug] Upload OK');
       setFile(null);
       setFontName('');
       fetchFonts();
