@@ -1,6 +1,5 @@
 # ============================================================
 # Dockerfile multi-etapa: Frontend Next.js + Backend NestJS
-# Optimizado para Railway (Alpine Linux)
 # ============================================================
 
 # ── ETAPA 1: Build del Frontend Next.js ──
@@ -17,8 +16,8 @@ RUN npm run build
 # ── ETAPA 2: Build del Backend NestJS ──
 FROM node:20-alpine AS backend-builder
 
-# Dependencias para compilar modulos nativos (bcrypt, sharp, etc.)
-RUN apk add --no-cache python3 make g++ vips-dev pkgconfig
+# Dependencias para compilar modulos nativos (bcrypt, etc.)
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
@@ -41,8 +40,6 @@ RUN npm run build
 
 # ── ETAPA 3: Imagen final de produccion ──
 FROM node:20-alpine AS runner
-
-RUN apk add --no-cache vips-dev
 
 WORKDIR /app
 ENV NODE_ENV=production

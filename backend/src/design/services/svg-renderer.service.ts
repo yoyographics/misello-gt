@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import sharp from 'sharp';
 import { randomUUID } from 'crypto';
 import { readFileSync, existsSync } from 'fs';
 import { extname } from 'path';
@@ -37,9 +36,9 @@ interface ProductDimensions {
 
 /**
  * Renderer determinista SVG.
- * Genera SVG de produccion (B&W, 600dpi) y PNG de preview (color).
+ * Genera SVG de produccion (B&W, 600dpi) y SVG de preview (color).
  * Retorna los archivos como data URIs base64 para evitar dependencia del filesystem.
- * Incrusta la fuente TTF/OTF como base64 dentro del SVG para que sharp la renderice correctamente.
+ * Incrusta la fuente TTF/OTF como base64 dentro del SVG para que se renderice correctamente.
  */
 @Injectable()
 export class SvgRendererService {
@@ -53,7 +52,7 @@ export class SvgRendererService {
     fontFileData: string | undefined | null,
     inkHex?: string,
     logoUrl?: string,
-  ): Promise<{ svgDataUri: string; pngDataUri: string; designId: string }> {
+  ): Promise<{ svgDataUri: string; previewDataUri: string; designId: string }> {
     const designId = randomUUID();
 
     // Construir @font-face con la fuente incrustada (de BD o disco)
@@ -63,13 +62,12 @@ export class SvgRendererService {
     const productionSvg = this.buildProductionSvg(params, product, fontName, fontFaceCss, logoUrl);
     const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(productionSvg, 'utf-8').toString('base64')}`;
 
-    // 2. Generar PNG de preview (color)
+    // 2. Generar SVG de preview (color) — el navegador lo renderiza directamente
     const previewSvg = this.buildPreviewSvg(params, product, fontName, fontFaceCss, inkHex, logoUrl);
-    const pngBuffer = await this.svgToPng(previewSvg, product.widthPx, product.heightPx);
-    const pngDataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+    const previewDataUri = `data:image/svg+xml;base64,${Buffer.from(previewSvg, 'utf-8').toString('base64')}`;
 
     this.logger.log(`Renderizado: ${designId} (${product.widthPx}x${product.heightPx}px) fuente=${fontName} file=${fontFileName || 'ninguna'}`);
-    return { svgDataUri, pngDataUri, designId };
+    return { svgDataUri, previewDataUri, designId };
   }
 
   /**
@@ -248,15 +246,6 @@ ${bgElement}
 ${logoElement}
 ${textElements}
 </svg>`;
-  }
-
-  private async svgToPng(svgString: string, width: number, height: number): Promise<Buffer> {
-    return sharp(Buffer.from(svgString, 'utf-8'), {
-      density: 600,
-    })
-      .resize(width, height, { fit: 'fill' })
-      .png()
-      .toBuffer();
   }
 
   private escapeXml(text: string): string {

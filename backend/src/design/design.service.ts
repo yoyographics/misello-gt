@@ -77,7 +77,7 @@ export class DesignService {
     }
 
     // 5. Renderizar SVG y PNG como data URIs base64
-    const { svgDataUri, pngDataUri, designId } = await this.renderer.render(
+    const { svgDataUri, previewDataUri, designId } = await this.renderer.render(
       designParams,
       {
         widthPx: product.widthPx || 300,
@@ -110,7 +110,7 @@ export class DesignService {
     return {
       designId,
       designJson: designParams,
-      previewPngUrl: pngDataUri,
+      previewPngUrl: previewDataUri,
       productionSvgUrl: svgDataUri,
       validation,
       logoConvertedToBw: !!dto.logoUrl && !!dto.hasLogoGradient,
