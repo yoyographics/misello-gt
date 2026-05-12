@@ -45,4 +45,9 @@ export class CreateOrderDto {
   @IsBoolean()
   @IsOptional()
   isLawyerReplica?: boolean;
+
+  @ApiPropertyOptional({ example: 'TRANSFER', enum: ['CARD', 'TRANSFER'] })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: 'CARD' | 'TRANSFER';
 }

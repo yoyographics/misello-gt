@@ -212,7 +212,17 @@ export default function DesignPage() {
         ))}
       </div>
       <div className="flex justify-end">
-        <Button disabled={!category} onClick={() => setStep(2)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+        <Button
+          disabled={!category}
+          onClick={() => {
+            if (!token) {
+              setShowLoginDialog(true);
+              return;
+            }
+            setStep(2);
+          }}
+          className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+        >
           Continuar <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
