@@ -31,21 +31,10 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
         const mime = isOtf ? 'font/otf' : 'font/ttf';
         console.log(`[FontPreview] Cargando ${font.name}, fileData length: ${font.fileData.length}`);
 
-        const byteCharacters = atob(font.fileData);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: mime });
-        const blobUrl = URL.createObjectURL(blob);
+        // Data URI directo — más confiable que Blob URL
+        const dataUrl = `data:${mime};base64,${font.fileData}`;
+        const fontFace = new FontFace(`admin-font-${font.id}`, `url(${dataUrl})`);
 
-        const fontFace = new FontFace(
-          `admin-font-${font.id}`,
-          `url("${blobUrl}") format("${isOtf ? 'opentype' : 'truetype'}")`
-        );
-
-        // Timeout para detectar si FontFace.load() se cuelga
         const loadPromise = fontFace.load();
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout cargando fuente (>5s)')), 5000)

@@ -145,18 +145,9 @@ export default function DesignPage() {
             const mime = isOtf ? 'font/otf' : 'font/ttf';
             console.log(`[Design Font] Cargando ${font.name}, fileData length: ${font.fileData.length}`);
 
-            const byteCharacters = atob(font.fileData);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: mime });
-            const blobUrl = URL.createObjectURL(blob);
-            const fontFace = new FontFace(
-              `font-${font.id}`,
-              `url("${blobUrl}") format("${isOtf ? 'opentype' : 'truetype'}")`
-            );
+            // Data URI directo — más confiable que Blob URL
+            const dataUrl = `data:${mime};base64,${font.fileData}`;
+            const fontFace = new FontFace(`font-${font.id}`, `url(${dataUrl})`);
 
             const loadPromise = fontFace.load();
             const timeoutPromise = new Promise((_, reject) =>
