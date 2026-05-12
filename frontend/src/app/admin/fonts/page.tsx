@@ -22,13 +22,24 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
 
   useEffect(() => {
     fonts.forEach(async (font) => {
-      if (!font.fileData) return;
+      if (!font.fileData || font.fileData.length < 100) {
+        console.warn(`Fuente ${font.name} sin fileData válido`);
+        return;
+      }
       try {
         const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
         const mime = isOtf ? 'font/otf' : 'font/ttf';
+        const byteCharacters = atob(font.fileData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
         const fontFace = new FontFace(
           `admin-font-${font.id}`,
-          `url("data:${mime};base64,${font.fileData}") format("${isOtf ? 'opentype' : 'truetype'}")`
+          `url("${blobUrl}") format("${isOtf ? 'opentype' : 'truetype'}")`
         );
         await fontFace.load();
         document.fonts.add(fontFace);
@@ -62,7 +73,7 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
                 style={hasData && isLoaded ? { fontFamily: `"admin-font-${font.id}"` } : {}}
                 title={font.name}
               >
-                {hasData ? 'Lorem ipsum' : <span className="text-sm text-gray-400">Sin datos de preview</span>}
+                {hasData ? (isLoaded ? 'Lorem ipsum' : <span className="text-sm text-gray-400">Cargando...</span>) : <span className="text-sm text-gray-400">Sin datos de preview</span>}
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium truncate">{font.name}</span>

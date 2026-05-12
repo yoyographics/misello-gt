@@ -134,15 +134,26 @@ export default function DesignPage() {
         setInks(Array.isArray(i) ? i : []);
         setApiLoading(false);
 
-        // Cargar fuentes con FontFace API
+        // Cargar fuentes con FontFace API usando Blob URLs
         f.forEach(async (font: Font) => {
-          if (!font.fileData) return;
+          if (!font.fileData || font.fileData.length < 100) {
+            console.warn(`Fuente ${font.name} sin fileData válido`);
+            return;
+          }
           try {
             const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
             const mime = isOtf ? 'font/otf' : 'font/ttf';
+            const byteCharacters = atob(font.fileData);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: mime });
+            const blobUrl = URL.createObjectURL(blob);
             const fontFace = new FontFace(
               `font-${font.id}`,
-              `url("data:${mime};base64,${font.fileData}") format("${isOtf ? 'opentype' : 'truetype'}")`
+              `url("${blobUrl}") format("${isOtf ? 'opentype' : 'truetype'}")`
             );
             await fontFace.load();
             document.fonts.add(fontFace);
