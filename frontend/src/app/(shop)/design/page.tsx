@@ -88,9 +88,13 @@ const CARD_BASE =
 
 const CARD_SELECTED = 'ring-2 ring-orange-500 bg-orange-50 border-orange-300';
 
-function getImageUrl(url?: string, base?: string) {
+function getImageUrl(url?: string) {
   if (!url) return '';
-  return url.startsWith('http') ? url : `${base || ''}${url}`;
+  if (url.startsWith('http')) return url;
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${url}`;
+  }
+  return url;
 }
 
 export default function DesignPage() {
@@ -136,9 +140,12 @@ export default function DesignPage() {
       });
   }, []);
 
+  const STAMP_CATEGORIES = ['MONTURA_AUTOMATICA', 'FECHADOR', 'PORTATIL', 'MADERA'];
+
   const filteredProducts = products.filter((p) => {
-    // Solo mostrar productos que tengan shape definido (sellos, no accesorios)
+    // Solo sellos reales: deben tener shape Y ser de una categoria de sello
     if (!p.shape) return false;
+    if (!STAMP_CATEGORIES.includes(p.category)) return false;
     return !shape || p.shape === shape;
   });
 
@@ -311,19 +318,19 @@ export default function DesignPage() {
               {product.imageUrl ? (
                 <>
                   <img
-                    src={getImageUrl(product.imageUrl, baseUrl)}
+                    src={getImageUrl(product.imageUrl)}
                     alt={product.name}
                     className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
                   />
                   {product.imageUrlHover ? (
                     <img
-                      src={getImageUrl(product.imageUrlHover, baseUrl)}
+                      src={getImageUrl(product.imageUrlHover)}
                       alt={`${product.name} - hover`}
                       className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     />
                   ) : (
                     <img
-                      src={getImageUrl(product.imageUrl, baseUrl)}
+                      src={getImageUrl(product.imageUrl)}
                       alt={product.name}
                       className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
                     />
@@ -412,14 +419,16 @@ export default function DesignPage() {
             <style>
               {fonts
                 .filter((f) => f.fileData)
-                .map(
-                  (f) => `
-                @font-face {
-                  font-family: "font-${f.id}";
-                  src: url("data:font/ttf;base64,${f.fileData}");
-                }
-              `
-                )
+                .map((f) => {
+                  const isOtf = f.fileName?.toLowerCase().endsWith('.otf');
+                  const mime = isOtf ? 'font/otf' : 'font/ttf';
+                  return `
+                    @font-face {
+                      font-family: "font-${f.id}";
+                      src: url("data:${mime};base64,${f.fileData}") format("${isOtf ? 'opentype' : 'truetype'}");
+                    }
+                  `;
+                })
                 .join('\n')}
             </style>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -485,7 +494,7 @@ export default function DesignPage() {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <img src={getImageUrl(logoUrl, baseUrl)} alt="Logo subido" className="h-16 w-16 object-contain border rounded-lg" />
+                <img src={getImageUrl(logoUrl)} alt="Logo subido" className="h-16 w-16 object-contain border rounded-lg" />
                 <Button variant="ghost" size="sm" onClick={() => { setLogoUrl(''); setHasLogoGradient(false); }}>
                   <X className="h-4 w-4 mr-1" /> Quitar
                 </Button>
