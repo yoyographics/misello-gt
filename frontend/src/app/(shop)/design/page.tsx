@@ -118,6 +118,7 @@ export default function DesignPage() {
   const [error, setError] = useState('');
   const [apiLoading, setApiLoading] = useState(true);
   const [apiError, setApiError] = useState('');
+  const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const baseUrl = apiUrl.replace('/api/v1', '');
@@ -132,6 +133,24 @@ export default function DesignPage() {
         setFonts(Array.isArray(f) ? f : []);
         setInks(Array.isArray(i) ? i : []);
         setApiLoading(false);
+
+        // Cargar fuentes con FontFace API
+        f.forEach(async (font: Font) => {
+          if (!font.fileData) return;
+          try {
+            const isOtf = font.fileName?.toLowerCase().endsWith('.otf');
+            const mime = isOtf ? 'font/otf' : 'font/ttf';
+            const fontFace = new FontFace(
+              `font-${font.id}`,
+              `url("data:${mime};base64,${font.fileData}") format("${isOtf ? 'opentype' : 'truetype'}")`
+            );
+            await fontFace.load();
+            document.fonts.add(fontFace);
+            setLoadedFonts((prev) => new Set(prev).add(font.id));
+          } catch (err) {
+            console.error(`Error cargando fuente ${font.name}:`, err);
+          }
+        });
       })
       .catch((err) => {
         console.error('API error:', err);
@@ -416,21 +435,6 @@ export default function DesignPage() {
           {/* Vista previa de fuentes */}
           <div>
             <label className="text-sm font-medium mb-3 block">Fuente — Selecciona una tipografia</label>
-            <style>
-              {fonts
-                .filter((f) => f.fileData)
-                .map((f) => {
-                  const isOtf = f.fileName?.toLowerCase().endsWith('.otf');
-                  const mime = isOtf ? 'font/otf' : 'font/ttf';
-                  return `
-                    @font-face {
-                      font-family: "font-${f.id}";
-                      src: url("data:${mime};base64,${f.fileData}") format("${isOtf ? 'opentype' : 'truetype'}");
-                    }
-                  `;
-                })
-                .join('\n')}
-            </style>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {fonts.map((font) => (
                 <Card
@@ -439,11 +443,11 @@ export default function DesignPage() {
                   onClick={() => setSelectedFont(font.id)}
                 >
                   <div
-                    className="text-lg mb-1 truncate"
-                    style={font.fileData ? { fontFamily: `"font-${font.id}"` } : {}}
+                    className="text-lg mb-1 truncate min-h-[1.75rem]"
+                    style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
                     title={font.name}
                   >
-                    {previewText || 'Aa'}
+                    {loadedFonts.has(font.id) ? (previewText || 'Aa') : <span className="text-sm text-gray-400">Cargando...</span>}
                   </div>
                   <p className="text-xs text-gray-500 truncate">{font.name}</p>
                 </Card>
