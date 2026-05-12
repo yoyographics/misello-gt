@@ -1,48 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useCart } from '@/hooks/useCart';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 
-interface CartItem {
-  productId: string;
-  productName: string;
-  productSku: string;
-  unitPrice: number;
-  quantity: number;
-  designJson?: any;
-  previewPngUrl?: string;
-  inkName?: string | null;
-}
-
 export default function CartPage() {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const { items, removeItem, totalItems, totalAmount } = useCart();
+  const [quantities, setQuantities] = useState<Record<number, number>>({});
 
-  useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    setItems(cart);
-  }, []);
-
-  const saveCart = (newItems: CartItem[]) => {
-    localStorage.setItem('cart', JSON.stringify(newItems));
-    setItems(newItems);
+  const getQuantity = (index: number, defaultQty: number) => {
+    return quantities[index] ?? defaultQty;
   };
 
-  const updateQuantity = (index: number, delta: number) => {
-    const newItems = [...items];
-    newItems[index].quantity = Math.max(1, newItems[index].quantity + delta);
-    saveCart(newItems);
+  const updateQuantityLocal = (index: number, delta: number, defaultQty: number) => {
+    const current = getQuantity(index, defaultQty);
+    const next = Math.max(1, current + delta);
+    setQuantities({ ...quantities, [index]: next });
   };
-
-  const removeItem = (index: number) => {
-    saveCart(items.filter((_, i) => i !== index));
-  };
-
-  const total = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
   if (items.length === 0) {
     return (
@@ -64,7 +42,7 @@ export default function CartPage() {
 
   return (
     <div className="container mx-auto max-w-3xl py-12 px-4">
-      <h1 className="text-3xl font-bold text-[#1B2A6B] mb-8">Carrito</h1>
+      <h1 className="text-3xl font-bold text-[#1B2A6B] mb-8">Carrito ({totalItems})</h1>
 
       <div className="space-y-4">
         {items.map((item, i) => (
@@ -87,11 +65,11 @@ export default function CartPage() {
                 <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => updateQuantity(i, -1)}>
+                <Button variant="outline" size="icon" onClick={() => updateQuantityLocal(i, -1, item.quantity)}>
                   <Minus className="h-3 w-3" />
                 </Button>
-                <span className="w-8 text-center">{item.quantity}</span>
-                <Button variant="outline" size="icon" onClick={() => updateQuantity(i, 1)}>
+                <span className="w-8 text-center">{getQuantity(i, item.quantity)}</span>
+                <Button variant="outline" size="icon" onClick={() => updateQuantityLocal(i, 1, item.quantity)}>
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -104,7 +82,7 @@ export default function CartPage() {
 
       <div className="flex justify-between items-center mb-6">
         <span className="text-lg">Total</span>
-        <span className="text-2xl font-bold text-[#1B2A6B]">Q{total.toFixed(2)}</span>
+        <span className="text-2xl font-bold text-[#1B2A6B]">Q{totalAmount.toFixed(2)}</span>
       </div>
 
       <Link href="/checkout">

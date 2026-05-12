@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -58,6 +59,7 @@ const CATEGORIES = [
 
 export default function DesignPage() {
   const { token } = useAuth();
+  const { addItem } = useCart();
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
@@ -176,7 +178,7 @@ export default function DesignPage() {
 
   const addToCart = () => {
     if (!designResult || !selectedProduct) return;
-    const cartItem = {
+    addItem({
       productId: selectedProduct.id,
       productName: selectedProduct.name,
       productSku: selectedProduct.sku,
@@ -187,9 +189,7 @@ export default function DesignPage() {
       productionSvgUrl: designResult.productionSvgUrl,
       inkId: selectedInk,
       inkName: inks.find((i) => i.id === selectedInk)?.color,
-    };
-    const existing = JSON.parse(localStorage.getItem('cart') || '[]');
-    localStorage.setItem('cart', JSON.stringify([...existing, cartItem]));
+    });
     alert('Agregado al carrito!');
   };
 

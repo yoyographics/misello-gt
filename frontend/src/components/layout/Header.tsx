@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { Stamp, ShoppingCart, User, LogOut, Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -9,6 +10,7 @@ import { useState } from 'react';
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { totalItems } = useCart();
   const [open, setOpen] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -28,9 +30,14 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6">
           <Link href="/store" className="text-sm font-medium hover:text-orange-500 transition">Tienda</Link>
           <Link href="/design" className="text-sm font-medium hover:text-orange-500 transition">Crear Sello</Link>
-          <Link href="/cart" className="flex items-center gap-1 text-sm font-medium hover:text-orange-500 transition">
+          <Link href="/cart" className="flex items-center gap-1 text-sm font-medium hover:text-orange-500 transition relative">
             <ShoppingCart className="h-4 w-4" />
             Carrito
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
           </Link>
           {user ? (
             <div className="flex items-center gap-3">
