@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
+import { SvgImage } from '@/components/svg-image';
 
 export default function CartPage() {
   const { items, removeItem, totalItems, totalAmount } = useCart();
@@ -49,7 +50,7 @@ export default function CartPage() {
           <Card key={i} className="p-4 flex gap-4">
             <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
               {item.previewPngUrl ? (
-                <img src={item.previewPngUrl} alt="" className="w-full h-full object-contain rounded-lg" />
+                <SvgImage src={item.previewPngUrl} alt="" className="w-full h-full object-contain rounded-lg" />
               ) : (
                 <span className="text-2xl">📐</span>
               )}

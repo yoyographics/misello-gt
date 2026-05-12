@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
+import { SvgImage } from '@/components/svg-image';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -308,7 +309,7 @@ export default function AdminOrdersPage() {
                       {item.previewPngUrl && (
                         <div className="mt-2">
                           <p className="text-xs font-medium text-gray-500 mb-1">Preview:</p>
-                          <img src={item.previewPngUrl} alt="Preview" className="h-24 object-contain border rounded" />
+                          <SvgImage src={item.previewPngUrl} alt="Preview" className="h-24 object-contain border rounded" />
                         </div>
                       )}
                       {item.productionSvgUrl && (

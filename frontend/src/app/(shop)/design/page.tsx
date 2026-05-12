@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowRight, ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, Upload, X } from 'lucide-react';
+import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
 interface Product {
@@ -573,7 +574,7 @@ export default function DesignPage() {
           <Card className="p-4">
             <h3 className="font-semibold mb-3">Preview</h3>
             {designResult.previewPngUrl ? (
-              <img src={designResult.previewPngUrl} alt="Preview del sello" className="w-full rounded-lg border" />
+              <SvgImage src={designResult.previewPngUrl} alt="Preview del sello" className="w-full rounded-lg border" />
             ) : (
               <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
                 <span className="text-4xl">🖼️</span>
