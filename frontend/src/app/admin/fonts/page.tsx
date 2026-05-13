@@ -14,6 +14,8 @@ interface Font {
   fileName: string;
   originalName?: string;
   fileData?: string;
+  strokeRatio?: number;
+  minFontSizePt?: number;
   isActive: boolean;
 }
 
@@ -187,6 +189,15 @@ export default function AdminFontsPage() {
     }
   };
 
+  const updateMinFontSize = async (id: string, minFontSizePt: number) => {
+    try {
+      await api.patch(`/fonts/admin/${id}`, { minFontSizePt });
+      fetchFonts();
+    } catch (err) {
+      alert('Error actualizando tamano minimo');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta fuente permanentemente?')) return;
     try {
@@ -238,6 +249,7 @@ export default function AdminFontsPage() {
                 <tr className="border-b">
                   <th className="text-left py-2">Nombre</th>
                   <th className="text-left py-2">Archivo original</th>
+                  <th className="text-left py-2">Tamano minimo</th>
                   <th className="text-left py-2">Estado</th>
                   <th className="text-left py-2">Acciones</th>
                 </tr>
@@ -247,6 +259,23 @@ export default function AdminFontsPage() {
                   <tr key={font.id} className="border-b">
                     <td className="py-2 font-medium">{font.name}</td>
                     <td className="py-2 text-gray-500">{font.originalName || font.fileName}</td>
+                    <td className="py-2">
+                      <input
+                        type="number"
+                        min={6}
+                        max={72}
+                        defaultValue={font.minFontSizePt ?? 10}
+                        className="w-16 px-2 py-1 text-xs border rounded"
+                        onBlur={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val >= 6 && val <= 72) {
+                            updateMinFontSize(font.id, val);
+                          }
+                        }}
+                        title="Tamano minimo fabricable en pt"
+                      />
+                      <span className="text-xs text-gray-400 ml-1">pt</span>
+                    </td>
                     <td className="py-2">
                       <Badge className={font.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
                         {font.isActive ? 'Activo' : 'Inactivo'}

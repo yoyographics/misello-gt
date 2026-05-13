@@ -10,6 +10,7 @@ interface ValidationParams {
   productWidthMm: number;
   productHeightMm: number;
   strokeRatio?: number; // Grosor de trazo real de la fuente (si está disponible)
+  minFontSizePt?: number; // Tamano minimo configurable por admin
   hasLogoGradient?: boolean;
   logoWillBeConverted?: boolean;
 }

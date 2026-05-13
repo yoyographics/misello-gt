@@ -68,13 +68,13 @@ export class DesignService {
       dto.specialRequests,
     );
 
-    // 4.5 Auto-ajustar tamanos de fuente si son muy pequenos
-    const MIN_FONT_PT = 10; // 10pt garantiza pasar validacion tecnica
+    // 4.5 Auto-ajustar tamanos de fuente si son muy pequenos (usa minFontSizePt de la fuente)
+    const minFontPt = font.minFontSizePt ?? 10;
     let fontAdjusted = false;
     for (const line of designParams.textLines) {
-      if (line.fontSizePt < MIN_FONT_PT) {
-        this.logger.log(`Auto-ajustando fuente de ${line.fontSizePt}pt a ${MIN_FONT_PT}pt para linea "${line.text.substring(0, 20)}..."`);
-        line.fontSizePt = MIN_FONT_PT;
+      if (line.fontSizePt < minFontPt) {
+        this.logger.log(`Auto-ajustando fuente de ${line.fontSizePt}pt a ${minFontPt}pt para linea "${line.text.substring(0, 20)}..."`);
+        line.fontSizePt = minFontPt;
         fontAdjusted = true;
       }
     }
@@ -107,6 +107,7 @@ export class DesignService {
       productWidthMm: product.widthMm || 0,
       productHeightMm: product.heightMm || 0,
       strokeRatio: font.strokeRatio ?? undefined,
+      minFontSizePt: font.minFontSizePt ?? undefined,
       hasLogoGradient: dto.hasLogoGradient,
       logoWillBeConverted: !!dto.logoUrl && dto.hasLogoGradient,
     });
@@ -202,9 +203,8 @@ export class DesignService {
       }
     }
 
-    // Tamano minimo fabricable para esta fuente
-    const strokeRatio = font.strokeRatio ?? 0.08;
-    const minFontSizePt = Math.max(10, Math.ceil(6 / strokeRatio / 8.333));
+    // Tamano minimo fabricable para esta fuente (configurable por admin)
+    const minFontSizePt = font.minFontSizePt ?? 10;
 
     return {
       fits,
