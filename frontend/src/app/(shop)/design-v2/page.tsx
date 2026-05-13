@@ -259,19 +259,40 @@ export default function DesignPage() {
   };
 
   const validateTextWidth = useCallback(async () => {
-    if (!selectedProduct || !selectedFont || lines.length === 0 || !lines[0].text.trim()) {
+    if (!selectedProduct || !selectedFont || lines.length === 0 || !lines.some((l) => l.text.trim())) {
       setTextValidation(null);
       return;
     }
     setValidatingText(true);
     try {
-      const res = await api.post('/design/validate-text', {
-        text: lines.map((l) => l.text).join(' '),
-        fontId: selectedFont,
-        productId: selectedProduct.id,
-        fontSizePt: parseInt(lines[0].fontSize),
-      });
-      setTextValidation(res.data);
+      // Validar cada linea por separado
+      const validations = await Promise.all(
+        lines
+          .filter((l) => l.text.trim())
+          .map(async (line) => {
+            const res = await api.post('/design/validate-text', {
+              text: line.text,
+              fontId: selectedFont,
+              productId: selectedProduct.id,
+              fontSizePt: parseInt(line.fontSize),
+            });
+            return { ...res.data, lineText: line.text, lineFontSize: line.fontSize };
+          })
+      );
+
+      // Encontrar la linea mas ancha que no cabe
+      const failing = validations.filter((v) => !v.fits);
+      const worst = failing.length > 0
+        ? failing.reduce((max, v) => (v.textWidthPx > max.textWidthPx ? v : max))
+        : null;
+
+      if (worst) {
+        setTextValidation(worst);
+      } else {
+        // Todo cabe, mostrar la linea mas ancha como referencia
+        const widest = validations.reduce((max, v) => (v.textWidthPx > max.textWidthPx ? v : max));
+        setTextValidation({ ...widest, fits: true });
+      }
     } catch (err: any) {
       console.error('Error validando texto:', err);
       setTextValidation(null);
@@ -546,7 +567,7 @@ export default function DesignPage() {
               <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
                 <p className="text-sm text-amber-800 font-medium flex items-center gap-1">
                   <AlertTriangle className="h-4 w-4" />
-                  El texto no cabe en una linea de {selectedProduct?.widthMm}mm
+                  &ldquo;{textValidation.lineText || 'El texto'}&rdquo; no cabe en {selectedProduct?.widthMm}mm
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {textValidation.suggestedFontSizePt && (
@@ -555,12 +576,14 @@ export default function DesignPage() {
                       variant="outline"
                       className="text-xs bg-white hover:bg-amber-100 border-amber-300"
                       onClick={() => {
-                        const newLines = [...lines];
-                        newLines[0].fontSize = `${textValidation.suggestedFontSizePt}pt`;
+                        const newLines = lines.map((l) => ({
+                          ...l,
+                          fontSize: `${textValidation.suggestedFontSizePt}pt`,
+                        }));
                         setLines(newLines);
                       }}
                     >
-                      🔤 Reducir a {textValidation.suggestedFontSizePt}pt
+                      🔤 Reducir todo a {textValidation.suggestedFontSizePt}pt
                     </Button>
                   )}
                   {textValidation.suggestedLines.length > 0 && (
