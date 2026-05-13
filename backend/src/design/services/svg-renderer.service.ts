@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { readFileSync, existsSync } from 'fs';
 import { extname } from 'path';
+import * as opentype from 'opentype.js';
 
 interface RenderParams {
   layout: string;
@@ -58,8 +59,27 @@ export class SvgRendererService {
     // Construir @font-face con la fuente incrustada (de BD o disco)
     const fontFaceCss = this.buildFontFace(fontName, fontFileName, fontFileData);
 
-    // 1. Generar SVG de produccion (B&W)
-    const productionSvg = this.buildProductionSvg(params, product, fontName, fontFaceCss, logoUrl);
+    // Decodificar fuente para produccion (paths SVG)
+    let fontBuffer: Buffer | undefined;
+    if (fontFileData) {
+      try {
+        fontBuffer = Buffer.from(fontFileData, 'base64');
+      } catch {
+        fontBuffer = undefined;
+      }
+    } else if (fontFileName) {
+      const fontPath = `./uploads/fonts/${fontFileName}`;
+      if (existsSync(fontPath)) {
+        try {
+          fontBuffer = readFileSync(fontPath);
+        } catch (e: any) {
+          this.logger.warn(`Error leyendo fuente ${fontPath}: ${e.message}`);
+        }
+      }
+    }
+
+    // 1. Generar SVG de produccion (B&W) — texto convertido a paths
+    const productionSvg = this.buildProductionSvg(params, product, fontName, fontFaceCss, logoUrl, fontBuffer);
     const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(productionSvg, 'utf-8').toString('base64')}`;
 
     // 2. Generar SVG de preview (color) — el navegador lo renderiza directamente
@@ -127,17 +147,27 @@ export class SvgRendererService {
     fontName: string,
     fontFaceCss: string,
     logoUrl?: string,
+    fontBuffer?: Buffer,
   ): string {
     const { widthPx, heightPx, widthMm, heightMm, shape } = product;
     const viewBox = `0 0 ${widthPx} ${heightPx}`;
     const widthMmStr = widthMm.toFixed(2);
     const heightMmStr = heightMm.toFixed(2);
 
+    // Cargar fuente con opentype.js si hay buffer
+    let parsedFont: opentype.Font | undefined;
+    if (fontBuffer) {
+      try {
+        parsedFont = opentype.parse(
+          fontBuffer.buffer.slice(fontBuffer.byteOffset, fontBuffer.byteOffset + fontBuffer.byteLength)
+        );
+      } catch (e: any) {
+        this.logger.warn(`Error parseando fuente con opentype.js: ${e.message}`);
+      }
+    }
+
     const textElements = params.textLines.map((line, i) => {
       const fontSizePx = Math.round(line.fontSizePt * 8.333);
-      const transform = line.rotationDegrees
-        ? `transform="rotate(${line.rotationDegrees}, ${line.xPosition}, ${line.yPosition})"`
-        : '';
 
       if (shape === 'CIRCULAR' && params.layout === 'circular') {
         const radius = Math.min(widthPx, heightPx) / 2 - 30;
@@ -153,6 +183,37 @@ export class SvgRendererService {
     </text>`;
       }
 
+      // Si tenemos la fuente parseada, convertir texto a path
+      if (parsedFont) {
+        try {
+          const advanceWidth = parsedFont.getAdvanceWidth(line.text, fontSizePx);
+          let x = line.xPosition;
+          if (line.textAnchor === 'middle') {
+            x = line.xPosition - advanceWidth / 2;
+          } else if (line.textAnchor === 'end') {
+            x = line.xPosition - advanceWidth;
+          }
+
+          const path = parsedFont.getPath(line.text, x, line.yPosition, fontSizePx);
+          let pathSvg = path.toSVG(2);
+          // Agregar fill="black" si no lo tiene
+          if (!pathSvg.includes('fill=')) {
+            pathSvg = pathSvg.replace('<path', '<path fill="black"');
+          }
+
+          if (line.rotationDegrees) {
+            return `    <g transform="rotate(${line.rotationDegrees}, ${line.xPosition}, ${line.yPosition})">${pathSvg}</g>`;
+          }
+          return `    ${pathSvg}`;
+        } catch (e: any) {
+          this.logger.warn(`Error convirtiendo texto a path: ${e.message}`);
+        }
+      }
+
+      // Fallback a <text> si no se pudo parsear la fuente
+      const transform = line.rotationDegrees
+        ? `transform="rotate(${line.rotationDegrees}, ${line.xPosition}, ${line.yPosition})"`
+        : '';
       return `    <text x="${line.xPosition}" y="${line.yPosition}" font-family="${fontName}" font-size="${fontSizePx}" font-weight="${line.fontWeight}" font-style="${line.fontStyle}" fill="black" text-anchor="${line.textAnchor}" ${transform}>${this.escapeXml(line.text)}</text>`;
     }).join('\n');
 
