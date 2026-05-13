@@ -127,6 +127,62 @@ export default function DesignPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const baseUrl = apiUrl.replace('/api/v1', '');
 
+  // ── Persistencia del wizard en localStorage ──
+  const STORAGE_KEY = 'design-v2-state';
+
+  // Guardar estado cuando cambie
+  useEffect(() => {
+    const state = {
+      step,
+      shape,
+      selectedProductId: selectedProduct?.id || null,
+      lines,
+      selectedFont,
+      selectedInk,
+      logoUrl,
+      hasLogoGradient,
+      specialRequests,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [step, shape, selectedProduct, lines, selectedFont, selectedInk, logoUrl, hasLogoGradient, specialRequests]);
+
+  // Restaurar estado al montar
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved.step) setStep(saved.step);
+      if (saved.shape) setShape(saved.shape);
+      if (saved.lines) setLines(saved.lines);
+      if (saved.selectedFont) setSelectedFont(saved.selectedFont);
+      if (saved.selectedInk) setSelectedInk(saved.selectedInk);
+      if (saved.logoUrl) setLogoUrl(saved.logoUrl);
+      if (typeof saved.hasLogoGradient === 'boolean') setHasLogoGradient(saved.hasLogoGradient);
+      if (saved.specialRequests) setSpecialRequests(saved.specialRequests);
+      // selectedProduct se restaura despues de cargar products
+      if (saved.selectedProductId) {
+        const restoreProduct = (prods: Product[]) => {
+          const p = prods.find((x) => x.id === saved.selectedProductId);
+          if (p) setSelectedProduct(p);
+        };
+        // Si products ya cargo, restaurar ahora; si no, se hara en el fetch
+        if (products.length > 0) restoreProduct(products);
+        else {
+          const check = setInterval(() => {
+            if (products.length > 0) {
+              clearInterval(check);
+              restoreProduct(products);
+            }
+          }, 200);
+          setTimeout(() => clearInterval(check), 5000);
+        }
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+  }, []);
+
   useEffect(() => {
     Promise.all([api.get('/products'), api.get('/fonts'), api.get('/inks')])
       .then(([productsRes, fontsRes, inksRes]) => {
@@ -293,6 +349,7 @@ export default function DesignPage() {
       inkName: inks.find((i) => i.id === selectedInk)?.color,
     });
     alert('Agregado al carrito!');
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const renderStep1 = () => {
