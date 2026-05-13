@@ -22,11 +22,16 @@ export const SvgImage: React.FC<SvgImageProps> = ({ src, alt = '', className }) 
     );
   }
 
-  // Si es SVG data URI, renderizar inline
+  // Si es SVG data URI, renderizar inline con estilos responsive
   if (src.startsWith('data:image/svg+xml;base64,')) {
     try {
       const base64 = src.replace('data:image/svg+xml;base64,', '');
-      const svgHtml = atob(base64);
+      let svgHtml = atob(base64);
+      // Forzar que el SVG no se desborde del contenedor
+      svgHtml = svgHtml.replace(
+        /<svg\b/,
+        '<svg style="max-width:100%;height:auto;display:block;"'
+      );
       return (
         <div
           className={className}
