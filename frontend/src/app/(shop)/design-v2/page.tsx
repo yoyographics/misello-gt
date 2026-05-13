@@ -479,25 +479,47 @@ export default function DesignPage() {
               </p>
             )}
             {textValidation && !validatingText && !textValidation.fits && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
                 <p className="text-sm text-amber-800 font-medium flex items-center gap-1">
                   <AlertTriangle className="h-4 w-4" />
                   El texto no cabe en una linea de {selectedProduct?.widthMm}mm
                 </p>
-                {textValidation.suggestedFontSizePt && (
-                  <p className="text-xs text-amber-700 mt-1">
-                    🔤 Puedes reducir la fuente a <strong>{textValidation.suggestedFontSizePt}pt</strong> para que quepa en 1 linea.
-                  </p>
-                )}
-                {textValidation.suggestedLines.length > 0 && (
-                  <div className="text-xs text-amber-700 mt-1">
-                    <p>📝 O dividir en {textValidation.suggestedLines.length} lineas:</p>
-                    {textValidation.suggestedLines.map((line: string, i: number) => (
-                      <p key={i} className="ml-4">• &ldquo;{line}&rdquo;</p>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-amber-600 mt-1">
+                <div className="flex flex-wrap gap-2">
+                  {textValidation.suggestedFontSizePt && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs bg-white hover:bg-amber-100 border-amber-300"
+                      onClick={() => {
+                        const newLines = [...lines];
+                        newLines[0].fontSize = `${textValidation.suggestedFontSizePt}pt`;
+                        setLines(newLines);
+                      }}
+                    >
+                      🔤 Reducir a {textValidation.suggestedFontSizePt}pt
+                    </Button>
+                  )}
+                  {textValidation.suggestedLines.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs bg-white hover:bg-amber-100 border-amber-300"
+                      onClick={() => {
+                        const newLines = textValidation.suggestedLines.map((text: string) => ({
+                          text,
+                          fontSize: lines[0]?.fontSize || '12pt',
+                          isBold: lines[0]?.isBold || false,
+                          isItalic: lines[0]?.isItalic || false,
+                          alignment: lines[0]?.alignment || 'center',
+                        }));
+                        setLines(newLines);
+                      }}
+                    >
+                      📝 Dividir en {textValidation.suggestedLines.length} lineas
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-amber-600">
                   Ancho usado: {textValidation.textWidthPx}px / {textValidation.availableWidthPx}px disponibles
                 </p>
               </div>
