@@ -194,7 +194,7 @@ export class SvgRendererService {
             x = line.xPosition - advanceWidth;
           }
 
-          const path = parsedFont.getPath(line.text, x, line.yPosition, fontSizePx);
+          const path = parsedFont.getPath(line.text, x, line.yPosition, fontSizePx, { kerning: true });
           let pathSvg = path.toSVG(2);
           // Agregar fill="black" si no lo tiene
           if (!pathSvg.includes('fill=')) {
@@ -231,10 +231,6 @@ export class SvgRendererService {
   </defs>\n`;
     }
 
-    const cutMark = shape === 'CIRCULAR'
-      ? `    <circle cx="${widthPx / 2}" cy="${heightPx / 2}" r="${Math.min(widthPx, heightPx) / 2 - 2}" fill="none" stroke="red" stroke-width="1" stroke-dasharray="5,5" />`
-      : `    <rect x="1" y="1" width="${widthPx - 2}" height="${heightPx - 2}" fill="none" stroke="red" stroke-width="1" stroke-dasharray="5,5" />`;
-
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
   width="${widthMmStr}mm" height="${heightMmStr}mm"
@@ -242,8 +238,6 @@ export class SvgRendererService {
   shape-rendering="geometricPrecision">
   <title>Sello de Produccion — ${widthMmStr}mm x ${heightMmStr}mm @ 600dpi</title>
 ${defs}${fontFaceCss}
-  <!-- Marco de corte (no se graba) -->
-${cutMark}
   <!-- Contenido del sello -->
 ${logoElement}
 ${textElements}

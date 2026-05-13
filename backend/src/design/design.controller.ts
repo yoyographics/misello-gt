@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { DesignService } from './design.service';
 import { DesignRequestDto } from './dto/design-request.dto';
+import { ValidateTextDto } from './dto/validate-text.dto';
 import { JwtClientGuard } from '../auth/guards/jwt-client.guard';
 
 /**
@@ -33,5 +34,16 @@ export class DesignController {
   @UseInterceptors(FileInterceptor('logo', { dest: 'uploads/logos' }))
   uploadLogo(@UploadedFile() file: Express.Multer.File) {
     return { logoUrl: `/uploads/logos/${file.filename}` };
+  }
+
+  /**
+   * Valida si un texto cabe en el ancho de un modelo de sello.
+   * Retorna sugerencias de tamano y division en lineas.
+   */
+  @Post('validate-text')
+  @UseGuards(JwtClientGuard)
+  @ApiBearerAuth()
+  async validateText(@Body() dto: ValidateTextDto) {
+    return this.designService.validateText(dto);
   }
 }

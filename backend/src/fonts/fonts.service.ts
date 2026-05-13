@@ -57,6 +57,42 @@ export class FontsService {
     return fallback;
   }
 
+  private extractStrokeRatio(buffer: Buffer): number | undefined {
+    try {
+      const font = opentype.parse(
+        buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      );
+
+      // 1. Intentar usar usWeightClass de OS/2 (más confiable)
+      const weightClass = (font as any).tables?.os2?.usWeightClass;
+      if (typeof weightClass === 'number') {
+        // Mapeo: 100-300 → light, 400 → normal, 500-600 → medium, 700+ → bold
+        if (weightClass <= 300) return 0.06;
+        if (weightClass <= 400) return 0.08;
+        if (weightClass <= 600) return 0.10;
+        return 0.14;
+      }
+
+      // 2. Fallback: medir bounding box de "H" vs advance width
+      const fontSize = 1000;
+      const pathH = font.getPath('H', 0, 0, fontSize);
+      const bbox = pathH.getBoundingBox();
+      const advance = font.getAdvanceWidth('H', fontSize);
+      if (advance > 0) {
+        const charWidth = bbox.x2 - bbox.x1;
+        const weightProxy = charWidth / advance;
+        // Mapeo empírico: light ~0.55, normal ~0.65, bold ~0.80
+        if (weightProxy < 0.58) return 0.06;
+        if (weightProxy < 0.68) return 0.08;
+        if (weightProxy < 0.78) return 0.10;
+        return 0.14;
+      }
+    } catch {
+      // Si falla, no guardar strokeRatio
+    }
+    return undefined;
+  }
+
   async create(dto: CreateFontDto, fileName: string, originalName?: string) {
     // Leer archivo y convertir a base64 para persistencia en BD
     const filePath = `./uploads/fonts/${fileName}`;
@@ -74,6 +110,9 @@ export class FontsService {
     const fallbackName = originalName || 'Sin nombre';
     const extractedName = buffer ? this.extractFontName(buffer, fallbackName) : fallbackName;
 
+    // Extraer strokeRatio (grosor de trazo real) para validaciones técnicas
+    const strokeRatio = buffer ? this.extractStrokeRatio(buffer) : undefined;
+
     // Si el usuario no puso nombre manual, usar el extraido del archivo
     const name = dto.name || extractedName;
 
@@ -83,6 +122,7 @@ export class FontsService {
         fileName,
         originalName: originalName || undefined,
         fileData,
+        strokeRatio,
         isActive: dto.isActive ?? true,
       },
     });

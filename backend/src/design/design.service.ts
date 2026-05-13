@@ -5,6 +5,9 @@ import { SvgRendererService } from './services/svg-renderer.service';
 import { TechValidatorService } from './services/tech-validator.service';
 import { DesignRequestDto } from './dto/design-request.dto';
 import { DesignResponseDto } from './dto/design-response.dto';
+import { ValidateTextDto } from './dto/validate-text.dto';
+import * as opentype from 'opentype.js';
+import { readFileSync, existsSync } from 'fs';
 
 /**
  * Servicio principal del modulo de diseno.
@@ -103,6 +106,7 @@ export class DesignService {
       productHeightPx: product.heightPx || 150,
       productWidthMm: product.widthMm || 0,
       productHeightMm: product.heightMm || 0,
+      strokeRatio: font.strokeRatio ?? undefined,
       hasLogoGradient: dto.hasLogoGradient,
       logoWillBeConverted: !!dto.logoUrl && dto.hasLogoGradient,
     });
@@ -115,6 +119,101 @@ export class DesignService {
       validation,
       logoConvertedToBw: !!dto.logoUrl && !!dto.hasLogoGradient,
       fontAutoAdjusted: fontAdjusted,
+    };
+  }
+
+  /**
+   * Valida si un texto cabe en el ancho de un modelo.
+   * Retorna ancho medido, sugerencias de tamano y division en lineas.
+   */
+  async validateText(dto: ValidateTextDto) {
+    const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
+    if (!product) throw new NotFoundException('Producto no encontrado');
+
+    const font = await this.prisma.font.findUnique({ where: { id: dto.fontId } });
+    if (!font) throw new NotFoundException('Fuente no encontrada');
+
+    // Cargar fuente con opentype.js
+    let parsedFont: opentype.Font | undefined;
+    if (font.fileData) {
+      try {
+        const buffer = Buffer.from(font.fileData, 'base64');
+        parsedFont = opentype.parse(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+      } catch (e: any) {
+        this.logger.warn(`Error parseando fuente desde fileData: ${e.message}`);
+      }
+    } else if (font.fileName && existsSync(`./uploads/fonts/${font.fileName}`)) {
+      try {
+        const buffer = readFileSync(`./uploads/fonts/${font.fileName}`);
+        parsedFont = opentype.parse(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+      } catch (e: any) {
+        this.logger.warn(`Error parseando fuente desde disco: ${e.message}`);
+      }
+    }
+
+    if (!parsedFont) {
+      throw new NotFoundException('No se pudo cargar la fuente para medicion');
+    }
+
+    const widthPx = product.widthPx || 300;
+    const marginPx = 20;
+    const availableWidthPx = widthPx - marginPx * 2;
+
+    // Usar el fontSizePt proporcionado o calcular uno razonable
+    const fontSizePt = dto.fontSizePt ?? 12;
+    const fontSizePx = Math.round(fontSizePt * 8.333); // pt → px @ 600dpi
+
+    const textWidthPx = parsedFont.getAdvanceWidth(dto.text, fontSizePx);
+    const fits = textWidthPx <= availableWidthPx;
+
+    // Calcular tamano minimo para que quepa
+    let suggestedFontSizePt: number | null = null;
+    if (!fits) {
+      const minRequiredPx = textWidthPx > 0 ? (availableWidthPx / textWidthPx) * fontSizePx : fontSizePx;
+      const minRequiredPt = Math.ceil(minRequiredPx / 8.333);
+      // Respetar tamano minimo tecnico (10pt)
+      if (minRequiredPt >= 10) {
+        suggestedFontSizePt = minRequiredPt;
+      }
+    }
+
+    // Sugerir division en lineas si no cabe ni siquiera al minimo
+    const suggestedLines: string[] = [];
+    if (!fits && suggestedFontSizePt === null) {
+      const words = dto.text.split(/\s+/);
+      if (words.length > 1) {
+        // Intentar dividir en 2 lineas lo mas balanceadas posible
+        const half = Math.ceil(words.length / 2);
+        suggestedLines.push(words.slice(0, half).join(' '));
+        suggestedLines.push(words.slice(half).join(' '));
+
+        // Verificar si cada linea cabe al tamano original
+        const line1Width = parsedFont.getAdvanceWidth(suggestedLines[0], fontSizePx);
+        const line2Width = parsedFont.getAdvanceWidth(suggestedLines[1], fontSizePx);
+        if (line1Width > availableWidthPx || line2Width > availableWidthPx) {
+          // Si alguna linea sigue sin caber, calcular tamano para la mas larga
+          const maxLineWidth = Math.max(line1Width, line2Width);
+          const minRequiredPx = (availableWidthPx / maxLineWidth) * fontSizePx;
+          const minRequiredPt = Math.ceil(minRequiredPx / 8.333);
+          if (minRequiredPt >= 10) {
+            suggestedFontSizePt = minRequiredPt;
+          }
+        }
+      }
+    }
+
+    // Tamano minimo fabricable para esta fuente
+    const strokeRatio = font.strokeRatio ?? 0.08;
+    const minFontSizePt = Math.max(10, Math.ceil(6 / strokeRatio / 8.333));
+
+    return {
+      fits,
+      textWidthPx: Math.round(textWidthPx),
+      availableWidthPx,
+      fontSizePt,
+      suggestedFontSizePt,
+      suggestedLines,
+      minFontSizePt,
     };
   }
 }

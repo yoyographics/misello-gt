@@ -9,6 +9,7 @@ interface ValidationParams {
   productHeightPx: number;
   productWidthMm: number;
   productHeightMm: number;
+  strokeRatio?: number; // Grosor de trazo real de la fuente (si está disponible)
   hasLogoGradient?: boolean;
   logoWillBeConverted?: boolean;
 }
@@ -45,6 +46,7 @@ export class TechValidatorService {
   private readonly MIN_CHAR_SIZE_PX = 41;     // 41px a 600dpi
   private readonly MIN_LINE_THICKNESS_PT = 1; // 1pt minimo
   private readonly MIN_LINE_THICKNESS_PX = 6; // ~6px a 600dpi (mas permisivo para texto tipografico)
+  private readonly DEFAULT_STROKE_RATIO = 0.08; // Fallback para fuentes sin strokeRatio medido
 
   validate(params: ValidationParams): ValidationResult {
     const checks = {
@@ -75,19 +77,19 @@ export class TechValidatorService {
       }
     }
 
-    // 2. Validar grosor minimo de linea
+    // 2. Validar grosor minimo de linea (usa strokeRatio real de la fuente si existe)
+    const strokeRatio = params.strokeRatio ?? this.DEFAULT_STROKE_RATIO;
     for (const line of params.textLines) {
       const fontSizePx = Math.round(line.fontSizePt * 8.333); // pt → px @ 600dpi (600/72)
-      // Grosor de trazo estimado: fuente normal ~8% del tamano, bold ~12%
-      const isBold = line.fontSizePt >= 14; // Asumir bold o tamano grande = trazo mas grueso
-      const estimatedStrokeWidth = fontSizePx * (isBold ? 0.12 : 0.08);
+      const estimatedStrokeWidth = fontSizePx * strokeRatio;
 
       if (estimatedStrokeWidth < this.MIN_LINE_THICKNESS_PX) {
         checks.minLineThickness = false;
+        const minSizePt = Math.ceil(this.MIN_LINE_THICKNESS_PX / strokeRatio / 8.333);
         messages.push(
           `Linea "${line.text.substring(0, 20)}...": el grosor de linea estimado (${estimatedStrokeWidth.toFixed(1)}px) ` +
           `es menor al minimo (${this.MIN_LINE_THICKNESS_PX}px = ${this.MIN_LINE_THICKNESS_PT}pt). ` +
-          `Use una fuente mas gruesa o mayor tamano.`
+          `Aumente la fuente a al menos ${minSizePt}pt.`
         );
       }
     }
