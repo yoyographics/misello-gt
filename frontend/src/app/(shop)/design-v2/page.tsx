@@ -493,7 +493,7 @@ export default function DesignPage() {
                   <div className="text-xs text-amber-700 mt-1">
                     <p>📝 O dividir en {textValidation.suggestedLines.length} lineas:</p>
                     {textValidation.suggestedLines.map((line: string, i: number) => (
-                      <p key={i} className="ml-4">• "{line}"</p>
+                      <p key={i} className="ml-4">• &ldquo;{line}&rdquo;</p>
                     ))}
                   </div>
                 )}
