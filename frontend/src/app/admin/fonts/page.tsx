@@ -19,6 +19,42 @@ interface Font {
   isActive: boolean;
 }
 
+function MinFontSizeEditor({ fontId, initialValue, onSave }: { fontId: string; initialValue: number; onSave: (id: string, val: number) => void }) {
+  const [value, setValue] = useState(initialValue);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setValue(initialValue);
+    setSaved(false);
+  }, [initialValue]);
+
+  const handleSave = () => {
+    if (!isNaN(value) && value >= 6 && value <= 72) {
+      onSave(fontId, value);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        min={6}
+        max={72}
+        value={value}
+        onChange={(e) => setValue(parseFloat(e.target.value))}
+        className="w-16 px-2 py-1 text-xs border rounded"
+        title="Tamano minimo fabricable en pt"
+      />
+      <span className="text-xs text-gray-400">pt</span>
+      <Button size="sm" variant="ghost" className="text-xs h-7 px-2" onClick={handleSave}>
+        {saved ? 'Guardado' : 'Guardar'}
+      </Button>
+    </div>
+  );
+}
+
 function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
 
@@ -260,21 +296,11 @@ export default function AdminFontsPage() {
                     <td className="py-2 font-medium">{font.name}</td>
                     <td className="py-2 text-gray-500">{font.originalName || font.fileName}</td>
                     <td className="py-2">
-                      <input
-                        type="number"
-                        min={6}
-                        max={72}
-                        defaultValue={font.minFontSizePt ?? 10}
-                        className="w-16 px-2 py-1 text-xs border rounded"
-                        onBlur={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val) && val >= 6 && val <= 72) {
-                            updateMinFontSize(font.id, val);
-                          }
-                        }}
-                        title="Tamano minimo fabricable en pt"
+                      <MinFontSizeEditor
+                        fontId={font.id}
+                        initialValue={font.minFontSizePt ?? 10}
+                        onSave={updateMinFontSize}
                       />
-                      <span className="text-xs text-gray-400 ml-1">pt</span>
                     </td>
                     <td className="py-2">
                       <Badge className={font.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>

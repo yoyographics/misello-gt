@@ -40,6 +40,7 @@ interface Font {
   name: string;
   fileName: string;
   fileData?: string;
+  minFontSizePt?: number;
 }
 
 interface Ink {
@@ -535,7 +536,15 @@ export default function DesignPage() {
 
           {/* Vista previa de fuentes */}
           <div>
-            <label className="text-sm font-medium mb-3 block">Fuente — Selecciona una tipografia</label>
+            <label className="text-sm font-medium mb-1 block">Fuente — Selecciona una tipografia</label>
+            {selectedFont && (
+              <p className="text-xs text-gray-500 mb-3">
+                {(() => {
+                  const f = fonts.find((f) => f.id === selectedFont);
+                  return f ? `Tamano minimo fabricable: ${f.minFontSizePt ?? 10}pt` : '';
+                })()}
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {fonts.map((font) => (
                 <Card
