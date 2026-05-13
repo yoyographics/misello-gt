@@ -537,14 +537,9 @@ export default function DesignPage() {
           {/* Vista previa de fuentes */}
           <div>
             <label className="text-sm font-medium mb-1 block">Fuente — Selecciona una tipografia</label>
-            {selectedFont && (
-              <p className="text-xs text-gray-500 mb-3">
-                {(() => {
-                  const f = fonts.find((f) => f.id === selectedFont);
-                  return f ? `Tamano minimo fabricable: ${f.minFontSizePt ?? 10}pt` : '';
-                })()}
-              </p>
-            )}
+            <p className="text-xs text-gray-500 mb-3">
+              Selecciona una fuente. El tamano minimo fabricable aparece en cada tarjeta.
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {fonts.map((font) => (
                 <Card
@@ -560,6 +555,7 @@ export default function DesignPage() {
                     {loadedFonts.has(font.id) ? (previewText || 'Aa') : <span className="text-sm text-gray-400">Cargando...</span>}
                   </div>
                   <p className="text-xs text-gray-500 truncate">{font.name}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Min: {font.minFontSizePt ?? 10}pt</p>
                 </Card>
               ))}
             </div>
