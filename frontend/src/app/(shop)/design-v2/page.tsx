@@ -442,23 +442,24 @@ export default function DesignPage() {
                   placeholder={`Linea ${i + 1}`}
                   className="flex-1"
                 />
-                <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="6pt">6pt</SelectItem>
-                    <SelectItem value="7pt">7pt</SelectItem>
-                    <SelectItem value="8pt">8pt</SelectItem>
-                    <SelectItem value="10pt">10pt</SelectItem>
-                    <SelectItem value="12pt">12pt</SelectItem>
-                    <SelectItem value="14pt">14pt</SelectItem>
-                    <SelectItem value="16pt">16pt</SelectItem>
-                    <SelectItem value="18pt">18pt</SelectItem>
-                    <SelectItem value="20pt">20pt</SelectItem>
-                    <SelectItem value="24pt">24pt</SelectItem>
-                  </SelectContent>
-                </Select>
+                {(() => {
+                  const selectedFontObj = fonts.find((f) => f.id === selectedFont);
+                  const minPt = selectedFontObj?.minFontSizePt ?? 6;
+                  const allSizes = [6, 7, 8, 10, 12, 14, 16];
+                  const availableSizes = allSizes.filter((s) => s >= minPt);
+                  return (
+                    <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSizes.map((s) => (
+                          <SelectItem key={s} value={`${s}pt`}>{s}pt</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
                 <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
                   <span className="font-bold text-sm">B</span>
                 </Button>
