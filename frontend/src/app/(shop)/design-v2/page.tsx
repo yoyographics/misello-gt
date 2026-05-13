@@ -447,11 +447,16 @@ export default function DesignPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="6pt">6pt</SelectItem>
+                    <SelectItem value="7pt">7pt</SelectItem>
                     <SelectItem value="8pt">8pt</SelectItem>
                     <SelectItem value="10pt">10pt</SelectItem>
                     <SelectItem value="12pt">12pt</SelectItem>
                     <SelectItem value="14pt">14pt</SelectItem>
                     <SelectItem value="16pt">16pt</SelectItem>
+                    <SelectItem value="18pt">18pt</SelectItem>
+                    <SelectItem value="20pt">20pt</SelectItem>
+                    <SelectItem value="24pt">24pt</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
