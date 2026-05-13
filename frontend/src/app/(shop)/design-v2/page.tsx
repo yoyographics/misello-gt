@@ -567,10 +567,17 @@ export default function DesignPage() {
               <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
                 <p className="text-sm text-amber-800 font-medium flex items-center gap-1">
                   <AlertTriangle className="h-4 w-4" />
-                  &ldquo;{textValidation.lineText || 'El texto'}&rdquo; no cabe en {selectedProduct?.widthMm}mm
+                  {textValidation.impossible
+                    ? `Este texto es demasiado largo para un sello de ${selectedProduct?.widthMm}mm`
+                    : `&ldquo;${textValidation.lineText || 'El texto'}&rdquo; no cabe en ${selectedProduct?.widthMm}mm`}
                 </p>
+                {textValidation.impossible && (
+                  <p className="text-xs text-amber-700">
+                    Ni siquiera al minimo ({textValidation.minFontSizePt}pt) cabe. Usa menos caracteres o elige un modelo mas grande.
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
-                  {textValidation.suggestedFontSizePt && (
+                  {!textValidation.impossible && textValidation.suggestedFontSizePt && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -594,7 +601,7 @@ export default function DesignPage() {
                       onClick={() => {
                         const newLines = textValidation.suggestedLines.map((text: string) => ({
                           text,
-                          fontSize: lines[0]?.fontSize || '12pt',
+                          fontSize: textValidation.impossible ? `${textValidation.minFontSizePt}pt` : (lines[0]?.fontSize || '12pt'),
                           isBold: lines[0]?.isBold || false,
                           isItalic: lines[0]?.isItalic || false,
                           alignment: lines[0]?.alignment || 'center',

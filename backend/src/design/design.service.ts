@@ -167,44 +167,51 @@ export class DesignService {
     const textWidthPx = parsedFont.getAdvanceWidth(dto.text, fontSizePx);
     const fits = textWidthPx <= availableWidthPx;
 
+    // Tamano minimo fabricable para esta fuente (configurable por admin)
+    const minFontSizePt = font.minFontSizePt ?? 10;
+
     // Calcular tamano minimo para que quepa
     let suggestedFontSizePt: number | null = null;
     if (!fits) {
       const minRequiredPx = textWidthPx > 0 ? (availableWidthPx / textWidthPx) * fontSizePx : fontSizePx;
       const minRequiredPt = Math.ceil(minRequiredPx / 8.333);
-      // Respetar tamano minimo tecnico (10pt)
-      if (minRequiredPt >= 10) {
+      // Solo sugerir si es mayor o igual al minimo fabricable de la fuente
+      if (minRequiredPt >= minFontSizePt) {
         suggestedFontSizePt = minRequiredPt;
       }
     }
 
+    // Determinar si es imposible (ni siquiera al minimo cabe)
+    const minFontSizePx = Math.round(minFontSizePt * 8.333);
+    const textWidthAtMin = parsedFont.getAdvanceWidth(dto.text, minFontSizePx);
+    const impossible = textWidthAtMin > availableWidthPx;
+
     // Sugerir division en lineas si no cabe ni siquiera al minimo
     const suggestedLines: string[] = [];
-    if (!fits && suggestedFontSizePt === null) {
+    if (!fits && impossible) {
       const words = dto.text.split(/\s+/);
       if (words.length > 1) {
         // Intentar dividir en 2 lineas lo mas balanceadas posible
         const half = Math.ceil(words.length / 2);
-        suggestedLines.push(words.slice(0, half).join(' '));
-        suggestedLines.push(words.slice(half).join(' '));
+        const line1 = words.slice(0, half).join(' ');
+        const line2 = words.slice(half).join(' ');
 
         // Verificar si cada linea cabe al tamano original
-        const line1Width = parsedFont.getAdvanceWidth(suggestedLines[0], fontSizePx);
-        const line2Width = parsedFont.getAdvanceWidth(suggestedLines[1], fontSizePx);
-        if (line1Width > availableWidthPx || line2Width > availableWidthPx) {
-          // Si alguna linea sigue sin caber, calcular tamano para la mas larga
-          const maxLineWidth = Math.max(line1Width, line2Width);
-          const minRequiredPx = (availableWidthPx / maxLineWidth) * fontSizePx;
-          const minRequiredPt = Math.ceil(minRequiredPx / 8.333);
-          if (minRequiredPt >= 10) {
-            suggestedFontSizePt = minRequiredPt;
+        const line1Width = parsedFont.getAdvanceWidth(line1, fontSizePx);
+        const line2Width = parsedFont.getAdvanceWidth(line2, fontSizePx);
+        if (line1Width <= availableWidthPx && line2Width <= availableWidthPx) {
+          suggestedLines.push(line1, line2);
+        } else {
+          // Si alguna linea sigue sin caber, verificar si caben al minimo
+          const line1MinWidth = parsedFont.getAdvanceWidth(line1, minFontSizePx);
+          const line2MinWidth = parsedFont.getAdvanceWidth(line2, minFontSizePx);
+          if (line1MinWidth <= availableWidthPx && line2MinWidth <= availableWidthPx) {
+            suggestedLines.push(line1, line2);
+            suggestedFontSizePt = minFontSizePt;
           }
         }
       }
     }
-
-    // Tamano minimo fabricable para esta fuente (configurable por admin)
-    const minFontSizePt = font.minFontSizePt ?? 10;
 
     return {
       fits,
@@ -214,6 +221,7 @@ export class DesignService {
       suggestedFontSizePt,
       suggestedLines,
       minFontSizePt,
+      impossible,
     };
   }
 }
