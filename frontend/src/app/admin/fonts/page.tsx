@@ -37,19 +37,28 @@ function MinFontSizeEditor({ fontId, initialValue, onSave }: { fontId: string; i
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       <input
         type="number"
         min={6}
         max={72}
         value={value}
         onChange={(e) => setValue(parseFloat(e.target.value))}
-        className="w-16 px-2 py-1 text-xs border rounded"
+        className="w-14 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-all"
         title="Tamano minimo fabricable en pt"
       />
-      <span className="text-xs text-gray-400">pt</span>
-      <Button size="sm" variant="ghost" className="text-xs h-7 px-2" onClick={handleSave}>
-        {saved ? 'Guardado' : 'Guardar'}
+      <span className="text-xs text-gray-500 font-medium">pt</span>
+      <Button
+        size="sm"
+        onClick={handleSave}
+        disabled={saved}
+        className={`text-xs h-7 px-3 rounded-full font-semibold transition-all duration-300 ${
+          saved
+            ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-200'
+            : 'bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:from-orange-600 hover:to-pink-600 shadow-md hover:shadow-lg hover:scale-105'
+        }`}
+      >
+        {saved ? '✓ Guardado' : 'Guardar'}
       </Button>
     </div>
   );
