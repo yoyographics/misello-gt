@@ -157,7 +157,7 @@ export class DesignService {
     }
 
     const widthPx = product.widthPx || 300;
-    const marginPx = 20;
+    const marginPx = 10;
     const availableWidthPx = widthPx - marginPx * 2;
 
     // Usar el fontSizePt proporcionado o calcular uno razonable

@@ -75,7 +75,7 @@ Tu trabajo es generar parametros de layout en JSON para un renderer SVG determin
 REGLAS CRITICAS:
 - Responde UNICAMENTE con JSON valido, sin markdown, sin explicaciones.
 - Todas las medidas estan en pixeles a 600 DPI.
-- Margenes minimos: 20px en todos los lados.
+- Margenes minimos: 10px en todos los lados.
 - El texto debe caber completamente dentro del area util (widthPx - margenes, heightPx - margenes).
 - Tamano minimo de fuente: 8pt (~33px a 600dpi). Tamano maximo razonable segun modelo.
 - Si el modelo es circular (shape=CIRCULAR), centrar todo y ajustar al diametro.
@@ -150,7 +150,7 @@ Genera el JSON con esta estructura exacta:
     "height": 100,
     "grayscale": true
   },
-  "margins": { "top": 20, "right": 20, "bottom": 20, "left": 20 },
+  "margins": { "top": 10, "right": 10, "bottom": 10, "left": 10 },
   "spacing": 10
 }`;
   }
@@ -159,7 +159,7 @@ Genera el JSON con esta estructura exacta:
     lines: Array<{ text: string; fontSize?: string; isBold?: boolean; isItalic?: boolean; alignment?: string }>,
     product: { widthPx: number; heightPx: number; shape: string },
   ): DesignParameters {
-    const margin = 20;
+    const margin = 10;
     const availWidth = product.widthPx - margin * 2;
     const availHeight = product.heightPx - margin * 2;
     const lineHeight = availHeight / (lines.length || 1);
