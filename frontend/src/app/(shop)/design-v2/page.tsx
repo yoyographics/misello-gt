@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowRight, ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, Upload, X } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X } from 'lucide-react';
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
@@ -48,6 +48,43 @@ interface Ink {
   color: string;
   hexCode: string;
 }
+
+type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR';
+type SubStep = 'type' | 'shape';
+
+const STAMP_TYPES: { id: StampType; name: string; description: string; svg: React.ReactNode }[] = [
+  {
+    id: 'MONTURA_AUTOMATICA',
+    name: 'Montura Automática',
+    description: 'Sello con mecanismo automático para uso frecuente',
+    svg: (
+      <svg viewBox="0 0 100 100" className="w-20 h-20">
+        <rect x="20" y="30" width="60" height="50" rx="6" fill="none" stroke="currentColor" strokeWidth="4" />
+        <rect x="30" y="10" width="40" height="25" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+        <line x1="40" y1="10" x2="40" y2="5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <line x1="60" y1="10" x2="60" y2="5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <rect x="35" y="50" width="30" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'FECHADOR',
+    name: 'Fechador',
+    description: 'Sello con fecha ajustable para documentos',
+    svg: (
+      <svg viewBox="0 0 100 100" className="w-20 h-20">
+        <rect x="15" y="25" width="70" height="60" rx="6" fill="none" stroke="currentColor" strokeWidth="4" />
+        <rect x="25" y="15" width="50" height="15" rx="3" fill="none" stroke="currentColor" strokeWidth="3" />
+        <circle cx="35" cy="22" r="2" fill="currentColor" opacity="0.5" />
+        <circle cx="50" cy="22" r="2" fill="currentColor" opacity="0.5" />
+        <circle cx="65" cy="22" r="2" fill="currentColor" opacity="0.5" />
+        <rect x="28" y="45" width="44" height="28" rx="3" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+        <line x1="28" y1="55" x2="72" y2="55" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+        <line x1="28" y1="63" x2="72" y2="63" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+      </svg>
+    ),
+  },
+];
 
 const SHAPES = [
   {
@@ -103,6 +140,8 @@ export default function DesignPage() {
   const { token } = useAuth();
   const { addItem } = useCart();
   const [step, setStep] = useState(1);
+  const [subStep, setSubStep] = useState<SubStep>('type');
+  const [stampType, setStampType] = useState<StampType | ''>('');
   const [shape, setShape] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [fonts, setFonts] = useState<Font[]>([]);
@@ -134,6 +173,8 @@ export default function DesignPage() {
   useEffect(() => {
     const state = {
       step,
+      subStep,
+      stampType,
       shape,
       selectedProductId: selectedProduct?.id || null,
       lines,
@@ -144,7 +185,7 @@ export default function DesignPage() {
       specialRequests,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [step, shape, selectedProduct, lines, selectedFont, selectedInk, logoUrl, hasLogoGradient, specialRequests]);
+  }, [step, subStep, stampType, shape, selectedProduct, lines, selectedFont, selectedInk, logoUrl, hasLogoGradient, specialRequests]);
 
   // Restaurar estado al montar
   useEffect(() => {
@@ -153,6 +194,8 @@ export default function DesignPage() {
     try {
       const saved = JSON.parse(raw);
       if (saved.step) setStep(saved.step);
+      if (saved.subStep) setSubStep(saved.subStep);
+      if (saved.stampType) setStampType(saved.stampType);
       if (saved.shape) setShape(saved.shape);
       if (saved.lines) setLines(saved.lines);
       if (saved.selectedFont) setSelectedFont(saved.selectedFont);
@@ -237,8 +280,14 @@ export default function DesignPage() {
     // Solo sellos reales: deben tener shape Y ser de una categoria de sello
     if (!p.shape) return false;
     if (!STAMP_CATEGORIES.includes(p.category)) return false;
+    // Filtrar por tipo de sello seleccionado
+    if (stampType && p.category !== stampType) return false;
     return !shape || p.shape === shape;
   });
+
+  const filteredShapes = stampType === 'FECHADOR'
+    ? SHAPES.filter((s) => s.id === 'RECTANGULAR')
+    : SHAPES;
 
   const addLine = () => {
     if (lines.length < 5) {
@@ -355,6 +404,23 @@ export default function DesignPage() {
     }
   };
 
+  const resetWizard = () => {
+    setStep(1);
+    setSubStep('type');
+    setStampType('');
+    setShape('');
+    setSelectedProduct(null);
+    setLines([{ text: '', fontSize: '12pt', isBold: false, isItalic: false, alignment: 'center' }]);
+    setSelectedFont('');
+    setSelectedInk('');
+    setLogoUrl('');
+    setHasLogoGradient(false);
+    setSpecialRequests('');
+    setDesignResult(null);
+    setTextValidation(null);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
   const addToCart = () => {
     if (!designResult || !selectedProduct) return;
     addItem({
@@ -370,48 +436,101 @@ export default function DesignPage() {
       inkName: inks.find((i) => i.id === selectedInk)?.color,
     });
     alert('Agregado al carrito!');
-    localStorage.removeItem(STORAGE_KEY);
+    resetWizard();
   };
 
-  const renderStep1 = () => {
-    if (!token) {
-      return (
-        <div className="space-y-6 text-center">
-          <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 1: Empecemos</h2>
-          <p className="text-gray-600">Para disenar tu sello personalizado, primero inicia sesion.</p>
-          <div className="max-w-sm mx-auto">
-            <Card className={`p-8 ${CARD_BASE}`}>
-              <h3 className="font-semibold mb-4">Inicia sesion con Google</h3>
-              <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>
-                Ingresar con Google
-              </Button>
-            </Card>
-          </div>
-        </div>
-      );
-    }
+  // ── Render helpers ──
 
+  const renderAuthGate = () => (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+      <h1 className="text-3xl font-bold text-[#1B2A6B] mb-3">Diseña tu sello personalizado</h1>
+      <p className="text-gray-600 mb-8 max-w-md">
+        Para crear y guardar tu diseño, primero necesitas iniciar sesión con tu cuenta de Google.
+      </p>
+      <Card className={`p-8 max-w-sm w-full ${CARD_BASE}`}>
+        <h3 className="font-semibold mb-4 text-lg">Inicia sesión</h3>
+        <p className="text-sm text-gray-500 mb-5">
+          Accede para guardar tus diseños, revisar tu carrito y realizar pedidos.
+        </p>
+        <Button
+          className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:shadow-lg transition-shadow"
+          onClick={redirectToGoogleLogin}
+        >
+          Ingresar con Google
+        </Button>
+      </Card>
+    </div>
+  );
+
+  const renderStep1 = () => {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 1: Elige la forma de tu sello</h2>
-        <p className="text-gray-600">Selecciona la forma que mejor se ajuste a lo que necesitas.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {SHAPES.map((s) => (
-            <Card
-              key={s.id}
-              className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${shape === s.id ? CARD_SELECTED : ''}`}
-              onClick={() => setShape(s.id)}
-            >
-              <div className={`mb-4 ${shape === s.id ? 'text-orange-500' : 'text-blue-400'}`}>{s.svg}</div>
-              <h3 className="font-semibold text-base">{s.name}</h3>
-              <p className="text-xs text-gray-500 mt-1">{s.description}</p>
-            </Card>
-          ))}
-        </div>
-        <div className="flex justify-end">
-          <Button disabled={!shape} onClick={() => setStep(2)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-            Continuar <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+        <div className="relative overflow-hidden">
+          <div
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-100%)' }}
+          >
+            {/* Panel 1A: Tipo de sello */}
+            <div className="w-full flex-shrink-0">
+              <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
+              <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {STAMP_TYPES.map((t) => (
+                  <Card
+                    key={t.id}
+                    className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === t.id ? CARD_SELECTED : ''}`}
+                    onClick={() => {
+                      setStampType(t.id);
+                      setSubStep('shape');
+                    }}
+                  >
+                    <div className={`mb-4 ${stampType === t.id ? 'text-orange-500' : 'text-blue-400'}`}>{t.svg}</div>
+                    <h3 className="font-semibold text-base">{t.name}</h3>
+                    <p className="text-xs text-gray-500 mt-1">{t.description}</p>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Panel 1B: Forma */}
+            <div className="w-full flex-shrink-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-500 hover:text-gray-700 -ml-2"
+                  onClick={() => {
+                    setSubStep('type');
+                    setShape('');
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Tipo
+                </Button>
+              </div>
+              <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: Elige la forma</h2>
+              <p className="text-gray-600 mb-6">
+                {stampType === 'FECHADOR'
+                  ? 'Los fechadores solo están disponibles en forma rectangular.'
+                  : 'Selecciona la forma que mejor se ajuste a lo que necesitas.'}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {filteredShapes.map((s) => (
+                  <Card
+                    key={s.id}
+                    className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${shape === s.id ? CARD_SELECTED : ''}`}
+                    onClick={() => {
+                      setShape(s.id);
+                      setStep(2);
+                    }}
+                  >
+                    <div className={`mb-4 ${shape === s.id ? 'text-orange-500' : 'text-blue-400'}`}>{s.svg}</div>
+                    <h3 className="font-semibold text-base">{s.name}</h3>
+                    <p className="text-xs text-gray-500 mt-1">{s.description}</p>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -453,7 +572,12 @@ export default function DesignPage() {
           <Card
             key={product.id}
             className={`group p-4 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
-            onClick={() => product.stock > 0 && setSelectedProduct(product)}
+            onClick={() => {
+              if (product.stock > 0) {
+                setSelectedProduct(product);
+                setStep(3);
+              }
+            }}
           >
             <div className="relative aspect-video bg-gray-50 rounded-lg mb-3 overflow-hidden">
               {product.imageUrl ? (
@@ -490,12 +614,9 @@ export default function DesignPage() {
           </Card>
         ))}
       </div>
-      <div className="flex justify-between">
+      <div className="flex justify-start">
         <Button variant="outline" onClick={() => setStep(1)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Atras
-        </Button>
-        <Button disabled={!selectedProduct} onClick={() => setStep(3)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-          Continuar <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -835,6 +956,17 @@ export default function DesignPage() {
       </div>
     );
   };
+
+  // ── Render principal ──
+
+  // Si no está autenticado, mostrar solo el auth gate (sin stepper)
+  if (!token) {
+    return (
+      <div className="container mx-auto max-w-4xl py-12 px-4">
+        {renderAuthGate()}
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto max-w-4xl py-12 px-4">
