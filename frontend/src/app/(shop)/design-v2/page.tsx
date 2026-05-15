@@ -467,11 +467,11 @@ export default function DesignPage() {
       <div className="space-y-6">
         <div className="relative overflow-hidden w-full">
           <div
-            className="flex transition-transform duration-500 ease-in-out w-full"
-            style={{ transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-50%)' }}
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-100%)' }}
           >
             {/* Panel 1A: Tipo de sello */}
-            <div className="w-1/2 flex-shrink-0">
+            <div className="w-full min-w-full flex-shrink-0">
               <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
               <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -493,7 +493,7 @@ export default function DesignPage() {
             </div>
 
             {/* Panel 1B: Forma */}
-            <div className="w-1/2 flex-shrink-0">
+            <div className="w-full min-w-full flex-shrink-0">
               <div className="flex items-center gap-2 mb-2">
                 <Button
                   variant="ghost"
