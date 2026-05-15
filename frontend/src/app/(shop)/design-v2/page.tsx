@@ -465,13 +465,13 @@ export default function DesignPage() {
   const renderStep1 = () => {
     return (
       <div className="space-y-6">
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden w-full">
           <div
-            className="flex transition-transform duration-500 ease-in-out"
-            style={{ transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-100%)' }}
+            className="flex transition-transform duration-500 ease-in-out w-full"
+            style={{ transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-50%)' }}
           >
             {/* Panel 1A: Tipo de sello */}
-            <div className="w-full flex-shrink-0">
+            <div className="w-1/2 flex-shrink-0">
               <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
               <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -493,7 +493,7 @@ export default function DesignPage() {
             </div>
 
             {/* Panel 1B: Forma */}
-            <div className="w-full flex-shrink-0">
+            <div className="w-1/2 flex-shrink-0">
               <div className="flex items-center gap-2 mb-2">
                 <Button
                   variant="ghost"
@@ -563,12 +563,12 @@ export default function DesignPage() {
 
       {!apiLoading && !apiError && filteredProducts.length === 0 && products.length > 0 && (
         <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">
-          <p>No hay modelos para esta forma. Mostrando todos los disponibles:</p>
+          <p>No hay modelos para esta forma en este tipo de sello.</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(filteredProducts.length > 0 ? filteredProducts : products.filter((p) => !!p.shape)).map((product) => (
+        {(filteredProducts.length > 0 ? filteredProducts : []).map((product) => (
           <Card
             key={product.id}
             className={`group p-4 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
