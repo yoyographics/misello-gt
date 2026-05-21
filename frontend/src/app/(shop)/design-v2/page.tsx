@@ -50,6 +50,15 @@ interface Ink {
   hexCode: string;
 }
 
+interface LineData {
+  text: string;
+  fontSize: string;
+  fontId: string;
+  isBold: boolean;
+  isItalic: boolean;
+  alignment: 'center' | 'left' | 'right';
+}
+
 type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR';
 type SubStep = 'type' | 'shape';
 
@@ -148,8 +157,7 @@ export default function DesignPage() {
   const [fonts, setFonts] = useState<Font[]>([]);
   const [inks, setInks] = useState<Ink[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [lines, setLines] = useState([{ text: '', fontSize: '12pt', isBold: false, isItalic: false, alignment: 'center' as const }]);
-  const [selectedFont, setSelectedFont] = useState('');
+  const [lines, setLines] = useState<LineData[]>([{ text: '', fontSize: '12pt', fontId: '', isBold: false, isItalic: false, alignment: 'center' }]);
   const [selectedInk, setSelectedInk] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
@@ -162,6 +170,9 @@ export default function DesignPage() {
   const [apiLoading, setApiLoading] = useState(true);
   const [apiError, setApiError] = useState('');
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
+
+  // selectedFont se deriva de la primera linea que tenga fontId
+  const selectedFont = lines.find((l) => l.fontId)?.fontId || '';
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const baseUrl = apiUrl.replace('/api/v1', '');
@@ -178,13 +189,12 @@ export default function DesignPage() {
       shape,
       selectedProductId: selectedProduct?.id || null,
       lines,
-      selectedFont,
       selectedInk,
       logoUrl,
       hasLogoGradient,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [step, subStep, stampType, shape, selectedProduct, lines, selectedFont, selectedInk, logoUrl, hasLogoGradient]);
+  }, [step, subStep, stampType, shape, selectedProduct, lines, selectedInk, logoUrl, hasLogoGradient]);
 
   // Restaurar estado al montar
   useEffect(() => {
@@ -196,8 +206,18 @@ export default function DesignPage() {
       if (saved.subStep) setSubStep(saved.subStep);
       if (saved.stampType) setStampType(saved.stampType);
       if (saved.shape) setShape(saved.shape);
-      if (saved.lines) setLines(saved.lines);
-      if (saved.selectedFont) setSelectedFont(saved.selectedFont);
+      if (saved.lines) {
+        // Migrar lines antiguas sin fontId
+        const migratedLines = saved.lines.map((l: any) => ({
+          text: l.text || '',
+          fontSize: l.fontSize || '12pt',
+          fontId: l.fontId || saved.selectedFont || '',
+          isBold: l.isBold || false,
+          isItalic: l.isItalic || false,
+          alignment: l.alignment || 'center',
+        }));
+        setLines(migratedLines);
+      }
       if (saved.selectedInk) setSelectedInk(saved.selectedInk);
       if (saved.logoUrl) setLogoUrl(saved.logoUrl);
       if (typeof saved.hasLogoGradient === 'boolean') setHasLogoGradient(saved.hasLogoGradient);
@@ -207,7 +227,6 @@ export default function DesignPage() {
           const p = prods.find((x) => x.id === saved.selectedProductId);
           if (p) setSelectedProduct(p);
         };
-        // Si products ya cargo, restaurar ahora; si no, se hara en el fetch
         if (products.length > 0) restoreProduct(products);
         else {
           const check = setInterval(() => {
@@ -236,16 +255,18 @@ export default function DesignPage() {
         setInks(Array.isArray(i) ? i : []);
         setApiLoading(false);
 
-        // Auto-seleccionar fuente predeterminada si no hay ninguna seleccionada
-        if (!selectedFont && fontsArr.length > 0) {
+        // Auto-seleccionar fuente predeterminada si no hay ninguna en las lineas
+        const hasAnyFont = lines.some((l) => l.fontId);
+        if (!hasAnyFont && fontsArr.length > 0) {
           const defaultFont = fontsArr.find((font: Font) => font.isDefault);
-          if (defaultFont) {
-            setSelectedFont(defaultFont.id);
+          const firstFontId = defaultFont?.id || fontsArr[0]?.id || '';
+          if (firstFontId) {
+            setLines((prev) => prev.map((l, idx) => (idx === 0 ? { ...l, fontId: firstFontId } : l)));
           }
         }
 
         // Cargar fuentes via @font-face inyectado en <head>
-        f.forEach((font: Font) => {
+        fontsArr.forEach((font: Font) => {
           if (!font.fileData || font.fileData.length < 100) {
             console.warn(`[Design Font] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
             return;
@@ -305,7 +326,8 @@ export default function DesignPage() {
 
   const addLine = () => {
     if (lines.length < 5) {
-      setLines([...lines, { text: '', fontSize: '12pt', isBold: false, isItalic: false, alignment: 'center' }]);
+      const lastLine = lines[lines.length - 1];
+      setLines([...lines, { text: '', fontSize: lastLine.fontSize, fontId: lastLine.fontId, isBold: false, isItalic: false, alignment: 'center' }]);
     }
   };
 
@@ -322,20 +344,20 @@ export default function DesignPage() {
   };
 
   const validateTextWidth = useCallback(async () => {
-    if (!selectedProduct || !selectedFont || lines.length === 0 || !lines.some((l) => l.text.trim())) {
+    if (!selectedProduct || lines.length === 0 || !lines.some((l) => l.text.trim() && l.fontId)) {
       setTextValidation(null);
       return;
     }
     setValidatingText(true);
     try {
-      // Validar cada linea por separado
+      // Validar cada linea por separado con su propia fuente
       const validations = await Promise.all(
         lines
-          .filter((l) => l.text.trim())
+          .filter((l) => l.text.trim() && l.fontId)
           .map(async (line) => {
             const res = await api.post('/design/validate-text', {
               text: line.text,
-              fontId: selectedFont,
+              fontId: line.fontId,
               productId: selectedProduct.id,
               fontSizePt: parseInt(line.fontSize),
             });
@@ -362,7 +384,7 @@ export default function DesignPage() {
     } finally {
       setValidatingText(false);
     }
-  }, [lines, selectedFont, selectedProduct]);
+  }, [lines, selectedProduct]);
 
   // Validar ancho de texto cuando cambian lineas, fuente o producto
   useEffect(() => {
@@ -387,7 +409,8 @@ export default function DesignPage() {
   };
 
   const handleGenerateDesign = async () => {
-    if (!selectedProduct || !selectedFont) {
+    const primaryFontId = lines.find((l) => l.fontId)?.fontId;
+    if (!selectedProduct || !primaryFontId) {
       setError('Selecciona un modelo y fuente');
       return;
     }
@@ -403,7 +426,7 @@ export default function DesignPage() {
           isItalic: l.isItalic,
           alignment: l.alignment,
         })),
-        fontId: selectedFont,
+        fontId: primaryFontId,
         inkId: selectedInk || undefined,
         logoUrl: logoUrl || undefined,
         hasLogoGradient,
@@ -423,8 +446,7 @@ export default function DesignPage() {
     setStampType('');
     setShape('');
     setSelectedProduct(null);
-    setLines([{ text: '', fontSize: '12pt', isBold: false, isItalic: false, alignment: 'center' }]);
-    setSelectedFont('');
+    setLines([{ text: '', fontSize: '12pt', fontId: '', isBold: false, isItalic: false, alignment: 'center' }]);
     setSelectedInk('');
     setLogoUrl('');
     setHasLogoGradient(false);
@@ -637,7 +659,6 @@ export default function DesignPage() {
     const h = selectedProduct.heightMm;
     const ink = inks.find((i) => i.id === selectedInk);
     const inkColor = ink?.hexCode || '#1a1a1a';
-    const fontFamily = selectedFont ? `font-${selectedFont}` : 'sans-serif';
     const activeLines = lines.filter((l) => l.text.trim());
     const padding = Math.min(w, h) * 0.12;
 
@@ -665,7 +686,7 @@ export default function DesignPage() {
       />
     ) : null;
 
-    // Text lines
+    // Text lines — cada una con su propia fuente
     const textEls = activeLines.map((line, i) => {
       const fontSizeMm = parseInt(line.fontSize) * 0.3528;
       const lineHeight = fontSizeMm * 1.3;
@@ -673,6 +694,7 @@ export default function DesignPage() {
       const logoOffset = logoUrl ? h * 0.22 : 0;
       const startY = (h - totalTextHeight) / 2 + lineHeight * 0.8 + logoOffset / 2;
       const y = startY + i * lineHeight;
+      const fontFamily = line.fontId ? `font-${line.fontId}` : 'sans-serif';
 
       return (
         <text
@@ -722,8 +744,6 @@ export default function DesignPage() {
   };
 
   const renderStep3 = () => {
-    const previewText = lines[0]?.text || 'Tu texto aqui';
-
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Personaliza tu diseno</h2>
@@ -736,21 +756,21 @@ export default function DesignPage() {
               <div>
                 <label className="text-sm font-medium mb-2 block">Texto del sello</label>
                 {lines.map((line, i) => (
-                  <div key={i} className="flex gap-2 mb-2 items-start">
+                  <div key={i} className="flex gap-2 mb-2 items-start flex-wrap">
                     <Input
                       value={line.text}
                       onChange={(e) => updateLine(i, 'text', e.target.value)}
                       placeholder={`Linea ${i + 1}`}
-                      className="flex-1"
+                      className="flex-1 min-w-[180px]"
                     />
                     {(() => {
-                      const selectedFontObj = fonts.find((f) => f.id === selectedFont);
-                      const minPt = selectedFontObj?.minFontSizePt ?? 6;
+                      const lineFont = fonts.find((f) => f.id === line.fontId);
+                      const minPt = lineFont?.minFontSizePt ?? 6;
                       const allSizes = [6, 7, 8, 10, 12, 14, 16];
                       const availableSizes = allSizes.filter((s) => s >= minPt);
                       return (
                         <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
-                          <SelectTrigger className="w-24">
+                          <SelectTrigger className="w-20">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -761,6 +781,37 @@ export default function DesignPage() {
                         </Select>
                       );
                     })()}
+
+                    {/* Selector de fuente por linea */}
+                    <Select value={line.fontId} onValueChange={(v) => updateLine(i, 'fontId', v || '')}>
+                      <SelectTrigger className="w-32 h-9 px-2">
+                        <SelectValue placeholder="Fuente">
+                          {line.fontId ? (
+                            <span
+                              className="text-base"
+                              style={loadedFonts.has(line.fontId) ? { fontFamily: `"font-${line.fontId}"` } : {}}
+                            >
+                              abc
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">Fuente</span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[360px]">
+                        {fonts.map((font) => (
+                          <SelectItem key={font.id} value={font.id} className="h-12 px-3">
+                            <span
+                              className="text-base"
+                              style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
+                            >
+                              abcdefg...
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
                     <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
                       <span className="font-bold text-sm">B</span>
                     </Button>
@@ -828,6 +879,7 @@ export default function DesignPage() {
                               isBold: lines[0]?.isBold || false,
                               isItalic: lines[0]?.isItalic || false,
                               alignment: lines[0]?.alignment || 'center',
+                              fontId: lines[0]?.fontId || '',
                             }));
                             setLines(newLines);
                           }}
@@ -846,52 +898,6 @@ export default function DesignPage() {
                     <Check className="h-3 w-3" /> El texto cabe perfectamente en el sello.
                   </p>
                 )}
-              </div>
-
-              <Separator />
-
-              {/* Selector de fuentes — Dropdown con preview */}
-              <div>
-                <label className="text-sm font-medium mb-2 block">Fuente</label>
-                <Select value={selectedFont} onValueChange={(v) => setSelectedFont(v || '')}>
-                  <SelectTrigger className="w-full h-16 text-base">
-                    <SelectValue placeholder="Selecciona una tipografia">
-                      {(() => {
-                        const font = fonts.find((f) => f.id === selectedFont);
-                        if (!font) return 'Selecciona una tipografia';
-                        return (
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="text-xl"
-                              style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
-                            >
-                              abcdefg...
-                            </span>
-                            <span className="text-sm text-gray-500">{font.name}</span>
-                          </div>
-                        );
-                      })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[320px]">
-                    {fonts.map((font) => (
-                      <SelectItem key={font.id} value={font.id} className="py-3">
-                        <div className="flex items-center justify-between gap-6 w-full min-w-[280px]">
-                          <span
-                            className="text-lg"
-                            style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
-                          >
-                            abcdefg...
-                          </span>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-600">{font.name}</p>
-                            <p className="text-[10px] text-gray-400">Min: {font.minFontSizePt ?? 10}pt</p>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <Separator />
