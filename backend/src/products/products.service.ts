@@ -10,7 +10,27 @@ import { ProductQueryDto } from './dto/product-query.dto';
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private readonly CLOUDINARY_FOLDER = 'misello/products';
+  private readonly CLOUDINARY_FOLDER = 'MI SELLO';
+
+  private getCategoryFolder(category: string): string {
+    const map: Record<string, string> = {
+      MONTURA_AUTOMATICA: 'sellos-automaticos',
+      FECHADOR: 'fechadores',
+      PORTATIL: 'sellos-portatiles',
+      MADERA: 'sellos-madera',
+      TINTA: 'tintas',
+      EMBOSSER: 'embosadoras',
+      EMBOSSING: 'embosadoras',
+      EMBOSADORA: 'embosadoras',
+    };
+    return map[category] || 'otros';
+  }
+
+  private toWebpUrl(cloudinaryUrl: string): string {
+    // Convierte la URL de Cloudinary a WebP con calidad auto
+    // https://res.cloudinary.com/.../image/upload/v123/... → /image/upload/f_webp,q_auto/v123/...
+    return cloudinaryUrl.replace('/upload/', '/upload/f_webp,q_auto/');
+  }
 
   async findAllPublic(query: ProductQueryDto) {
     const where: Prisma.ProductWhereInput = { isActive: true };
@@ -92,15 +112,24 @@ export class ProductsService {
     cloudinaryService: CloudinaryService,
     field: 'imageUrl' | 'imageUrlHover' = 'imageUrl',
   ) {
-    await this.findOneAdmin(id);
+    const product = await this.findOneAdmin(id);
+    const sku = (product.sku || id).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    const suffix = field === 'imageUrlHover' ? '-hover' : '';
+    const publicId = `${sku}${suffix}`;
+    const subFolder = this.getCategoryFolder(product.category || '');
+    const folder = `${this.CLOUDINARY_FOLDER}/${subFolder}`;
+
     const secureUrl = await cloudinaryService.uploadImage(
       file.buffer,
-      this.CLOUDINARY_FOLDER,
-      `${id}_${field}`,
+      folder,
+      publicId,
     );
+
+    const webpUrl = this.toWebpUrl(secureUrl);
+
     return this.prisma.product.update({
       where: { id },
-      data: { [field]: secureUrl },
+      data: { [field]: webpUrl },
     });
   }
 
