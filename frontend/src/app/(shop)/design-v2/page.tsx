@@ -139,11 +139,9 @@ const CARD_SELECTED = 'ring-2 ring-orange-500 bg-orange-50 border-orange-300';
 
 function getImageUrl(url?: string) {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}${url}`;
-  }
-  return url;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '');
+  return `${baseUrl}${url}`;
 }
 
 export default function DesignPage() {
