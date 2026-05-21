@@ -595,11 +595,11 @@ export default function DesignPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {(filteredProducts.length > 0 ? filteredProducts : []).map((product) => (
           <Card
             key={product.id}
-            className={`group p-2.5 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
+            className={`group p-3 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
             onClick={() => {
               if (product.stock > 0) {
                 setSelectedProduct(product);
@@ -607,25 +607,25 @@ export default function DesignPage() {
               }
             }}
           >
-            <div className="relative h-24 bg-gray-50 rounded-lg mb-2 overflow-hidden">
+            <div className="relative aspect-[3/4] bg-gray-50 rounded-lg mb-2 overflow-hidden">
               {product.imageUrl ? (
                 <>
                   <img
                     src={getImageUrl(product.imageUrl)}
                     alt={product.name}
-                    className="absolute inset-0 w-full h-full object-contain p-1.5 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
+                    className="absolute inset-0 w-full h-full object-contain p-1 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
                   />
                   {product.imageUrlHover ? (
                     <img
                       src={getImageUrl(product.imageUrlHover)}
                       alt={`${product.name} - hover`}
-                      className="absolute inset-0 w-full h-full object-contain p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      className="absolute inset-0 w-full h-full object-contain p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     />
                   ) : (
                     <img
                       src={getImageUrl(product.imageUrl)}
                       alt={product.name}
-                      className="absolute inset-0 w-full h-full object-contain p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-contain p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
                     />
                   )}
                 </>
