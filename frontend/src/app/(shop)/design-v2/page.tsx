@@ -155,7 +155,6 @@ export default function DesignPage() {
   const [textValidation, setTextValidation] = useState<any>(null);
   const [validatingText, setValidatingText] = useState(false);
   const [hasLogoGradient, setHasLogoGradient] = useState(false);
-  const [specialRequests, setSpecialRequests] = useState('');
   const [designResult, setDesignResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -182,10 +181,9 @@ export default function DesignPage() {
       selectedInk,
       logoUrl,
       hasLogoGradient,
-      specialRequests,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [step, subStep, stampType, shape, selectedProduct, lines, selectedFont, selectedInk, logoUrl, hasLogoGradient, specialRequests]);
+  }, [step, subStep, stampType, shape, selectedProduct, lines, selectedFont, selectedInk, logoUrl, hasLogoGradient]);
 
   // Restaurar estado al montar
   useEffect(() => {
@@ -202,7 +200,6 @@ export default function DesignPage() {
       if (saved.selectedInk) setSelectedInk(saved.selectedInk);
       if (saved.logoUrl) setLogoUrl(saved.logoUrl);
       if (typeof saved.hasLogoGradient === 'boolean') setHasLogoGradient(saved.hasLogoGradient);
-      if (saved.specialRequests) setSpecialRequests(saved.specialRequests);
       // selectedProduct se restaura despues de cargar products
       if (saved.selectedProductId) {
         const restoreProduct = (prods: Product[]) => {
@@ -400,7 +397,6 @@ export default function DesignPage() {
         inkId: selectedInk || undefined,
         logoUrl: logoUrl || undefined,
         hasLogoGradient,
-        specialRequests: specialRequests || undefined,
       });
       setDesignResult(res.data);
       setStep(4);
@@ -422,7 +418,6 @@ export default function DesignPage() {
     setSelectedInk('');
     setLogoUrl('');
     setHasLogoGradient(false);
-    setSpecialRequests('');
     setDesignResult(null);
     setTextValidation(null);
     localStorage.removeItem(STORAGE_KEY);
@@ -470,76 +465,69 @@ export default function DesignPage() {
   );
 
   const renderStep1 = () => {
-    return (
-      <div className="space-y-6">
-        <div className="relative overflow-hidden w-full">
-          <div
-            className="grid transition-transform duration-500 ease-in-out"
-            style={{
-              gridTemplateColumns: 'repeat(2, 100%)',
-              transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-50%)',
-            }}
-          >
-            {/* Panel 1A: Tipo de sello */}
-            <div>
-              <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
-              <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {STAMP_TYPES.map((t) => (
-                  <Card
-                    key={t.id}
-                    className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === t.id ? CARD_SELECTED : ''}`}
-                    onClick={() => {
-                      setStampType(t.id);
-                      setSubStep('shape');
-                    }}
-                  >
-                    <div className={`mb-4 ${stampType === t.id ? 'text-orange-500' : 'text-blue-400'}`}>{t.svg}</div>
-                    <h3 className="font-semibold text-base">{t.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1">{t.description}</p>
-                  </Card>
-                ))}
-              </div>
-            </div>
+    const panelActive = 'opacity-100 scale-100 relative pointer-events-auto';
+    const panelHidden = 'opacity-0 scale-95 absolute top-0 left-0 w-full pointer-events-none';
 
-            {/* Panel 1B: Forma */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-500 hover:text-gray-700 -ml-2"
-                  onClick={() => {
-                    setSubStep('type');
-                    setShape('');
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-1" /> Tipo
-                </Button>
-              </div>
-              <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: Elige la forma</h2>
-              <p className="text-gray-600 mb-6">
-                {stampType === 'FECHADOR'
-                  ? 'Los fechadores solo están disponibles en forma rectangular.'
-                  : 'Selecciona la forma que mejor se ajuste a lo que necesitas.'}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                {filteredShapes.map((s) => (
-                  <Card
-                    key={s.id}
-                    className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${shape === s.id ? CARD_SELECTED : ''}`}
-                    onClick={() => {
-                      setShape(s.id);
-                      setStep(2);
-                    }}
-                  >
-                    <div className={`mb-4 ${shape === s.id ? 'text-orange-500' : 'text-blue-400'}`}>{s.svg}</div>
-                    <h3 className="font-semibold text-base">{s.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1">{s.description}</p>
-                  </Card>
-                ))}
-              </div>
-            </div>
+    return (
+      <div className="space-y-6 relative min-h-[320px]">
+        {/* Panel 1A: Tipo de sello */}
+        <div className={`transition-all duration-500 ease-in-out ${subStep === 'type' ? panelActive : panelHidden}`}>
+          <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
+          <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {STAMP_TYPES.map((t) => (
+              <Card
+                key={t.id}
+                className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === t.id ? CARD_SELECTED : ''}`}
+                onClick={() => {
+                  setStampType(t.id);
+                  setSubStep('shape');
+                }}
+              >
+                <div className={`mb-4 ${stampType === t.id ? 'text-orange-500' : 'text-blue-400'}`}>{t.svg}</div>
+                <h3 className="font-semibold text-base">{t.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">{t.description}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Panel 1B: Forma */}
+        <div className={`transition-all duration-500 ease-in-out ${subStep === 'shape' ? panelActive : panelHidden}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-500 hover:text-gray-700 -ml-2"
+              onClick={() => {
+                setSubStep('type');
+                setShape('');
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" /> Tipo
+            </Button>
+          </div>
+          <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: Elige la forma</h2>
+          <p className="text-gray-600 mb-6">
+            {stampType === 'FECHADOR'
+              ? 'Los fechadores solo están disponibles en forma rectangular.'
+              : 'Selecciona la forma que mejor se ajuste a lo que necesitas.'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {filteredShapes.map((s) => (
+              <Card
+                key={s.id}
+                className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${shape === s.id ? CARD_SELECTED : ''}`}
+                onClick={() => {
+                  setShape(s.id);
+                  setStep(2);
+                }}
+              >
+                <div className={`mb-4 ${shape === s.id ? 'text-orange-500' : 'text-blue-400'}`}>{s.svg}</div>
+                <h3 className="font-semibold text-base">{s.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">{s.description}</p>
+              </Card>
+            ))}
           </div>
         </div>
       </div>
@@ -632,6 +620,95 @@ export default function DesignPage() {
     </div>
   );
 
+  const renderLivePreview = () => {
+    if (!selectedProduct) return null;
+
+    const w = selectedProduct.widthMm;
+    const h = selectedProduct.heightMm;
+    const ink = inks.find((i) => i.id === selectedInk);
+    const inkColor = ink?.hexCode || '#1a1a1a';
+    const fontFamily = selectedFont ? `font-${selectedFont}` : 'sans-serif';
+    const activeLines = lines.filter((l) => l.text.trim());
+    const padding = Math.min(w, h) * 0.12;
+
+    // Shape element
+    let shapeEl;
+    if (selectedProduct.shape === 'RECTANGULAR') {
+      shapeEl = <rect x={0} y={0} width={w} height={h} rx={Math.min(w, h) * 0.08} fill="#fafafa" stroke="#d1d5db" strokeWidth={0.4} />;
+    } else if (selectedProduct.shape === 'CIRCULAR') {
+      const r = Math.min(w, h) / 2;
+      shapeEl = <circle cx={w / 2} cy={h / 2} r={r} fill="#fafafa" stroke="#d1d5db" strokeWidth={0.4} />;
+    } else {
+      shapeEl = <ellipse cx={w / 2} cy={h / 2} rx={w / 2} ry={h / 2} fill="#fafafa" stroke="#d1d5db" strokeWidth={0.4} />;
+    }
+
+    // Logo (if any) — positioned at top center
+    const logoEl = logoUrl ? (
+      <image
+        href={getImageUrl(logoUrl)}
+        x={w * 0.25}
+        y={padding + 1}
+        width={w * 0.5}
+        height={h * 0.25}
+        preserveAspectRatio="xMidYMid meet"
+        opacity={0.9}
+      />
+    ) : null;
+
+    // Text lines
+    const textEls = activeLines.map((line, i) => {
+      const fontSizeMm = parseInt(line.fontSize) * 0.3528;
+      const lineHeight = fontSizeMm * 1.3;
+      const totalTextHeight = activeLines.length * lineHeight;
+      const logoOffset = logoUrl ? h * 0.22 : 0;
+      const startY = (h - totalTextHeight) / 2 + lineHeight * 0.8 + logoOffset / 2;
+      const y = startY + i * lineHeight;
+
+      return (
+        <text
+          key={i}
+          x={w / 2}
+          y={Math.min(y, h - padding)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontFamily={fontFamily}
+          fontSize={fontSizeMm}
+          fontWeight={line.isBold ? 'bold' : 'normal'}
+          fontStyle={line.isItalic ? 'italic' : 'normal'}
+          fill={inkColor}
+        >
+          {line.text}
+        </text>
+      );
+    });
+
+    // Dimension labels
+    const dimLabel = `${w}mm × ${h}mm`;
+
+    return (
+      <div className="sticky top-6">
+        <Card className="p-4">
+          <h3 className="font-semibold text-sm mb-3 text-[#1B2A6B]">Vista previa</h3>
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <svg
+              viewBox={`${-padding} ${-padding} ${w + padding * 2} ${h + padding * 2 + 6}`}
+              className="w-full h-auto"
+              style={{ maxHeight: '320px' }}
+            >
+              {shapeEl}
+              {logoEl}
+              {textEls}
+            </svg>
+          </div>
+          <p className="text-[11px] text-center text-gray-400 mt-2 tracking-wide uppercase">{dimLabel}</p>
+          {selectedProduct.name && (
+            <p className="text-xs text-center text-gray-500 mt-1">{selectedProduct.name}</p>
+          )}
+        </Card>
+      </div>
+    );
+  };
+
   const renderStep3 = () => {
     const previewText = lines[0]?.text || 'Tu texto aqui';
 
@@ -640,239 +717,244 @@ export default function DesignPage() {
         <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Personaliza tu diseno</h2>
         <p className="text-gray-600">Ingresa el texto, elige fuente, color de tinta y sube tu logo si lo deseas.</p>
 
-        <Card className="p-6 space-y-6">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Texto del sello</label>
-            {lines.map((line, i) => (
-              <div key={i} className="flex gap-2 mb-2 items-start">
-                <Input
-                  value={line.text}
-                  onChange={(e) => updateLine(i, 'text', e.target.value)}
-                  placeholder={`Linea ${i + 1}`}
-                  className="flex-1"
-                />
-                {(() => {
-                  const selectedFontObj = fonts.find((f) => f.id === selectedFont);
-                  const minPt = selectedFontObj?.minFontSizePt ?? 6;
-                  const allSizes = [6, 7, 8, 10, 12, 14, 16];
-                  const availableSizes = allSizes.filter((s) => s >= minPt);
-                  return (
-                    <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
-                      <SelectTrigger className="w-24">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSizes.map((s) => (
-                          <SelectItem key={s} value={`${s}pt`}>{s}pt</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  );
-                })()}
-                <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
-                  <span className="font-bold text-sm">B</span>
-                </Button>
-                <Button variant={line.isItalic ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isItalic', !line.isItalic)}>
-                  <span className="italic text-sm">I</span>
-                </Button>
-                {lines.length > 1 && (
-                  <Button variant="ghost" size="icon" onClick={() => removeLine(i)}>
-                    <Minus className="h-4 w-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Form */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="p-6 space-y-6">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Texto del sello</label>
+                {lines.map((line, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-start">
+                    <Input
+                      value={line.text}
+                      onChange={(e) => updateLine(i, 'text', e.target.value)}
+                      placeholder={`Linea ${i + 1}`}
+                      className="flex-1"
+                    />
+                    {(() => {
+                      const selectedFontObj = fonts.find((f) => f.id === selectedFont);
+                      const minPt = selectedFontObj?.minFontSizePt ?? 6;
+                      const allSizes = [6, 7, 8, 10, 12, 14, 16];
+                      const availableSizes = allSizes.filter((s) => s >= minPt);
+                      return (
+                        <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSizes.map((s) => (
+                              <SelectItem key={s} value={`${s}pt`}>{s}pt</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                    <Button variant={line.isBold ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
+                      <span className="font-bold text-sm">B</span>
+                    </Button>
+                    <Button variant={line.isItalic ? 'default' : 'outline'} size="icon" onClick={() => updateLine(i, 'isItalic', !line.isItalic)}>
+                      <span className="italic text-sm">I</span>
+                    </Button>
+                    {lines.length > 1 && (
+                      <Button variant="ghost" size="icon" onClick={() => removeLine(i)}>
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {lines.length < 5 && (
+                  <Button variant="outline" size="sm" onClick={addLine}>
+                    <Plus className="h-4 w-4 mr-1" /> Agregar linea
                   </Button>
                 )}
-              </div>
-            ))}
-            {lines.length < 5 && (
-              <Button variant="outline" size="sm" onClick={addLine}>
-                <Plus className="h-4 w-4 mr-1" /> Agregar linea
-              </Button>
-            )}
 
-            {/* Validacion de ancho de texto */}
-            {validatingText && (
-              <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Verificando que el texto cabe en el sello...
-              </p>
-            )}
-            {textValidation && !validatingText && !textValidation.fits && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-                <p className="text-sm text-amber-800 font-medium flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4" />
-                  {textValidation.impossible
-                    ? `Este texto es demasiado largo para un sello de ${selectedProduct?.widthMm}mm`
-                    : `&ldquo;${textValidation.lineText || 'El texto'}&rdquo; no cabe en ${selectedProduct?.widthMm}mm`}
-                </p>
-                {textValidation.impossible && (
-                  <p className="text-xs text-amber-700">
-                    Ni siquiera al minimo ({textValidation.minFontSizePt}pt) cabe. Usa menos caracteres o elige un modelo mas grande.
+                {/* Validacion de ancho de texto */}
+                {validatingText && (
+                  <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Verificando que el texto cabe en el sello...
                   </p>
                 )}
-                <div className="flex flex-wrap gap-2">
-                  {!textValidation.impossible && textValidation.suggestedFontSizePt && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs bg-white hover:bg-amber-100 border-amber-300"
-                      onClick={() => {
-                        const newLines = lines.map((l) => ({
-                          ...l,
-                          fontSize: `${textValidation.suggestedFontSizePt}pt`,
-                        }));
-                        setLines(newLines);
-                      }}
-                    >
-                      🔤 Reducir todo a {textValidation.suggestedFontSizePt}pt
-                    </Button>
-                  )}
-                  {textValidation.suggestedLines.length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs bg-white hover:bg-amber-100 border-amber-300"
-                      onClick={() => {
-                        const newLines = textValidation.suggestedLines.map((text: string) => ({
-                          text,
-                          fontSize: textValidation.impossible ? `${textValidation.minFontSizePt}pt` : (lines[0]?.fontSize || '12pt'),
-                          isBold: lines[0]?.isBold || false,
-                          isItalic: lines[0]?.isItalic || false,
-                          alignment: lines[0]?.alignment || 'center',
-                        }));
-                        setLines(newLines);
-                      }}
-                    >
-                      📝 Dividir en {textValidation.suggestedLines.length} lineas
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-amber-600">
-                  Ancho usado: {textValidation.textWidthPx}px / {textValidation.availableWidthPx}px disponibles
-                </p>
-              </div>
-            )}
-            {textValidation && !validatingText && textValidation.fits && (
-              <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                <Check className="h-3 w-3" /> El texto cabe perfectamente en el sello.
-              </p>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Vista previa de fuentes */}
-          <div>
-            <label className="text-sm font-medium mb-1 block">Fuente — Selecciona una tipografia</label>
-            <p className="text-xs text-gray-500 mb-3">
-              Selecciona una fuente. El tamano minimo fabricable aparece en cada tarjeta.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {fonts.map((font) => (
-                <Card
-                  key={font.id}
-                  className={`p-3 text-center ${CARD_BASE} ${selectedFont === font.id ? CARD_SELECTED : ''}`}
-                  onClick={() => setSelectedFont(font.id)}
-                >
-                  <div
-                    className="text-lg mb-1 truncate min-h-[1.75rem]"
-                    style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
-                    title={font.name}
-                  >
-                    {loadedFonts.has(font.id) ? (previewText || 'Aa') : <span className="text-sm text-gray-400">Cargando...</span>}
+                {textValidation && !validatingText && !textValidation.fits && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+                    <p className="text-sm text-amber-800 font-medium flex items-center gap-1">
+                      <AlertTriangle className="h-4 w-4" />
+                      {textValidation.impossible
+                        ? `Este texto es demasiado largo para un sello de ${selectedProduct?.widthMm}mm`
+                        : `&ldquo;${textValidation.lineText || 'El texto'}&rdquo; no cabe en ${selectedProduct?.widthMm}mm`}
+                    </p>
+                    {textValidation.impossible && (
+                      <p className="text-xs text-amber-700">
+                        Ni siquiera al minimo ({textValidation.minFontSizePt}pt) cabe. Usa menos caracteres o elige un modelo mas grande.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {!textValidation.impossible && textValidation.suggestedFontSizePt && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs bg-white hover:bg-amber-100 border-amber-300"
+                          onClick={() => {
+                            const newLines = lines.map((l) => ({
+                              ...l,
+                              fontSize: `${textValidation.suggestedFontSizePt}pt`,
+                            }));
+                            setLines(newLines);
+                          }}
+                        >
+                          🔤 Reducir todo a {textValidation.suggestedFontSizePt}pt
+                        </Button>
+                      )}
+                      {textValidation.suggestedLines.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs bg-white hover:bg-amber-100 border-amber-300"
+                          onClick={() => {
+                            const newLines = textValidation.suggestedLines.map((text: string) => ({
+                              text,
+                              fontSize: textValidation.impossible ? `${textValidation.minFontSizePt}pt` : (lines[0]?.fontSize || '12pt'),
+                              isBold: lines[0]?.isBold || false,
+                              isItalic: lines[0]?.isItalic || false,
+                              alignment: lines[0]?.alignment || 'center',
+                            }));
+                            setLines(newLines);
+                          }}
+                        >
+                          📝 Dividir en {textValidation.suggestedLines.length} lineas
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-amber-600">
+                      Ancho usado: {textValidation.textWidthPx}px / {textValidation.availableWidthPx}px disponibles
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{font.name}</p>
-                  <p className="text-[10px] text-gray-400 mt-1">Min: {font.minFontSizePt ?? 10}pt</p>
-                </Card>
-              ))}
+                )}
+                {textValidation && !validatingText && textValidation.fits && (
+                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                    <Check className="h-3 w-3" /> El texto cabe perfectamente en el sello.
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Vista previa de fuentes */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Fuente — Selecciona una tipografia</label>
+                <p className="text-xs text-gray-500 mb-3">
+                  Selecciona una fuente. El tamano minimo fabricable aparece en cada tarjeta.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {fonts.map((font) => (
+                    <Card
+                      key={font.id}
+                      className={`p-3 text-center ${CARD_BASE} ${selectedFont === font.id ? CARD_SELECTED : ''}`}
+                      onClick={() => setSelectedFont(font.id)}
+                    >
+                      <div
+                        className="text-lg mb-1 truncate min-h-[1.75rem]"
+                        style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
+                        title={font.name}
+                      >
+                        {loadedFonts.has(font.id) ? (previewText || 'Aa') : <span className="text-sm text-gray-400">Cargando...</span>}
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">{font.name}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Min: {font.minFontSizePt ?? 10}pt</p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Color de tinta */}
+              <div>
+                <label className="text-sm font-medium mb-3 block">Color de tinta</label>
+                <div className="flex flex-wrap gap-3">
+                  {inks.map((ink) => (
+                    <button
+                      key={ink.id}
+                      onClick={() => setSelectedInk(ink.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                        selectedInk === ink.id
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: ink.hexCode }} />
+                      <span className="text-sm font-medium">{ink.color}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Logo upload */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Logo (opcional)</label>
+                {!logoUrl ? (
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoUpload(file);
+                      }}
+                      className="max-w-xs"
+                    />
+                    {logoUploading && <Loader2 className="h-5 w-5 animate-spin text-orange-500" />}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <img src={getImageUrl(logoUrl)} alt="Logo subido" className="h-16 w-16 object-contain border rounded-lg" />
+                    <Button variant="ghost" size="sm" onClick={() => { setLogoUrl(''); setHasLogoGradient(false); }}>
+                      <X className="h-4 w-4 mr-1" /> Quitar
+                    </Button>
+                  </div>
+                )}
+                {logoUrl && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Checkbox
+                      id="gradient"
+                      checked={hasLogoGradient}
+                      onCheckedChange={(v) => setHasLogoGradient(v as boolean)}
+                    />
+                    <label htmlFor="gradient" className="text-sm text-gray-600">
+                      El logo tiene gradientes/sombras (se convertira a B&W)
+                    </label>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {error && (
+              <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(2)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Atras
+              </Button>
+              <Button
+                onClick={handleGenerateDesign}
+                disabled={loading || lines.some((l) => !l.text.trim()) || !selectedFont}
+                className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+              >
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Generar diseno
+              </Button>
             </div>
           </div>
 
-          <Separator />
-
-          {/* Color de tinta */}
-          <div>
-            <label className="text-sm font-medium mb-3 block">Color de tinta</label>
-            <div className="flex flex-wrap gap-3">
-              {inks.map((ink) => (
-                <button
-                  key={ink.id}
-                  onClick={() => setSelectedInk(ink.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                    selectedInk === ink.id
-                      ? 'border-orange-500 bg-orange-50'
-                      : 'border-gray-200 hover:border-blue-300'
-                  }`}
-                >
-                  <span className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: ink.hexCode }} />
-                  <span className="text-sm font-medium">{ink.color}</span>
-                </button>
-              ))}
-            </div>
+          {/* Right: Live Preview */}
+          <div className="lg:col-span-1">
+            {renderLivePreview()}
           </div>
-
-          <Separator />
-
-          {/* Logo upload */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Logo (opcional)</label>
-            {!logoUrl ? (
-              <div className="flex items-center gap-3">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleLogoUpload(file);
-                  }}
-                  className="max-w-xs"
-                />
-                {logoUploading && <Loader2 className="h-5 w-5 animate-spin text-orange-500" />}
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <img src={getImageUrl(logoUrl)} alt="Logo subido" className="h-16 w-16 object-contain border rounded-lg" />
-                <Button variant="ghost" size="sm" onClick={() => { setLogoUrl(''); setHasLogoGradient(false); }}>
-                  <X className="h-4 w-4 mr-1" /> Quitar
-                </Button>
-              </div>
-            )}
-            {logoUrl && (
-              <div className="mt-2 flex items-center gap-2">
-                <Checkbox
-                  id="gradient"
-                  checked={hasLogoGradient}
-                  onCheckedChange={(v) => setHasLogoGradient(v as boolean)}
-                />
-                <label htmlFor="gradient" className="text-sm text-gray-600">
-                  El logo tiene gradientes/sombras (se convertira a B&W)
-                </label>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-2 block">Solicitudes especiales (opcional)</label>
-            <Input value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} placeholder="Ej: texto curvo, borde especial, etc." />
-          </div>
-        </Card>
-
-        {error && (
-          <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
-            <AlertTriangle className="h-5 w-5" />
-            <span className="text-sm">{error}</span>
-          </div>
-        )}
-
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={() => setStep(2)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Atras
-          </Button>
-          <Button
-            onClick={handleGenerateDesign}
-            disabled={loading || lines.some((l) => !l.text.trim()) || !selectedFont}
-            className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
-          >
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-            Generar diseno
-          </Button>
         </div>
       </div>
     );
