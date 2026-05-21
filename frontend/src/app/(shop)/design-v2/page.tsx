@@ -745,23 +745,23 @@ export default function DesignPage() {
 
   const renderStep3 = () => {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Personaliza tu diseno</h2>
         <p className="text-gray-600">Ingresa el texto, elige fuente, color de tinta y sube tu logo si lo deseas.</p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Left: Form */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="p-6 space-y-6">
+          <div className="space-y-4">
+            <Card className="p-5 space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Texto del sello</label>
                 {lines.map((line, i) => (
-                  <div key={i} className="flex gap-2 mb-2 items-start flex-wrap">
+                  <div key={i} className="flex gap-2 mb-2 items-center">
                     <Input
                       value={line.text}
                       onChange={(e) => updateLine(i, 'text', e.target.value)}
                       placeholder={`Linea ${i + 1}`}
-                      className="flex-1 min-w-[180px]"
+                      className="flex-1"
                     />
                     {(() => {
                       const lineFont = fonts.find((f) => f.id === line.fontId);
@@ -784,11 +784,11 @@ export default function DesignPage() {
 
                     {/* Selector de fuente por linea */}
                     <Select value={line.fontId} onValueChange={(v) => updateLine(i, 'fontId', v || '')}>
-                      <SelectTrigger className="w-32 h-9 px-2">
+                      <SelectTrigger className="w-[140px] h-10 px-2">
                         <SelectValue placeholder="Fuente">
                           {line.fontId ? (
                             <span
-                              className="text-base"
+                              className="text-lg leading-none"
                               style={loadedFonts.has(line.fontId) ? { fontFamily: `"font-${line.fontId}"` } : {}}
                             >
                               abc
@@ -802,7 +802,7 @@ export default function DesignPage() {
                         {fonts.map((font) => (
                           <SelectItem key={font.id} value={font.id} className="h-12 px-3">
                             <span
-                              className="text-base"
+                              className="text-lg leading-none"
                               style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
                             >
                               abcdefg...
@@ -987,7 +987,7 @@ export default function DesignPage() {
           </div>
 
           {/* Right: Live Preview */}
-          <div className="lg:col-span-1">
+          <div>
             {renderLivePreview()}
           </div>
         </div>
@@ -1089,7 +1089,7 @@ export default function DesignPage() {
   // Si no está autenticado, mostrar solo el auth gate (sin stepper)
   if (!token) {
     return (
-      <div className="container mx-auto max-w-4xl py-12 px-4">
+      <div className="container mx-auto max-w-6xl py-8 px-4">
         {renderAuthGate()}
       </div>
     );
