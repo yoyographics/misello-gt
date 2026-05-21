@@ -112,6 +112,10 @@ export class ProductsService {
     cloudinaryService: CloudinaryService,
     field: 'imageUrl' | 'imageUrlHover' = 'imageUrl',
   ) {
+    if (!file || !file.buffer) {
+      throw new Error('No se recibio el archivo o no tiene buffer. Verifica que el formulario envie un campo llamado "image".');
+    }
+
     const product = await this.findOneAdmin(id);
     const sku = (product.sku || id).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
     const suffix = field === 'imageUrlHover' ? '-hover' : '';

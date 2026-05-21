@@ -12,6 +12,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
@@ -68,18 +69,22 @@ export class ProductsController {
   @Post('admin/:id/image')
   @UseGuards(JwtAdminGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(FileInterceptor('image', { storage: memoryStorage() }))
   async uploadImage(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('type') type?: string,
   ) {
-    return this.productsService.uploadImage(
-      id,
-      file,
-      this.cloudinaryService,
-      type === 'hover' ? 'imageUrlHover' : 'imageUrl',
-    );
+    try {
+      return await this.productsService.uploadImage(
+        id,
+        file,
+        this.cloudinaryService,
+        type === 'hover' ? 'imageUrlHover' : 'imageUrl',
+      );
+    } catch (error: any) {
+      throw new Error(`Error subiendo imagen: ${error.message}`);
+    }
   }
 
   /** Eliminar producto — soft delete (admin) */
