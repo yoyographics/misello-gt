@@ -597,11 +597,11 @@ export default function DesignPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {(filteredProducts.length > 0 ? filteredProducts : []).map((product) => (
           <Card
             key={product.id}
-            className={`group p-4 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
+            className={`group p-2.5 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
             onClick={() => {
               if (product.stock > 0) {
                 setSelectedProduct(product);
@@ -609,37 +609,37 @@ export default function DesignPage() {
               }
             }}
           >
-            <div className="relative aspect-video bg-gray-50 rounded-lg mb-3 overflow-hidden">
+            <div className="relative h-24 bg-gray-50 rounded-lg mb-2 overflow-hidden">
               {product.imageUrl ? (
                 <>
                   <img
                     src={getImageUrl(product.imageUrl)}
                     alt={product.name}
-                    className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
+                    className="absolute inset-0 w-full h-full object-contain p-1.5 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
                   />
                   {product.imageUrlHover ? (
                     <img
                       src={getImageUrl(product.imageUrlHover)}
                       alt={`${product.name} - hover`}
-                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      className="absolute inset-0 w-full h-full object-contain p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     />
                   ) : (
                     <img
                       src={getImageUrl(product.imageUrl)}
                       alt={product.name}
-                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-contain p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
                     />
                   )}
                 </>
               ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-4xl">📐</span>
+                <span className="absolute inset-0 flex items-center justify-center text-2xl">📐</span>
               )}
             </div>
-            <h3 className="font-semibold text-sm">{product.name}</h3>
-            <p className="text-xs text-gray-500">{product.widthMm}mm x {product.heightMm}mm</p>
-            <div className="flex items-center justify-between mt-2">
-              <Badge variant="secondary">Q{product.basePrice.toFixed(2)}</Badge>
-              {product.stock <= 0 && <Badge variant="destructive">Agotado</Badge>}
+            <h3 className="font-semibold text-xs leading-tight">{product.name}</h3>
+            <p className="text-[10px] text-gray-500">{product.widthMm}mm × {product.heightMm}mm</p>
+            <div className="flex items-center justify-between mt-1">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Q{product.basePrice.toFixed(2)}</Badge>
+              {product.stock <= 0 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Agotado</Badge>}
             </div>
           </Card>
         ))}
@@ -752,7 +752,7 @@ export default function DesignPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
           {/* Left: Form */}
           <div className="space-y-4 min-w-0">
-            <Card className="p-4 space-y-4">
+            <Card className="p-4 space-y-4 overflow-hidden">
               <div>
                 <label className="text-sm font-medium mb-2 block">Texto del sello</label>
                 {lines.map((line, i) => (
@@ -973,7 +973,7 @@ export default function DesignPage() {
               </div>
             )}
 
-            <div className="flex justify-between">
+            <div className="flex justify-between pt-2">
               <Button variant="outline" onClick={() => setStep(2)}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Atras
               </Button>
@@ -1102,13 +1102,18 @@ export default function DesignPage() {
       <div className="flex items-center justify-center gap-2 mb-8">
         {[1, 2, 3, 4].map((s) => (
           <div key={s} className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                s <= step ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' : 'bg-gray-200 text-gray-500'
-              }`}
+            <button
+              type="button"
+              onClick={() => { if (s < step) setStep(s); }}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                s <= step
+                  ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white cursor-pointer hover:scale-110 hover:shadow-lg'
+                  : 'bg-gray-200 text-gray-500 cursor-default'
+              } ${s < step ? 'hover:opacity-90' : ''}`}
+              disabled={s >= step}
             >
               {s}
-            </div>
+            </button>
             {s < 4 && <div className={`w-8 h-1 ${s < step ? 'bg-orange-500' : 'bg-gray-200'}`} />}
           </div>
         ))}
