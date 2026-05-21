@@ -749,23 +749,22 @@ export default function DesignPage() {
         <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Personaliza tu diseno</h2>
         <p className="text-gray-600">Ingresa el texto, elige fuente, color de tinta y sube tu logo si lo deseas.</p>
 
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
           {/* Left: Form */}
-          <div className="xl:col-span-3 space-y-4">
-            <Card className="p-5 space-y-4">
+          <div className="space-y-4 min-w-0">
+            <Card className="p-4 space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Texto del sello</label>
                 {lines.map((line, i) => (
                   <div key={i} className="mb-3">
-                    {/* Fila 1: solo el input de texto */}
-                    <Input
-                      value={line.text}
-                      onChange={(e) => updateLine(i, 'text', e.target.value)}
-                      placeholder={`Linea ${i + 1}`}
-                      className="w-full mb-2"
-                    />
-                    {/* Fila 2: controles de formato */}
-                    <div className="flex gap-2 items-center flex-wrap">
+                    {/* Fila única: input + controles inline */}
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        value={line.text}
+                        onChange={(e) => updateLine(i, 'text', e.target.value)}
+                        placeholder={`Linea ${i + 1}`}
+                        className="flex-1 min-w-0"
+                      />
                       {(() => {
                         const lineFont = fonts.find((f) => f.id === line.fontId);
                         const minPt = lineFont?.minFontSizePt ?? 6;
@@ -773,7 +772,7 @@ export default function DesignPage() {
                         const availableSizes = allSizes.filter((s) => s >= minPt);
                         return (
                           <Select value={line.fontSize} onValueChange={(v) => updateLine(i, 'fontSize', v || '')}>
-                            <SelectTrigger className="w-20 h-9">
+                            <SelectTrigger className="w-16 h-8 shrink-0">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -786,7 +785,7 @@ export default function DesignPage() {
                       })()}
 
                       <Select value={line.fontId} onValueChange={(v) => updateLine(i, 'fontId', v || '')}>
-                        <SelectTrigger className="w-[130px] h-9 px-2">
+                        <SelectTrigger className="w-32 h-8 px-2 shrink-0">
                           <SelectValue placeholder="Fuente">
                             {line.fontId ? (
                               <span
@@ -814,14 +813,14 @@ export default function DesignPage() {
                         </SelectContent>
                       </Select>
 
-                      <Button variant={line.isBold ? 'default' : 'outline'} size="icon" className="h-9 w-9" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
+                      <Button variant={line.isBold ? 'default' : 'outline'} size="icon" className="h-8 w-8 shrink-0" onClick={() => updateLine(i, 'isBold', !line.isBold)}>
                         <span className="font-bold text-sm">B</span>
                       </Button>
-                      <Button variant={line.isItalic ? 'default' : 'outline'} size="icon" className="h-9 w-9" onClick={() => updateLine(i, 'isItalic', !line.isItalic)}>
+                      <Button variant={line.isItalic ? 'default' : 'outline'} size="icon" className="h-8 w-8 shrink-0" onClick={() => updateLine(i, 'isItalic', !line.isItalic)}>
                         <span className="italic text-sm">I</span>
                       </Button>
                       {lines.length > 1 && (
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeLine(i)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeLine(i)}>
                           <Minus className="h-4 w-4" />
                         </Button>
                       )}
@@ -990,7 +989,7 @@ export default function DesignPage() {
           </div>
 
           {/* Right: Live Preview */}
-          <div className="xl:col-span-2">
+          <div className="xl:sticky xl:top-4 xl:self-start">
             {renderLivePreview()}
           </div>
         </div>
@@ -1099,7 +1098,7 @@ export default function DesignPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl py-12 px-4">
+    <div className="w-full max-w-[1400px] mx-auto py-8 px-4 lg:px-8">
       <div className="flex items-center justify-center gap-2 mb-8">
         {[1, 2, 3, 4].map((s) => (
           <div key={s} className="flex items-center gap-2">
