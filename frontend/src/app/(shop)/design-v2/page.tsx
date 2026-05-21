@@ -69,11 +69,19 @@ const STAMP_TYPES: { id: StampType; name: string; description: string; svg: Reac
     description: 'Sello con mecanismo automático para uso frecuente',
     svg: (
       <svg viewBox="0 0 100 100" className="w-20 h-20">
-        <rect x="20" y="30" width="60" height="50" rx="6" fill="none" stroke="currentColor" strokeWidth="4" />
-        <rect x="30" y="10" width="40" height="25" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
-        <line x1="40" y1="10" x2="40" y2="5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-        <line x1="60" y1="10" x2="60" y2="5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-        <rect x="35" y="50" width="30" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+        {/* Base del sello automático */}
+        <rect x="20" y="65" width="60" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+        <rect x="30" y="58" width="40" height="8" rx="2" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        {/* Cuerpo/mango */}
+        <rect x="38" y="20" width="24" height="40" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+        {/* Botón de presión */}
+        <rect x="42" y="12" width="16" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        {/* Líneas de agarre */}
+        <line x1="42" y1="28" x2="58" y2="28" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+        <line x1="42" y1="34" x2="58" y2="34" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+        <line x1="42" y1="40" x2="58" y2="40" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+        {/* Sombra base */}
+        <ellipse cx="50" cy="88" rx="25" ry="4" fill="currentColor" opacity="0.1" />
       </svg>
     ),
   },
@@ -83,14 +91,23 @@ const STAMP_TYPES: { id: StampType; name: string; description: string; svg: Reac
     description: 'Sello con fecha ajustable para documentos',
     svg: (
       <svg viewBox="0 0 100 100" className="w-20 h-20">
-        <rect x="15" y="25" width="70" height="60" rx="6" fill="none" stroke="currentColor" strokeWidth="4" />
-        <rect x="25" y="15" width="50" height="15" rx="3" fill="none" stroke="currentColor" strokeWidth="3" />
-        <circle cx="35" cy="22" r="2" fill="currentColor" opacity="0.5" />
-        <circle cx="50" cy="22" r="2" fill="currentColor" opacity="0.5" />
-        <circle cx="65" cy="22" r="2" fill="currentColor" opacity="0.5" />
-        <rect x="28" y="45" width="44" height="28" rx="3" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-        <line x1="28" y1="55" x2="72" y2="55" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-        <line x1="28" y1="63" x2="72" y2="63" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+        {/* Mango del fechador */}
+        <rect x="42" y="10" width="16" height="30" rx="3" fill="none" stroke="currentColor" strokeWidth="3" />
+        <circle cx="50" cy="18" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+        {/* Cuello */}
+        <rect x="45" y="38" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        {/* Cuerpo circular con fechas */}
+        <circle cx="50" cy="62" r="22" fill="none" stroke="currentColor" strokeWidth="3" />
+        {/* Ruedas de fecha */}
+        <rect x="35" y="58" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+        <rect x="46" y="58" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+        <rect x="57" y="58" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+        {/* Líneas de separación en las ruedas */}
+        <line x1="40" y1="58" x2="40" y2="68" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+        <line x1="51" y1="58" x2="51" y2="68" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+        <line x1="62" y1="58" x2="62" y2="68" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+        {/* Sombra */}
+        <ellipse cx="50" cy="87" rx="18" ry="3" fill="currentColor" opacity="0.1" />
       </svg>
     ),
   },
@@ -302,21 +319,13 @@ export default function DesignPage() {
 
   const STAMP_CATEGORIES = ['MONTURA_AUTOMATICA', 'FECHADOR', 'PORTATIL', 'MADERA'];
 
-  // Filtrar productos: primero por tipo+forma, si no hay resultados fallback a solo forma
-  const exactFiltered = products.filter((p) => {
+  // Filtrar productos por tipo de sello y forma seleccionados
+  const filteredProducts = products.filter((p) => {
     if (!p.shape) return false;
     if (!STAMP_CATEGORIES.includes(p.category)) return false;
     if (stampType && p.category !== stampType) return false;
     return !shape || p.shape === shape;
   });
-
-  const shapeFiltered = products.filter((p) => {
-    if (!p.shape) return false;
-    if (!STAMP_CATEGORIES.includes(p.category)) return false;
-    return !shape || p.shape === shape;
-  });
-
-  const filteredProducts = exactFiltered.length > 0 ? exactFiltered : shapeFiltered;
 
   const filteredShapes = stampType === 'FECHADOR'
     ? SHAPES.filter((s) => s.id === 'RECTANGULAR')
