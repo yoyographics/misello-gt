@@ -41,6 +41,7 @@ interface Font {
   fileName: string;
   fileData?: string;
   minFontSizePt?: number;
+  isDefault?: boolean;
 }
 
 interface Ink {
@@ -230,9 +231,18 @@ export default function DesignPage() {
         const f = fontsRes.data || [];
         const i = inksRes.data || [];
         setProducts(Array.isArray(p) ? p : []);
-        setFonts(Array.isArray(f) ? f : []);
+        const fontsArr = Array.isArray(f) ? f : [];
+        setFonts(fontsArr);
         setInks(Array.isArray(i) ? i : []);
         setApiLoading(false);
+
+        // Auto-seleccionar fuente predeterminada si no hay ninguna seleccionada
+        if (!selectedFont && fontsArr.length > 0) {
+          const defaultFont = fontsArr.find((font: Font) => font.isDefault);
+          if (defaultFont) {
+            setSelectedFont(defaultFont.id);
+          }
+        }
 
         // Cargar fuentes via @font-face inyectado en <head>
         f.forEach((font: Font) => {
@@ -687,23 +697,25 @@ export default function DesignPage() {
 
     return (
       <div className="sticky top-6">
-        <Card className="p-4">
-          <h3 className="font-semibold text-sm mb-3 text-[#1B2A6B]">Vista previa</h3>
-          <div className="bg-white rounded-lg border overflow-hidden">
+        <Card className="p-5">
+          <h3 className="font-semibold text-base mb-4 text-[#1B2A6B]">Vista previa</h3>
+          <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-inner">
             <svg
               viewBox={`${-padding} ${-padding} ${w + padding * 2} ${h + padding * 2 + 6}`}
               className="w-full h-auto"
-              style={{ maxHeight: '320px' }}
+              style={{ maxHeight: '420px', minHeight: '200px' }}
             >
               {shapeEl}
               {logoEl}
               {textEls}
             </svg>
           </div>
-          <p className="text-[11px] text-center text-gray-400 mt-2 tracking-wide uppercase">{dimLabel}</p>
-          {selectedProduct.name && (
-            <p className="text-xs text-center text-gray-500 mt-1">{selectedProduct.name}</p>
-          )}
+          <div className="mt-4 text-center space-y-1">
+            <p className="text-sm font-semibold text-gray-700 tracking-wide">{dimLabel}</p>
+            {selectedProduct.name && (
+              <p className="text-xs text-gray-500">{selectedProduct.name}</p>
+            )}
+          </div>
         </Card>
       </div>
     );
@@ -838,31 +850,48 @@ export default function DesignPage() {
 
               <Separator />
 
-              {/* Vista previa de fuentes */}
+              {/* Selector de fuentes — Dropdown con preview */}
               <div>
-                <label className="text-sm font-medium mb-1 block">Fuente — Selecciona una tipografia</label>
-                <p className="text-xs text-gray-500 mb-3">
-                  Selecciona una fuente. El tamano minimo fabricable aparece en cada tarjeta.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {fonts.map((font) => (
-                    <Card
-                      key={font.id}
-                      className={`p-3 text-center ${CARD_BASE} ${selectedFont === font.id ? CARD_SELECTED : ''}`}
-                      onClick={() => setSelectedFont(font.id)}
-                    >
-                      <div
-                        className="text-lg mb-1 truncate min-h-[1.75rem]"
-                        style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
-                        title={font.name}
-                      >
-                        {loadedFonts.has(font.id) ? (previewText || 'Aa') : <span className="text-sm text-gray-400">Cargando...</span>}
-                      </div>
-                      <p className="text-xs text-gray-500 truncate">{font.name}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">Min: {font.minFontSizePt ?? 10}pt</p>
-                    </Card>
-                  ))}
-                </div>
+                <label className="text-sm font-medium mb-2 block">Fuente</label>
+                <Select value={selectedFont} onValueChange={(v) => setSelectedFont(v || '')}>
+                  <SelectTrigger className="w-full h-16 text-base">
+                    <SelectValue placeholder="Selecciona una tipografia">
+                      {(() => {
+                        const font = fonts.find((f) => f.id === selectedFont);
+                        if (!font) return 'Selecciona una tipografia';
+                        return (
+                          <div className="flex items-center gap-3">
+                            <span
+                              className="text-xl"
+                              style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
+                            >
+                              abcdefg...
+                            </span>
+                            <span className="text-sm text-gray-500">{font.name}</span>
+                          </div>
+                        );
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[320px]">
+                    {fonts.map((font) => (
+                      <SelectItem key={font.id} value={font.id} className="py-3">
+                        <div className="flex items-center justify-between gap-6 w-full min-w-[280px]">
+                          <span
+                            className="text-lg"
+                            style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
+                          >
+                            abcdefg...
+                          </span>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600">{font.name}</p>
+                            <p className="text-[10px] text-gray-400">Min: {font.minFontSizePt ?? 10}pt</p>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Separator />

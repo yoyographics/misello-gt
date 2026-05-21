@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Upload, Trash2, Eye, EyeOff, Star } from 'lucide-react';
 
 interface Font {
   id: string;
@@ -16,6 +16,7 @@ interface Font {
   fileData?: string;
   strokeRatio?: number;
   minFontSizePt?: number;
+  isDefault?: boolean;
   isActive: boolean;
 }
 
@@ -243,6 +244,15 @@ export default function AdminFontsPage() {
     }
   };
 
+  const setDefaultFont = async (id: string) => {
+    try {
+      await api.post(`/fonts/admin/${id}/set-default`);
+      fetchFonts();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error estableciendo fuente predeterminada');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta fuente permanentemente?')) return;
     try {
@@ -295,6 +305,7 @@ export default function AdminFontsPage() {
                   <th className="text-left py-2">Nombre</th>
                   <th className="text-left py-2">Archivo original</th>
                   <th className="text-left py-2">Tamano minimo</th>
+                  <th className="text-left py-2">Predeterminada</th>
                   <th className="text-left py-2">Estado</th>
                   <th className="text-left py-2">Acciones</th>
                 </tr>
@@ -310,6 +321,22 @@ export default function AdminFontsPage() {
                         initialValue={font.minFontSizePt ?? 10}
                         onSave={updateMinFontSize}
                       />
+                    </td>
+                    <td className="py-2">
+                      {font.isDefault ? (
+                        <Badge className="bg-yellow-100 text-yellow-700">
+                          <Star className="h-3 w-3 mr-1 fill-yellow-600" /> Predeterminada
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-gray-500 hover:text-yellow-600"
+                          onClick={() => setDefaultFont(font.id)}
+                        >
+                          <Star className="h-3 w-3 mr-1" /> Predeterminar
+                        </Button>
+                      )}
                     </td>
                     <td className="py-2">
                       <Badge className={font.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>

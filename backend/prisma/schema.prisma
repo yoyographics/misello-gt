@@ -149,6 +149,7 @@ model Font {
   fileData      String?  @db.Text // Contenido base64 del TTF/OTF para renderizado sin dependencia del filesystem
   strokeRatio   Float?   // Grosor de trazo real medido con opentype.js (ej. 0.08 = fino, 0.15 = grueso)
   minFontSizePt Float?   @default(10) // Tamano minimo fabricable para esta fuente (configurable por admin)
+  isDefault     Boolean  @default(false) // Fuente predeterminada en el disenador
   uploadedAt    DateTime @default(now())
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())

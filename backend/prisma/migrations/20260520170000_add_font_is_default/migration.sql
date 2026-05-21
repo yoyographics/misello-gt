@@ -1,0 +1,1 @@
+ALTER TABLE "Font" ADD COLUMN "isDefault" BOOLEAN DEFAULT false;

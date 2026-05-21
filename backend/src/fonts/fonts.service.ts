@@ -136,6 +136,22 @@ export class FontsService {
     });
   }
 
+  async setDefault(id: string) {
+    await this.findOneAdmin(id);
+    // Transaction: unset all defaults, then set the selected one
+    await this.prisma.$transaction([
+      this.prisma.font.updateMany({
+        where: { isDefault: true },
+        data: { isDefault: false },
+      }),
+      this.prisma.font.update({
+        where: { id },
+        data: { isDefault: true },
+      }),
+    ]);
+    return this.prisma.font.findUnique({ where: { id } });
+  }
+
   async remove(id: string) {
     await this.findOneAdmin(id);
     return this.prisma.font.delete({ where: { id } });

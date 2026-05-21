@@ -123,6 +123,13 @@ export class FontsController {
     return this.fontsService.update(id, dto);
   }
 
+  @Post('admin/:id/set-default')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  setDefault(@Param('id') id: string) {
+    return this.fontsService.setDefault(id);
+  }
+
   @Delete('admin/:id')
   @UseGuards(JwtAdminGuard)
   @ApiBearerAuth()
