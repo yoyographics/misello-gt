@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
@@ -8,6 +9,8 @@ import { ProductQueryDto } from './dto/product-query.dto';
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly CLOUDINARY_FOLDER = 'misello/products';
 
   async findAllPublic(query: ProductQueryDto) {
     const where: Prisma.ProductWhereInput = { isActive: true };
@@ -83,12 +86,21 @@ export class ProductsService {
     return this.prisma.product.update({ where: { id }, data: dto });
   }
 
-  async uploadImage(id: string, file: Express.Multer.File, field: 'imageUrl' | 'imageUrlHover' = 'imageUrl') {
+  async uploadImage(
+    id: string,
+    file: Express.Multer.File,
+    cloudinaryService: CloudinaryService,
+    field: 'imageUrl' | 'imageUrlHover' = 'imageUrl',
+  ) {
     await this.findOneAdmin(id);
-    const imageUrl = `/uploads/product-photos/${file.filename}`;
+    const secureUrl = await cloudinaryService.uploadImage(
+      file.buffer,
+      this.CLOUDINARY_FOLDER,
+      `${id}_${field}`,
+    );
     return this.prisma.product.update({
       where: { id },
-      data: { [field]: imageUrl },
+      data: { [field]: secureUrl },
     });
   }
 

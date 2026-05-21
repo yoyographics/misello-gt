@@ -12,6 +12,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -22,7 +23,10 @@ import { JwtAdminGuard } from '../auth/guards/jwt-admin.guard';
 @ApiTags('Catálogo — Productos')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   /** Listado público de productos activos */
   @Get()
@@ -64,13 +68,18 @@ export class ProductsController {
   @Post('admin/:id/image')
   @UseGuards(JwtAdminGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('image', { dest: 'uploads/product-photos' }))
-  uploadImage(
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadImage(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('type') type?: string,
   ) {
-    return this.productsService.uploadImage(id, file, type === 'hover' ? 'imageUrlHover' : 'imageUrl');
+    return this.productsService.uploadImage(
+      id,
+      file,
+      this.cloudinaryService,
+      type === 'hover' ? 'imageUrlHover' : 'imageUrl',
+    );
   }
 
   /** Eliminar producto — soft delete (admin) */
