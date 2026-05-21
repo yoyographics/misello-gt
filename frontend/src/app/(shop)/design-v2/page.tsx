@@ -595,11 +595,11 @@ export default function DesignPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {(filteredProducts.length > 0 ? filteredProducts : []).map((product) => (
           <Card
             key={product.id}
-            className={`group p-2 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
+            className={`group p-2.5 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
             onClick={() => {
               if (product.stock > 0) {
                 setSelectedProduct(product);
@@ -607,7 +607,7 @@ export default function DesignPage() {
               }
             }}
           >
-            <div className="relative h-32 bg-gray-50 rounded-lg mb-2 overflow-hidden">
+            <div className="relative h-40 bg-gray-50 rounded-lg mb-2 overflow-hidden">
               {product.imageUrl ? (
                 <>
                   <img
