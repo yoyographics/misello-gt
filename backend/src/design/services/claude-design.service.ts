@@ -59,7 +59,7 @@ export class ClaudeDesignService {
   ): Promise<DesignParameters> {
     if (!this.anthropic) {
       this.logger.warn('ANTHROPIC_API_KEY no configurada. Usando layout por defecto.');
-      return this.getDefaultDesign(lines, product);
+      return this.getDefaultDesign(lines, product, logoUrl);
     }
 
     const prompt = this.buildPrompt(category, lines, product, fontName, logoUrl, specialRequests);
@@ -98,7 +98,7 @@ REGLAS CRITICAS:
       return params;
     } catch (error) {
       this.logger.error(`Error llamando a Claude: ${error.message}. Usando layout por defecto.`);
-      return this.getDefaultDesign(lines, product);
+      return this.getDefaultDesign(lines, product, logoUrl);
     }
   }
 
@@ -158,6 +158,7 @@ Genera el JSON con esta estructura exacta:
   private getDefaultDesign(
     lines: Array<{ text: string; fontSize?: string; isBold?: boolean; isItalic?: boolean; alignment?: string }>,
     product: { widthPx: number; heightPx: number; shape: string },
+    logoUrl?: string,
   ): DesignParameters {
     const margin = 10;
     const availWidth = product.widthPx - margin * 2;
@@ -178,6 +179,15 @@ Genera el JSON con esta estructura exacta:
     return {
       layout: product.shape === 'CIRCULAR' ? 'circular' : lines.length === 1 ? 'single-line' : 'multi-line',
       textLines,
+      ...(logoUrl ? {
+        logo: {
+          x: 10,
+          y: 10,
+          width: 80,
+          height: 80,
+          grayscale: true,
+        }
+      } : {}),
       margins: { top: margin, right: margin, bottom: margin, left: margin },
       spacing: 10,
     };

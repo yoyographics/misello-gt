@@ -31,9 +31,12 @@ export class DesignController {
   @Post('upload-logo')
   @UseGuards(JwtClientGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('logo', { dest: 'uploads/logos' }))
+  @UseInterceptors(FileInterceptor('logo'))
   uploadLogo(@UploadedFile() file: Express.Multer.File) {
-    return { logoUrl: `/uploads/logos/${file.filename}` };
+    const base64 = file.buffer.toString('base64');
+    const mimeType = file.mimetype;
+    const logoDataUri = `data:${mimeType};base64,${base64}`;
+    return { logoUrl: logoDataUri };
   }
 
   /**
