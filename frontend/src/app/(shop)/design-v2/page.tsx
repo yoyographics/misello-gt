@@ -276,14 +276,21 @@ export default function DesignPage() {
 
   const STAMP_CATEGORIES = ['MONTURA_AUTOMATICA', 'FECHADOR', 'PORTATIL', 'MADERA'];
 
-  const filteredProducts = products.filter((p) => {
-    // Solo sellos reales: deben tener shape Y ser de una categoria de sello
+  // Filtrar productos: primero por tipo+forma, si no hay resultados fallback a solo forma
+  const exactFiltered = products.filter((p) => {
     if (!p.shape) return false;
     if (!STAMP_CATEGORIES.includes(p.category)) return false;
-    // Filtrar por tipo de sello seleccionado
     if (stampType && p.category !== stampType) return false;
     return !shape || p.shape === shape;
   });
+
+  const shapeFiltered = products.filter((p) => {
+    if (!p.shape) return false;
+    if (!STAMP_CATEGORIES.includes(p.category)) return false;
+    return !shape || p.shape === shape;
+  });
+
+  const filteredProducts = exactFiltered.length > 0 ? exactFiltered : shapeFiltered;
 
   const filteredShapes = stampType === 'FECHADOR'
     ? SHAPES.filter((s) => s.id === 'RECTANGULAR')
@@ -467,11 +474,14 @@ export default function DesignPage() {
       <div className="space-y-6">
         <div className="relative overflow-hidden w-full">
           <div
-            className="flex transition-transform duration-500 ease-in-out"
-            style={{ transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-100%)' }}
+            className="grid transition-transform duration-500 ease-in-out"
+            style={{
+              gridTemplateColumns: 'repeat(2, 100%)',
+              transform: subStep === 'type' ? 'translateX(0%)' : 'translateX(-50%)',
+            }}
           >
             {/* Panel 1A: Tipo de sello */}
-            <div className="w-full min-w-full flex-shrink-0">
+            <div>
               <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
               <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -493,7 +503,7 @@ export default function DesignPage() {
             </div>
 
             {/* Panel 1B: Forma */}
-            <div className="w-full min-w-full flex-shrink-0">
+            <div>
               <div className="flex items-center gap-2 mb-2">
                 <Button
                   variant="ghost"
