@@ -351,10 +351,17 @@ export default function DesignPage() {
       });
   }, []);
 
+  const STAMP_TYPE_TO_SLUG: Record<StampType, string> = {
+    MONTURA_AUTOMATICA: 'sello-automatico',
+    FECHADOR: 'sello-fechador',
+    PORTATIL: 'sello-portatil',
+    EMBOSADORA: 'embosadora',
+  };
+
   const stampCategoryIds = categories.map((c) => c.id);
 
   const selectedCategoryId = stampType
-    ? categories.find((c) => c.slug === stampType)?.id
+    ? categories.find((c) => c.slug === STAMP_TYPE_TO_SLUG[stampType])?.id
     : undefined;
 
   // Filtrar productos por tipo de sello y forma seleccionados
@@ -553,26 +560,22 @@ export default function DesignPage() {
           <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
           <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {categories.map((cat) => {
-              const detail = STAMP_TYPE_DETAILS[cat.slug as StampType];
+            {(Object.keys(STAMP_TYPE_DETAILS) as StampType[]).map((type) => {
+              const detail = STAMP_TYPE_DETAILS[type];
               return (
                 <Card
-                  key={cat.id}
-                  className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === cat.slug ? CARD_SELECTED : ''}`}
+                  key={type}
+                  className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === type ? CARD_SELECTED : ''}`}
                   onClick={() => {
-                    setStampType(cat.slug as StampType);
+                    setStampType(type);
                     setSubStep('shape');
                   }}
                 >
-                  <div className={`mb-4 ${stampType === cat.slug ? 'text-orange-500' : 'text-blue-400'}`}>
-                    {detail?.svg || (
-                      <svg viewBox="0 0 100 100" className="w-20 h-20">
-                        <rect x="20" y="20" width="60" height="60" rx="8" fill="none" stroke="currentColor" strokeWidth="3" />
-                      </svg>
-                    )}
+                  <div className={`mb-4 ${stampType === type ? 'text-orange-500' : 'text-blue-400'}`}>
+                    {detail.svg}
                   </div>
-                  <h3 className="font-semibold text-base">{detail?.name || cat.name}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{detail?.description || cat.description || ''}</p>
+                  <h3 className="font-semibold text-base">{detail.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{detail.description}</p>
                 </Card>
               );
             })}
