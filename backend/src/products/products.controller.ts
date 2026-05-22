@@ -94,4 +94,12 @@ export class ProductsController {
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
   }
+
+  /** Corregir categorías basadas en SKU (one-time fix) */
+  @Post('admin/fix-categories')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  async fixCategories() {
+    return this.productsService.fixCategories();
+  }
 }

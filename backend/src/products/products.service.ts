@@ -141,4 +141,39 @@ export class ProductsService {
     await this.findOneAdmin(id);
     return this.prisma.product.update({ where: { id }, data: { isActive: false } });
   }
+
+  /** Corrige categorías basadas en SKU según el catálogo oficial */
+  async fixCategories() {
+    const products = await this.prisma.product.findMany();
+    const updates: string[] = [];
+
+    for (const p of products) {
+      const sku = p.sku;
+      let correctCategory: string | null = null;
+
+      if (sku.match(/^(S-82|S-83|S-31|S-30|S-52|S-54|R-5|O-3)/) && !sku.endsWith('D')) {
+        correctCategory = 'MONTURA_AUTOMATICA';
+      } else if (sku.endsWith('D')) {
+        correctCategory = 'FECHADOR';
+      } else if (['S-722', 'S-723', 'S-724', 'Q-24', 'Q-32', 'EL-42'].includes(sku)) {
+        correctCategory = 'PORTATIL';
+      } else if (sku.startsWith('EM-') || sku.startsWith('ED-')) {
+        correctCategory = 'EMBOSADORA';
+      } else if (sku.startsWith('ALM-AUTO') || sku.startsWith('ALM-FEC')) {
+        correctCategory = 'ALMOHADILLA_AUTOMATICA';
+      } else if (sku.startsWith('ALM-S')) {
+        correctCategory = 'ALMOHADILLA_MADERA';
+      }
+
+      if (correctCategory && p.category !== correctCategory) {
+        await this.prisma.product.update({
+          where: { id: p.id },
+          data: { category: correctCategory as any },
+        });
+        updates.push(`${sku}: ${p.category} → ${correctCategory}`);
+      }
+    }
+
+    return { fixed: updates.length, changes: updates };
+  }
 }
