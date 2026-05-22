@@ -1,13 +1,13 @@
 import {
   IsString,
-  IsEnum,
   IsOptional,
   IsNumber,
   IsBoolean,
   Min,
+  IsNotEmpty,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProductCategory, ProductShape } from '@prisma/client';
+import { ProductShape } from '@prisma/client';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'SELLO-001' })
@@ -23,12 +23,13 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ enum: ProductCategory, example: ProductCategory.MONTURA_AUTOMATICA })
-  @IsEnum(ProductCategory)
-  category: ProductCategory;
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsString()
+  @IsNotEmpty()
+  categoryId: string;
 
   @ApiPropertyOptional({ enum: ProductShape, example: ProductShape.RECTANGULAR })
-  @IsEnum(ProductShape)
+  @IsString()
   @IsOptional()
   shape?: ProductShape;
 

@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PrismaModule } from './prisma/prisma.module';
 import { ApiModule } from './api.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ApiModule } from './api.module';
     }),
     PrismaModule,
     ApiModule,
+    CategoriesModule,
     RouterModule.register([
       {
         path: 'api/v1',

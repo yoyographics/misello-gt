@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Plus, Pencil, Trash2, ImageIcon, ArrowUpDown } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, ImageIcon, ArrowLeft, ArrowUpDown } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -74,44 +75,84 @@ function getImageUrl(url?: string) {
   return url.startsWith('http') ? url : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
 }
 
-export default function AdminProductsPage() {
+export default function InventoryCategoryPage({ slug }: { slug: string }) {
+  const router = useRouter();
+
+  const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtros
+  const [filterShape, setFilterShape] = useState('');
+  const [filterMinPrice, setFilterMinPrice] = useState('');
+  const [filterMaxPrice, setFilterMaxPrice] = useState('');
+  const [filterStock, setFilterStock] = useState('');
+
+  // Modal producto
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, any>>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [hoverImageFile, setHoverImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Ajuste stock
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [adjustQty, setAdjustQty] = useState('');
   const [adjusting, setAdjusting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
-  const fetchProducts = useCallback(() => {
+  const fetchData = useCallback(() => {
     setLoading(true);
-    api.get('/products/admin/all')
-      .then((res) => setProducts(res.data.items || res.data || []))
-      .catch((err) => console.error('Error cargando productos:', err))
-      .finally(() => setLoading(false));
-  }, []);
+    Promise.all([
+      api.get('/categories'),
+      api.get('/products/admin/all'),
+    ])
+      .then(([categoriesRes, productsRes]) => {
+        const cats: Category[] = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+        setCategories(cats);
+        const cat = cats.find((c) => c.slug === slug) || null;
+        setCategory(cat);
 
-  const fetchCategories = useCallback(() => {
-    api.get('/categories')
-      .then((res) => setCategories(res.data || []))
-      .catch((err) => console.error('Error cargando categorias:', err));
-  }, []);
+        const prods: Product[] = productsRes.data?.items || productsRes.data || [];
+        setAllProducts(prods);
+        if (cat) {
+          setProducts(prods.filter((p: Product) => p.categoryId === cat.id));
+        } else {
+          setProducts([]);
+        }
+      })
+      .catch((err) => console.error('Error cargando datos:', err))
+      .finally(() => setLoading(false));
+  }, [slug]);
 
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, [fetchProducts, fetchCategories]);
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (!category) return;
+    let filtered = allProducts.filter((p) => p.categoryId === category.id);
+    if (filterShape) {
+      filtered = filtered.filter((p) => p.shape === filterShape);
+    }
+    if (filterMinPrice) {
+      filtered = filtered.filter((p) => p.basePrice >= parseFloat(filterMinPrice));
+    }
+    if (filterMaxPrice) {
+      filtered = filtered.filter((p) => p.basePrice <= parseFloat(filterMaxPrice));
+    }
+    if (filterStock) {
+      filtered = filtered.filter((p) => p.stock <= parseInt(filterStock));
+    }
+    setProducts(filtered);
+  }, [filterShape, filterMinPrice, filterMaxPrice, filterStock, allProducts, category]);
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, categoryId: category?.id || '' });
     setImageFile(null);
     setHoverImageFile(null);
     setDialogOpen(true);
@@ -178,7 +219,7 @@ export default function AdminProductsPage() {
       }
 
       setDialogOpen(false);
-      fetchProducts();
+      fetchData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error guardando producto');
     } finally {
@@ -190,7 +231,7 @@ export default function AdminProductsPage() {
     if (!confirm('¿Eliminar este producto?')) return;
     try {
       await api.delete(`/products/admin/${id}`);
-      fetchProducts();
+      fetchData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error eliminando producto');
     }
@@ -200,21 +241,6 @@ export default function AdminProductsPage() {
     setAdjustProduct(product);
     setAdjustQty('');
     setAdjustOpen(true);
-  };
-
-  const handleSyncCatalog = async () => {
-    if (!confirm('Esto sincronizara el catalogo completo (73 productos). No borrara productos existentes. ¿Continuar?')) return;
-    setSyncing(true);
-    try {
-      const res = await api.post('/products/admin/sync-catalog');
-      const d = res.data;
-      alert(`Sync completo:\nCreados: ${d.created}\nActualizados: ${d.updated}\nSin cambios: ${d.unchanged}\nErrores: ${d.errors.length}\nTotal en DB: ${d.totalInDb}`);
-      fetchProducts();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Error sincronizando catalogo');
-    } finally {
-      setSyncing(false);
-    }
   };
 
   const handleAdjust = async () => {
@@ -227,7 +253,7 @@ export default function AdminProductsPage() {
         delta,
       });
       setAdjustOpen(false);
-      fetchProducts();
+      fetchData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error ajustando stock');
     } finally {
@@ -235,7 +261,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  const getCategoryLabel = (product: Product) => {
+  const getCategoryName = (product: Product) => {
     if (product.category?.name) return product.category.name;
     const cat = categories.find((c) => c.id === product.categoryId);
     return cat?.name || product.categoryId || 'Sin categoria';
@@ -243,26 +269,66 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#1B2A6B]">Productos</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSyncCatalog} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            Sync catalogo
-          </Button>
-          <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-            <Plus className="h-4 w-4 mr-1" /> Agregar
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button variant="outline" size="sm" onClick={() => router.push('/admin/inventory/')}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+        </Button>
+        <h1 className="text-2xl font-bold text-[#1B2A6B]">{category?.name || slug}</h1>
+        <div className="flex-1" />
+        <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+          <Plus className="h-4 w-4 mr-1" /> Agregar producto
+        </Button>
+      </div>
+
+      {/* Filtros */}
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="text-xs font-medium block mb-1">Forma</label>
+            <Select value={filterShape} onValueChange={(v) => setFilterShape(v || '')}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas</SelectItem>
+                {SHAPES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-1">Precio min</label>
+            <Input type="number" step="0.01" className="w-32" value={filterMinPrice} onChange={(e) => setFilterMinPrice(e.target.value)} placeholder="0" />
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-1">Precio max</label>
+            <Input type="number" step="0.01" className="w-32" value={filterMaxPrice} onChange={(e) => setFilterMaxPrice(e.target.value)} placeholder="9999" />
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-1">Stock max</label>
+            <Input type="number" className="w-32" value={filterStock} onChange={(e) => setFilterStock(e.target.value)} placeholder="Todos" />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => {
+            setFilterShape('');
+            setFilterMinPrice('');
+            setFilterMaxPrice('');
+            setFilterStock('');
+          }}>
+            Limpiar
           </Button>
         </div>
-      </div>
+      </Card>
 
       <Card className="p-6">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
           </div>
+        ) : !category ? (
+          <p className="text-gray-500 text-center py-8">Categoria no encontrada.</p>
         ) : products.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay productos.</p>
+          <p className="text-gray-500 text-center py-8">No hay productos en esta categoria.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -297,7 +363,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="py-2 font-mono text-xs">{p.sku}</td>
                     <td className="py-2 font-medium">{p.name}</td>
-                    <td className="py-2">{getCategoryLabel(p)}</td>
+                    <td className="py-2">{getCategoryName(p)}</td>
                     <td className="py-2">{p.widthMm ? `${p.widthMm}mm x ${p.heightMm}mm` : '-'}</td>
                     <td className="py-2">Q{p.basePrice.toFixed(2)}</td>
                     <td className="py-2">{p.stock}</td>
@@ -327,6 +393,7 @@ export default function AdminProductsPage() {
         )}
       </Card>
 
+      {/* Modal crear/editar producto */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>

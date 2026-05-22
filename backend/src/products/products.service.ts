@@ -5,6 +5,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
+import { CATALOG_PRODUCTS, CATEGORY_DEFINITIONS } from './catalog-data';
 
 @Injectable()
 export class ProductsService {
@@ -12,18 +13,17 @@ export class ProductsService {
 
   private readonly CLOUDINARY_FOLDER = 'MI SELLO';
 
-  private getCategoryFolder(category: string): string {
+  private getCategoryFolder(categorySlug: string): string {
     const map: Record<string, string> = {
-      MONTURA_AUTOMATICA: 'sellos-automaticos',
-      FECHADOR: 'fechadores',
-      PORTATIL: 'sellos-portatiles',
-      MADERA: 'sellos-madera',
-      TINTA: 'tintas',
-      EMBOSSER: 'embosadoras',
-      EMBOSSING: 'embosadoras',
-      EMBOSADORA: 'embosadoras',
+      'sello-automatico': 'sellos-automaticos',
+      'sello-fechador': 'fechadores',
+      'sello-portatil': 'sellos-portatiles',
+      'sello-madera': 'sellos-madera',
+      'tintas': 'tintas',
+      'embosadora': 'embosadoras',
+      'almohadillas': 'almohadillas',
     };
-    return map[category] || 'otros';
+    return map[categorySlug] || 'otros';
   }
 
   private toWebpUrl(cloudinaryUrl: string): string {
@@ -35,7 +35,7 @@ export class ProductsService {
   async findAllPublic(query: ProductQueryDto) {
     const where: Prisma.ProductWhereInput = { isActive: true };
 
-    if (query.category) where.category = query.category;
+    if (query.categoryId) where.categoryId = query.categoryId;
     if (query.shape) where.shape = query.shape;
     if (query.search) {
       where.OR = [
@@ -60,7 +60,7 @@ export class ProductsService {
   async findAllAdmin(query: ProductQueryDto) {
     const where: Prisma.ProductWhereInput = {};
 
-    if (query.category) where.category = query.category;
+    if (query.categoryId) where.categoryId = query.categoryId;
     if (query.shape) where.shape = query.shape;
     if (query.isActive !== undefined) where.isActive = query.isActive;
     if (query.search) {
@@ -120,7 +120,11 @@ export class ProductsService {
     const sku = (product.sku || id).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
     const suffix = field === 'imageUrlHover' ? '-hover' : '';
     const publicId = `${sku}${suffix}`;
-    const subFolder = this.getCategoryFolder(product.category || '');
+
+    const category = await this.prisma.category.findUnique({
+      where: { id: product.categoryId },
+    });
+    const subFolder = this.getCategoryFolder(category?.slug || '');
     const folder = `${this.CLOUDINARY_FOLDER}/${subFolder}`;
 
     const secureUrl = await cloudinaryService.uploadImage(
@@ -142,38 +146,97 @@ export class ProductsService {
     return this.prisma.product.update({ where: { id }, data: { isActive: false } });
   }
 
-  /** Corrige categorías basadas en SKU según el catálogo oficial */
-  async fixCategories() {
-    const products = await this.prisma.product.findMany();
-    const updates: string[] = [];
+  /**
+   * Sincroniza el catálogo completo con la base de datos.
+   * Usa upsert por SKU: crea productos nuevos, actualiza existentes,
+   * preserva campos que el admin haya modificado (imágenes, stock, isActive).
+   */
+  async syncCatalog() {
+    // 1. Asegurar que todas las categorías existen
+    const categoryMap = new Map<string, string>();
+    for (const def of CATEGORY_DEFINITIONS) {
+      const cat = await this.prisma.category.upsert({
+        where: { slug: def.slug },
+        update: {},
+        create: def,
+      });
+      categoryMap.set(def.slug, cat.id);
+    }
 
-    for (const p of products) {
-      const sku = p.sku;
-      let correctCategory: string | null = null;
+    let created = 0;
+    let updated = 0;
+    let unchanged = 0;
+    const errors: string[] = [];
 
-      if (sku.match(/^(S-82|S-83|S-31|S-30|S-52|S-54|R-5|O-3)/) && !sku.endsWith('D')) {
-        correctCategory = 'MONTURA_AUTOMATICA';
-      } else if (sku.endsWith('D')) {
-        correctCategory = 'FECHADOR';
-      } else if (['S-722', 'S-723', 'S-724', 'Q-24', 'Q-32', 'EL-42'].includes(sku)) {
-        correctCategory = 'PORTATIL';
-      } else if (sku.startsWith('EM-') || sku.startsWith('ED-')) {
-        correctCategory = 'EMBOSADORA';
-      } else if (sku.startsWith('ALM-AUTO') || sku.startsWith('ALM-FEC')) {
-        correctCategory = 'ALMOHADILLA_AUTOMATICA';
-      } else if (sku.startsWith('ALM-S')) {
-        correctCategory = 'ALMOHADILLA_MADERA';
-      }
-
-      if (correctCategory && p.category !== correctCategory) {
-        await this.prisma.product.update({
-          where: { id: p.id },
-          data: { category: correctCategory as any },
+    for (const item of CATALOG_PRODUCTS) {
+      try {
+        const existing = await this.prisma.product.findUnique({
+          where: { sku: item.sku },
         });
-        updates.push(`${sku}: ${p.category} → ${correctCategory}`);
+
+        const categoryId = categoryMap.get(item.categorySlug);
+        if (!categoryId) {
+          errors.push(`${item.sku}: categoría no encontrada para slug ${item.categorySlug}`);
+          continue;
+        }
+
+        const data = {
+          name: item.name,
+          categoryId,
+          shape: item.shape,
+          widthMm: item.widthMm,
+          heightMm: item.heightMm,
+          widthPx: item.widthPx,
+          heightPx: item.heightPx,
+          basePrice: item.basePrice,
+        };
+
+        if (!existing) {
+          await this.prisma.product.create({
+            data: {
+              sku: item.sku,
+              ...data,
+              stock: 100,
+              isActive: true,
+            },
+          });
+          created++;
+        } else {
+          // Solo actualizar si hay cambios reales en los campos del catálogo
+          const hasChanges =
+            existing.name !== data.name ||
+            existing.categoryId !== data.categoryId ||
+            existing.shape !== data.shape ||
+            existing.widthMm !== data.widthMm ||
+            existing.heightMm !== data.heightMm ||
+            existing.widthPx !== data.widthPx ||
+            existing.heightPx !== data.heightPx ||
+            existing.basePrice !== data.basePrice;
+
+          if (hasChanges) {
+            await this.prisma.product.update({
+              where: { id: existing.id },
+              data,
+            });
+            updated++;
+          } else {
+            unchanged++;
+          }
+        }
+      } catch (err: any) {
+        errors.push(`${item.sku}: ${err.message}`);
       }
     }
 
-    return { fixed: updates.length, changes: updates };
+    const totalInDb = await this.prisma.product.count();
+
+    return {
+      created,
+      updated,
+      unchanged,
+      errors,
+      totalCatalog: CATALOG_PRODUCTS.length,
+      totalInDb,
+    };
   }
 }

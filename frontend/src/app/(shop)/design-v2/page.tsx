@@ -21,11 +21,22 @@ import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X 
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  imageUrl?: string;
+  sortOrder?: number;
+  isActive: boolean;
+  showInWizard?: boolean;
+}
+
 interface Product {
   id: string;
   sku: string;
   name: string;
-  category: string;
+  categoryId: string;
   shape: string;
   widthMm: number;
   heightMm: number;
@@ -59,59 +70,74 @@ interface LineData {
   alignment: 'center' | 'left' | 'right';
 }
 
-type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR';
+type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR' | 'PORTATIL' | 'EMBOSADORA';
 type SubStep = 'type' | 'shape';
 
-const STAMP_TYPES: { id: StampType; name: string; description: string; svg: React.ReactNode }[] = [
-  {
-    id: 'MONTURA_AUTOMATICA',
+const STAMP_TYPE_DETAILS: Record<StampType, { name: string; description: string; svg: React.ReactNode }> = {
+  MONTURA_AUTOMATICA: {
     name: 'Montura Automática',
     description: 'Sello con mecanismo automático para uso frecuente',
     svg: (
       <svg viewBox="0 0 100 100" className="w-20 h-20">
-        {/* Base del sello automático */}
         <rect x="20" y="65" width="60" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
         <rect x="30" y="58" width="40" height="8" rx="2" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        {/* Cuerpo/mango */}
         <rect x="38" y="20" width="24" height="40" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
-        {/* Botón de presión */}
         <rect x="42" y="12" width="16" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        {/* Líneas de agarre */}
         <line x1="42" y1="28" x2="58" y2="28" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
         <line x1="42" y1="34" x2="58" y2="34" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
         <line x1="42" y1="40" x2="58" y2="40" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
-        {/* Sombra base */}
         <ellipse cx="50" cy="88" rx="25" ry="4" fill="currentColor" opacity="0.1" />
       </svg>
     ),
   },
-  {
-    id: 'FECHADOR',
+  FECHADOR: {
     name: 'Fechador',
     description: 'Sello con fecha ajustable para documentos',
     svg: (
       <svg viewBox="0 0 100 100" className="w-20 h-20">
-        {/* Mango del fechador */}
         <rect x="42" y="10" width="16" height="30" rx="3" fill="none" stroke="currentColor" strokeWidth="3" />
         <circle cx="50" cy="18" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
-        {/* Cuello */}
         <rect x="45" y="38" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        {/* Cuerpo circular con fechas */}
         <circle cx="50" cy="62" r="22" fill="none" stroke="currentColor" strokeWidth="3" />
-        {/* Ruedas de fecha */}
         <rect x="35" y="58" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
         <rect x="46" y="58" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
         <rect x="57" y="58" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
-        {/* Líneas de separación en las ruedas */}
         <line x1="40" y1="58" x2="40" y2="68" stroke="currentColor" strokeWidth="1" opacity="0.4" />
         <line x1="51" y1="58" x2="51" y2="68" stroke="currentColor" strokeWidth="1" opacity="0.4" />
         <line x1="62" y1="58" x2="62" y2="68" stroke="currentColor" strokeWidth="1" opacity="0.4" />
-        {/* Sombra */}
         <ellipse cx="50" cy="87" rx="18" ry="3" fill="currentColor" opacity="0.1" />
       </svg>
     ),
   },
-];
+  PORTATIL: {
+    name: 'Portátil',
+    description: 'Sello compacto de bolsillo para transporte',
+    svg: (
+      <svg viewBox="0 0 100 100" className="w-20 h-20">
+        <rect x="25" y="35" width="50" height="35" rx="6" fill="none" stroke="currentColor" strokeWidth="3" />
+        <rect x="30" y="20" width="40" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <line x1="25" y1="38" x2="75" y2="38" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+        <line x1="35" y1="28" x2="65" y2="28" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+        <rect x="22" y="68" width="56" height="8" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+        <ellipse cx="50" cy="82" rx="22" ry="3" fill="currentColor" opacity="0.1" />
+      </svg>
+    ),
+  },
+  EMBOSADORA: {
+    name: 'Embosadora',
+    description: 'Herramienta para marcar en relieve en papel',
+    svg: (
+      <svg viewBox="0 0 100 100" className="w-20 h-20">
+        <rect x="32" y="10" width="36" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="3" />
+        <rect x="42" y="28" width="16" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <rect x="18" y="50" width="64" height="30" rx="5" fill="none" stroke="currentColor" strokeWidth="3" />
+        <line x1="25" y1="58" x2="75" y2="58" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+        <rect x="38" y="65" width="24" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+        <ellipse cx="50" cy="85" rx="28" ry="4" fill="currentColor" opacity="0.1" />
+      </svg>
+    ),
+  },
+};
 
 const SHAPES = [
   {
@@ -169,6 +195,7 @@ export default function DesignPage() {
   const [stampType, setStampType] = useState<StampType | ''>('');
   const [shape, setShape] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [fonts, setFonts] = useState<Font[]>([]);
   const [inks, setInks] = useState<Ink[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -259,12 +286,19 @@ export default function DesignPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([api.get('/products'), api.get('/fonts'), api.get('/inks')])
-      .then(([productsRes, fontsRes, inksRes]) => {
+    Promise.all([
+      api.get('/products'),
+      api.get('/categories?showInWizard=true'),
+      api.get('/fonts'),
+      api.get('/inks'),
+    ])
+      .then(([productsRes, categoriesRes, fontsRes, inksRes]) => {
         const p = productsRes.data?.items || productsRes.data || [];
+        const c = categoriesRes.data || [];
         const f = fontsRes.data || [];
         const i = inksRes.data || [];
         setProducts(Array.isArray(p) ? p : []);
+        setCategories(Array.isArray(c) ? c : []);
         const fontsArr = Array.isArray(f) ? f : [];
         setFonts(fontsArr);
         setInks(Array.isArray(i) ? i : []);
@@ -317,19 +351,24 @@ export default function DesignPage() {
       });
   }, []);
 
-  const STAMP_CATEGORIES = ['MONTURA_AUTOMATICA', 'FECHADOR', 'PORTATIL', 'MADERA'];
+  const stampCategoryIds = categories.map((c) => c.id);
+
+  const selectedCategoryId = stampType
+    ? categories.find((c) => c.slug === stampType)?.id
+    : undefined;
 
   // Filtrar productos por tipo de sello y forma seleccionados
   const filteredProducts = products.filter((p) => {
-    if (!p.shape) return false;
-    if (!STAMP_CATEGORIES.includes(p.category)) return false;
-    if (stampType && p.category !== stampType) return false;
+    if (!stampCategoryIds.includes(p.categoryId)) return false;
+    if (selectedCategoryId && p.categoryId !== selectedCategoryId) return false;
     return !shape || p.shape === shape;
   });
 
-  const filteredShapes = stampType === 'FECHADOR'
-    ? SHAPES.filter((s) => s.id === 'RECTANGULAR')
-    : SHAPES;
+  // Mostrar solo los shapes que realmente existen en productos del stampType seleccionado
+  const availableShapes = selectedCategoryId
+    ? new Set(products.filter((p) => p.categoryId === selectedCategoryId && p.shape).map((p) => p.shape))
+    : new Set(SHAPES.map((s) => s.id));
+  const filteredShapes = SHAPES.filter((s) => availableShapes.has(s.id));
 
   const addLine = () => {
     if (lines.length < 5) {
@@ -514,20 +553,29 @@ export default function DesignPage() {
           <h2 className="text-2xl font-bold text-[#1B2A6B] mb-2">Paso 1: ¿Qué tipo de sello necesitas?</h2>
           <p className="text-gray-600 mb-6">Selecciona el tipo de sello que mejor se ajuste a tu uso.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {STAMP_TYPES.map((t) => (
-              <Card
-                key={t.id}
-                className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === t.id ? CARD_SELECTED : ''}`}
-                onClick={() => {
-                  setStampType(t.id);
-                  setSubStep('shape');
-                }}
-              >
-                <div className={`mb-4 ${stampType === t.id ? 'text-orange-500' : 'text-blue-400'}`}>{t.svg}</div>
-                <h3 className="font-semibold text-base">{t.name}</h3>
-                <p className="text-xs text-gray-500 mt-1">{t.description}</p>
-              </Card>
-            ))}
+            {categories.map((cat) => {
+              const detail = STAMP_TYPE_DETAILS[cat.slug as StampType];
+              return (
+                <Card
+                  key={cat.id}
+                  className={`p-6 flex flex-col items-center text-center ${CARD_BASE} ${stampType === cat.slug ? CARD_SELECTED : ''}`}
+                  onClick={() => {
+                    setStampType(cat.slug as StampType);
+                    setSubStep('shape');
+                  }}
+                >
+                  <div className={`mb-4 ${stampType === cat.slug ? 'text-orange-500' : 'text-blue-400'}`}>
+                    {detail?.svg || (
+                      <svg viewBox="0 0 100 100" className="w-20 h-20">
+                        <rect x="20" y="20" width="60" height="60" rx="8" fill="none" stroke="currentColor" strokeWidth="3" />
+                      </svg>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-base">{detail?.name || cat.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{detail?.description || cat.description || ''}</p>
+                </Card>
+              );
+            })}
           </div>
         </div>
 

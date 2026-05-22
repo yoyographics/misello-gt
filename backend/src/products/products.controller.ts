@@ -95,11 +95,11 @@ export class ProductsController {
     return this.productsService.remove(id);
   }
 
-  /** Corregir categorías basadas en SKU (one-time fix) */
-  @Post('admin/fix-categories')
+  /** Sincronizar catálogo completo (upsert por SKU, no borra existentes) */
+  @Post('admin/sync-catalog')
   @UseGuards(JwtAdminGuard)
   @ApiBearerAuth()
-  async fixCategories() {
-    return this.productsService.fixCategories();
+  async syncCatalog() {
+    return this.productsService.syncCatalog();
   }
 }

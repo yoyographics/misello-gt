@@ -10,6 +10,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { DesignModule } from './design/design.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AdminModule } from './admin/admin.module';
     DesignModule,
     NotificationsModule,
     AdminModule,
+    CategoriesModule,
     RouterModule.register([
       { path: 'api/v1', module: AuthModule },
       { path: 'api/v1', module: ProductsModule },
@@ -34,6 +36,7 @@ import { AdminModule } from './admin/admin.module';
       { path: 'api/v1', module: DesignModule },
       { path: 'api/v1', module: NotificationsModule },
       { path: 'api/v1', module: AdminModule },
+      { path: 'api/v1', module: CategoriesModule },
     ]),
   ],
 })

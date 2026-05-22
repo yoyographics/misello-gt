@@ -7,11 +7,8 @@ import {
   LayoutDashboard,
   Package,
   Type,
-  Warehouse,
   ShoppingBag,
   Settings,
-  Tag,
-  Bell,
   LogOut,
   Menu,
   X,
@@ -20,7 +17,7 @@ import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/admin/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/products/', label: 'Productos', icon: Package },
+  { href: '/admin/inventory/', label: 'Inventario', icon: Package },
   { href: '/admin/fonts/', label: 'Tipografias', icon: Type },
   { href: '/admin/orders/', label: 'Pedidos', icon: ShoppingBag },
   { href: '/admin/settings/', label: 'Configuracion', icon: Settings },

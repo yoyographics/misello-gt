@@ -260,7 +260,7 @@ export class OrdersService {
       );
     }
 
-    return this.prisma.order.update({
+    const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: dto.status },
       include: {
@@ -268,6 +268,24 @@ export class OrdersService {
         payments: true,
       },
     });
+
+    // Incrementar salesCount de productos al confirmar/recibir pago/finalizar
+    const countedStatuses: readonly OrderStatus[] = [
+      OrderStatus.CONFIRMED,
+      OrderStatus.PAYMENT_RECEIVED,
+      OrderStatus.FINISHED,
+    ];
+    if (
+      countedStatuses.includes(dto.status) &&
+      !countedStatuses.includes(order.status)
+    ) {
+      await this.prisma.product.updateMany({
+        where: { id: { in: order.items.map((i) => i.productId) } },
+        data: { salesCount: { increment: 1 } },
+      });
+    }
+
+    return updatedOrder;
   }
 
   async updateTracking(orderId: string, dto: UpdateTrackingDto) {

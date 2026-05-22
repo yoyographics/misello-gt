@@ -23,15 +23,19 @@ enum AdminRole {
   PRODUCCION
 }
 
-enum ProductCategory {
-  MONTURA_AUTOMATICA
-  FECHADOR
-  PORTATIL
-  MADERA
-  EMBOSADORA
-  ALMOHADILLA_AUTOMATICA
-  ALMOHADILLA_MADERA
-  TINTA
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  showInWizard Boolean  @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  products    Product[]
 }
 
 enum ProductShape {
@@ -103,11 +107,12 @@ model AdminUser {
 }
 
 model Product {
-  id          String          @id @default(uuid())
-  sku         String          @unique
+  id          String        @id @default(uuid())
+  sku         String        @unique
   name        String
   description String?
-  category    ProductCategory
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
   shape       ProductShape?
   widthMm     Float?
   heightMm    Float?
@@ -116,10 +121,11 @@ model Product {
   imageUrl       String?
   imageUrlHover  String?
   basePrice      Float
-  isActive    Boolean         @default(true)
-  stock       Int             @default(0)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  isActive    Boolean       @default(true)
+  stock       Int           @default(0)
+  salesCount  Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   orderItems     OrderItem[]
   inventoryLogs  InventoryLog[]

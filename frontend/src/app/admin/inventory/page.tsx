@@ -1,155 +1,208 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Package } from 'lucide-react';
 
-interface InventoryItem {
+interface Category {
   id: string;
-  sku: string;
-  productName: string;
-  quantity: number;
-  minStock: number;
+  name: string;
+  slug: string;
+  description?: string;
+  imageUrl?: string;
+  sortOrder?: number;
+  isActive: boolean;
+  showInWizard?: boolean;
+  _count?: { products: number };
+}
+
+function slugify(str: string) {
+  return str
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '_')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getImageUrl(url?: string) {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
 }
 
 export default function AdminInventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const router = useRouter();
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adjustOpen, setAdjustOpen] = useState(false);
-  const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
-  const [adjustQty, setAdjustQty] = useState('');
-  const [adjusting, setAdjusting] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategorySlug, setNewCategorySlug] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+  const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
 
-  const fetchInventory = useCallback(() => {
+  const fetchCategories = useCallback(() => {
     setLoading(true);
-    api.get('/inventory')
-      .then((res) => setItems(res.data || []))
-      .catch((err) => console.error('Error cargando inventario:', err))
+    api.get('/categories')
+      .then((res) => {
+        const data = res.data || [];
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => console.error('Error cargando categorias:', err))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    fetchInventory();
-  }, [fetchInventory]);
+    fetchCategories();
+  }, [fetchCategories]);
 
-  const openAdjust = (item: InventoryItem) => {
-    setAdjustItem(item);
-    setAdjustQty('');
-    setAdjustOpen(true);
-  };
+  useEffect(() => {
+    setNewCategorySlug(slugify(newCategoryName));
+  }, [newCategoryName]);
 
-  const handleAdjust = async () => {
-    if (!adjustItem || !adjustQty) return;
-    setAdjusting(true);
+  const handleCreate = async () => {
+    if (!newCategoryName || !newCategorySlug) return;
+    setCreating(true);
     try {
-      const delta = parseInt(adjustQty);
-      await api.post('/inventory/adjust', {
-        productId: adjustItem.id,
-        delta,
-      });
-      setAdjustOpen(false);
-      fetchInventory();
+      const payload = {
+        name: newCategoryName,
+        slug: newCategorySlug,
+        description: newCategoryDescription || undefined,
+      };
+      const res = await api.post('/categories/admin', payload);
+      const created = res.data;
+
+      // Nota: upload de imagen para categorias requiere endpoint adicional en backend
+      // Por ahora se omite hasta implementar el endpoint de upload de imagen de categoria
+
+      setCreateOpen(false);
+      setNewCategoryName('');
+      setNewCategorySlug('');
+      setNewCategoryDescription('');
+      setNewCategoryImage(null);
+      fetchCategories();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error ajustando stock');
+      alert(err.response?.data?.message || 'Error creando categoria');
     } finally {
-      setAdjusting(false);
+      setCreating(false);
     }
   };
+
+  const activeCategories = categories.filter((c) => c.isActive);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Inventario</h1>
+        <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+          <Plus className="h-4 w-4 mr-1" /> Crear categoria
+        </Button>
       </div>
 
-      <Card className="p-6">
-        {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
-          </div>
-        ) : items.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay datos de inventario.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">SKU</th>
-                  <th className="text-left py-2">Producto</th>
-                  <th className="text-left py-2">Stock actual</th>
-                  <th className="text-left py-2">Minimo</th>
-                  <th className="text-left py-2">Estado</th>
-                  <th className="text-left py-2">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b">
-                    <td className="py-2 font-mono text-xs">{item.sku}</td>
-                    <td className="py-2 font-medium">{item.productName}</td>
-                    <td className="py-2">{item.quantity}</td>
-                    <td className="py-2">{item.minStock}</td>
-                    <td className="py-2">
-                      <Badge className={item.quantity <= item.minStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}>
-                        {item.quantity <= item.minStock ? 'Bajo stock' : 'OK'}
-                      </Badge>
-                    </td>
-                    <td className="py-2">
-                      <Button variant="outline" size="sm" onClick={() => openAdjust(item)}>
-                        <Plus className="h-3 w-3 mr-1" /> Ajustar
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+      ) : activeCategories.length === 0 ? (
+        <p className="text-gray-500 text-center py-12">No hay categorias activas.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {activeCategories.map((cat) => (
+            <Card
+              key={cat.id}
+              className="p-5 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200 hover:border-orange-300"
+              onClick={() => router.push(`/admin/inventory/${cat.slug}/`)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                  {cat.imageUrl ? (
+                    <img
+                      src={getImageUrl(cat.imageUrl)}
+                      alt={cat.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Package className="h-8 w-8 text-gray-300" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base truncate">{cat.name}</h3>
+                  <p className="text-xs text-gray-500 truncate">{cat.description || 'Sin descripcion'}</p>
+                  <Badge variant="secondary" className="mt-1.5 text-xs">
+                    {cat._count?.products ?? 0} productos
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Ajustar stock</DialogTitle>
+            <DialogTitle>Crear categoria</DialogTitle>
           </DialogHeader>
-          {adjustItem && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-3 rounded text-sm">
-                <p><span className="font-medium">{adjustItem.productName}</span></p>
-                <p className="text-gray-500">Stock actual: {adjustItem.quantity}</p>
-              </div>
-              <div>
-                <label className="text-xs font-medium">Cantidad a agregar (+) o quitar (-)</label>
-                <Input
-                  type="number"
-                  value={adjustQty}
-                  onChange={(e) => setAdjustQty(e.target.value)}
-                  placeholder="Ej: 10 o -5"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancelar</Button>
-                <Button
-                  onClick={handleAdjust}
-                  disabled={adjusting || !adjustQty}
-                  className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
-                >
-                  {adjusting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
-                </Button>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium block mb-1.5">Nombre</label>
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Ej: Montura Automatica"
+              />
             </div>
-          )}
+            <div>
+              <label className="text-xs font-medium block mb-1.5">Slug</label>
+              <Input
+                value={newCategorySlug}
+                onChange={(e) => setNewCategorySlug(e.target.value)}
+                placeholder="montura_automatica"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Se genera automaticamente desde el nombre.</p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1.5">Descripcion (opcional)</label>
+              <textarea
+                value={newCategoryDescription}
+                onChange={(e) => setNewCategoryDescription(e.target.value)}
+                placeholder="Descripcion breve..."
+                className="w-full min-h-[80px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1.5">Imagen (opcional)</label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setNewCategoryImage(e.target.files?.[0] || null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button
+                onClick={handleCreate}
+                disabled={creating || !newCategoryName || !newCategorySlug}
+                className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+              >
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Crear'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

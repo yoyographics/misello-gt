@@ -1,16 +1,16 @@
-import { IsString, IsEnum, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ProductCategory, ProductShape } from '@prisma/client';
+import { ProductShape } from '@prisma/client';
 
 export class ProductQueryDto {
-  @ApiPropertyOptional({ enum: ProductCategory })
-  @IsEnum(ProductCategory)
+  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsString()
   @IsOptional()
-  category?: ProductCategory;
+  categoryId?: string;
 
   @ApiPropertyOptional({ enum: ProductShape })
-  @IsEnum(ProductShape)
+  @IsString()
   @IsOptional()
   shape?: ProductShape;
 

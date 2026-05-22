@@ -1,77 +1,7 @@
-import { PrismaClient, ProductCategory, ProductShape } from '@prisma/client';
+import { PrismaClient, ProductShape } from '@prisma/client';
+import { CATALOG_PRODUCTS, CATEGORY_DEFINITIONS } from '../products/catalog-data';
 
 const prisma = new PrismaClient();
-
-const products = [
-  // === MONTURA AUTOMATICA ===
-  { sku: 'S-821L', name: 'Sello automático S-821L', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 30, heightMm: 10, widthPx: 720, heightPx: 248, basePrice: 90 },
-  { sku: 'S-822', name: 'Sello automático S-822', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 38, heightMm: 14, widthPx: 909, heightPx: 343, basePrice: 95 },
-  { sku: 'S-823', name: 'Sello automático S-823', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 47, heightMm: 18, widthPx: 1122, heightPx: 437, basePrice: 120 },
-  { sku: 'S-824', name: 'Sello automático S-824', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 58, heightMm: 22, widthPx: 1382, heightPx: 531, basePrice: 145 },
-  { sku: 'S-825', name: 'Sello automático S-825', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 70, heightMm: 25, widthPx: 1665, heightPx: 602, basePrice: 160 },
-  { sku: 'S-826', name: 'Sello automático S-826', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 41, heightMm: 24, widthPx: 980, heightPx: 579, basePrice: 145 },
-  { sku: 'S-827', name: 'Sello automático S-827', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 30, widthPx: 1193, heightPx: 720, basePrice: 185 },
-  { sku: 'S-828', name: 'Sello automático S-828', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 56, heightMm: 33, widthPx: 1335, heightPx: 791, basePrice: 210 },
-  { sku: 'S-829', name: 'Sello automático S-829', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 64, heightMm: 40, widthPx: 1524, heightPx: 957, basePrice: 240 },
-  { sku: 'S-830', name: 'Sello automático S-830', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 75, heightMm: 38, widthPx: 1783, heightPx: 909, basePrice: 260 },
-  { sku: 'S-831', name: 'Sello automático S-831', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 70, heightMm: 10, widthPx: 1665, heightPx: 248, basePrice: 120 },
-  { sku: 'S-832', name: 'Sello automático S-832', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 75, heightMm: 15, widthPx: 1783, heightPx: 366, basePrice: 140 },
-  { sku: 'S-833', name: 'Sello automático S-833', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 82, heightMm: 25, widthPx: 1949, heightPx: 602, basePrice: 170 },
-  { sku: 'S-835', name: 'Sello automático S-835', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 30, heightMm: 20, widthPx: 720, heightPx: 484, basePrice: 125 },
-  { sku: 'S-836', name: 'Sello automático S-836', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 45, heightMm: 30, widthPx: 1075, heightPx: 720, basePrice: 170 },
-  { sku: 'S-837', name: 'Sello automático S-837', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 40, widthPx: 1193, heightPx: 957, basePrice: 215 },
-  { sku: 'S-310', name: 'Sello automático S-310', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 54, heightMm: 13, widthPx: 1287, heightPx: 319, basePrice: 120 },
-  { sku: 'S-308', name: 'Sello automático S-308', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 45, heightMm: 10, widthPx: 1075, heightPx: 248, basePrice: 110 },
-  { sku: 'S-520', name: 'Sello automático S-520', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 20, heightMm: 20, widthPx: 484, heightPx: 484, basePrice: 115 },
-  { sku: 'S-524', name: 'Sello automático S-524', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 24, heightMm: 24, widthPx: 579, heightPx: 579, basePrice: 125 },
-  { sku: 'S-530', name: 'Sello automático S-530', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 145 },
-  { sku: 'S-542', name: 'Sello automático S-542', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.RECTANGULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 205 },
-  { sku: 'R-524', name: 'Sello automático R-524 Circular', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.CIRCULAR, widthMm: 24, heightMm: 24, widthPx: 579, heightPx: 579, basePrice: 110 },
-  { sku: 'R-532', name: 'Sello automático R-532 Circular', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.CIRCULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 145 },
-  { sku: 'R-538', name: 'Sello automático R-538 Circular', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.CIRCULAR, widthMm: 38, heightMm: 38, widthPx: 909, heightPx: 909, basePrice: 175 },
-  { sku: 'R-542', name: 'Sello automático R-542 Circular', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.CIRCULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 205 },
-  { sku: 'R-552', name: 'Sello automático R-552 Circular', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.CIRCULAR, widthMm: 52, heightMm: 52, widthPx: 1240, heightPx: 1240, basePrice: 270 },
-  { sku: 'O-3555', name: 'Sello automático O-3555 Oval', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.OVAL, widthMm: 55, heightMm: 35, widthPx: 1311, heightPx: 839, basePrice: 210 },
-  { sku: 'O-3045', name: 'Sello automático O-3045 Oval', category: ProductCategory.MONTURA_AUTOMATICA, shape: ProductShape.OVAL, widthMm: 45, heightMm: 30, widthPx: 1075, heightPx: 720, basePrice: 185 },
-
-  // === FECHADORES ===
-  { sku: 'S-826D', name: 'Fechador S-826 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 41, heightMm: 24, widthPx: 980, heightPx: 579, basePrice: 185 },
-  { sku: 'S-827D', name: 'Fechador S-827 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 30, widthPx: 1193, heightPx: 720, basePrice: 210 },
-  { sku: 'S-828D', name: 'Fechador S-828 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 56, heightMm: 33, widthPx: 1335, heightPx: 791, basePrice: 240 },
-  { sku: 'S-829D', name: 'Fechador S-829 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 64, heightMm: 40, widthPx: 1524, heightPx: 957, basePrice: 265 },
-  { sku: 'S-830D', name: 'Fechador S-830 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 75, heightMm: 38, widthPx: 1783, heightPx: 909, basePrice: 285 },
-  { sku: 'S-835D', name: 'Fechador S-835 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 30, heightMm: 20, widthPx: 720, heightPx: 484, basePrice: 175 },
-  { sku: 'S-836D', name: 'Fechador S-836 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 45, heightMm: 30, widthPx: 1075, heightPx: 720, basePrice: 200 },
-  { sku: 'S-837D', name: 'Fechador S-837 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 40, widthPx: 1193, heightPx: 957, basePrice: 240 },
-  { sku: 'S-530D', name: 'Fechador S-530 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 175 },
-  { sku: 'S-542D', name: 'Fechador S-542 D', category: ProductCategory.FECHADOR, shape: ProductShape.RECTANGULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 235 },
-  { sku: 'R-532D', name: 'Fechador R-532 D Circular', category: ProductCategory.FECHADOR, shape: ProductShape.CIRCULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 175 },
-  { sku: 'R-542D', name: 'Fechador R-542 D Circular', category: ProductCategory.FECHADOR, shape: ProductShape.CIRCULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 235 },
-  { sku: 'O-3555D', name: 'Fechador O-3555 D Oval', category: ProductCategory.FECHADOR, shape: ProductShape.OVAL, widthMm: 55, heightMm: 35, widthPx: 1311, heightPx: 839, basePrice: 255 },
-  { sku: 'O-3045D', name: 'Fechador O-3045 D Oval', category: ProductCategory.FECHADOR, shape: ProductShape.OVAL, widthMm: 45, heightMm: 30, widthPx: 1075, heightPx: 720, basePrice: 200 },
-
-  // === PORTATILES ===
-  { sku: 'S-722', name: 'Sello portátil S-722', category: ProductCategory.PORTATIL, shape: ProductShape.RECTANGULAR, widthMm: 38, heightMm: 14, widthPx: 909, heightPx: 343, basePrice: 95 },
-  { sku: 'S-723', name: 'Sello portátil S-723', category: ProductCategory.PORTATIL, shape: ProductShape.RECTANGULAR, widthMm: 47, heightMm: 18, widthPx: 1122, heightPx: 437, basePrice: 120 },
-  { sku: 'S-724', name: 'Sello portátil S-724', category: ProductCategory.PORTATIL, shape: ProductShape.RECTANGULAR, widthMm: 58, heightMm: 22, widthPx: 1382, heightPx: 531, basePrice: 145 },
-  { sku: 'Q-24', name: 'Sello portátil Q-24 Circular', category: ProductCategory.PORTATIL, shape: ProductShape.CIRCULAR, widthMm: 24, heightMm: 24, widthPx: 579, heightPx: 579, basePrice: 115 },
-  { sku: 'Q-32', name: 'Sello portátil Q-32 Circular', category: ProductCategory.PORTATIL, shape: ProductShape.CIRCULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 135 },
-  { sku: 'EL-42', name: 'Sello portátil EL-42 Circular', category: ProductCategory.PORTATIL, shape: ProductShape.CIRCULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 180 },
-
-  // === EMBOSADORAS ===
-  { sku: 'EM-50', name: 'Embosadora portátil EM', category: ProductCategory.EMBOSADORA, shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 50, widthPx: 1181, heightPx: 1181, basePrice: 795 },
-  { sku: 'ED-50', name: 'Embosadora de escritorio ED', category: ProductCategory.EMBOSADORA, shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 50, widthPx: 1181, heightPx: 1181, basePrice: 795 },
-
-  // === ALMOHADILLA AUTOMATICA ===
-  { sku: 'ALM-AUTO', name: 'Almohadilla automática', category: ProductCategory.ALMOHADILLA_AUTOMATICA, shape: null, widthMm: null, heightMm: null, widthPx: null, heightPx: null, basePrice: 36 },
-  { sku: 'ALM-FEC', name: 'Almohadilla para fechador', category: ProductCategory.ALMOHADILLA_AUTOMATICA, shape: null, widthMm: null, heightMm: null, widthPx: null, heightPx: null, basePrice: 40 },
-
-  // === ALMOHADILLA MADERA ===
-  { sku: 'ALM-S1', name: 'Almohadilla madera S-1', category: ProductCategory.ALMOHADILLA_MADERA, shape: ProductShape.RECTANGULAR, widthMm: 65, heightMm: 45, widthPx: null, heightPx: null, basePrice: 30 },
-  { sku: 'ALM-S2', name: 'Almohadilla madera S-2', category: ProductCategory.ALMOHADILLA_MADERA, shape: ProductShape.RECTANGULAR, widthMm: 88, heightMm: 57, widthPx: null, heightPx: null, basePrice: 40 },
-  { sku: 'ALM-S3', name: 'Almohadilla madera S-3', category: ProductCategory.ALMOHADILLA_MADERA, shape: ProductShape.RECTANGULAR, widthMm: 110, heightMm: 70, widthPx: null, heightPx: null, basePrice: 50 },
-  { sku: 'ALM-S4', name: 'Almohadilla madera S-4', category: ProductCategory.ALMOHADILLA_MADERA, shape: ProductShape.RECTANGULAR, widthMm: 178, heightMm: 128, widthPx: null, heightPx: null, basePrice: 150 },
-];
 
 const inks = [
   { code: 'S-61', color: 'Negro', hexCode: '#000000', price: 40, stock: 100 },
@@ -91,14 +21,45 @@ const inks = [
 async function main() {
   console.log('🌱 Seeding products and inks...');
 
-  // Clear existing products and inks (optional - comment out if you want to keep)
+  // 1. Ensure categories exist
+  const categoryMap = new Map<string, string>();
+  for (const def of CATEGORY_DEFINITIONS) {
+    const cat = await prisma.category.upsert({
+      where: { slug: def.slug },
+      update: {},
+      create: def,
+    });
+    categoryMap.set(def.slug, cat.id);
+  }
+
+  // Clear existing products and inks
   await prisma.product.deleteMany({});
   await prisma.ink.deleteMany({});
 
-  for (const p of products) {
-    await prisma.product.create({ data: p });
+  for (const item of CATALOG_PRODUCTS) {
+    const categoryId = categoryMap.get(item.categorySlug);
+    if (!categoryId) {
+      console.warn(`⚠️ Categoría no encontrada para ${item.sku}: ${item.categorySlug}`);
+      continue;
+    }
+
+    await prisma.product.create({
+      data: {
+        sku: item.sku,
+        name: item.name,
+        categoryId,
+        shape: item.shape as ProductShape | null,
+        widthMm: item.widthMm,
+        heightMm: item.heightMm,
+        widthPx: item.widthPx,
+        heightPx: item.heightPx,
+        basePrice: item.basePrice,
+        stock: 100,
+        isActive: true,
+      },
+    });
   }
-  console.log(`✅ ${products.length} products created`);
+  console.log(`✅ ${CATALOG_PRODUCTS.length} products created`);
 
   for (const i of inks) {
     await prisma.ink.create({ data: i });
