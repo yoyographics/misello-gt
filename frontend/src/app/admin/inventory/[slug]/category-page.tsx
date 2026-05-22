@@ -108,7 +108,7 @@ export default function InventoryCategoryPage({ slug }: { slug: string }) {
     setLoading(true);
     Promise.all([
       api.get('/categories'),
-      api.get('/products/admin/all'),
+      api.get('/products/admin/all?take=9999'),
     ])
       .then(([categoriesRes, productsRes]) => {
         const cats: Category[] = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];

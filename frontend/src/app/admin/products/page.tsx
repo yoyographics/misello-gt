@@ -92,7 +92,7 @@ export default function AdminProductsPage() {
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
-    api.get('/products/admin/all')
+    api.get('/products/admin/all?take=9999')
       .then((res) => setProducts(res.data.items || res.data || []))
       .catch((err) => console.error('Error cargando productos:', err))
       .finally(() => setLoading(false));
