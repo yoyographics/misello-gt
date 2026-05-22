@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, Package } from 'lucide-react';
+import { Loader2, Plus, Package, RefreshCw } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -54,6 +54,21 @@ export default function AdminInventoryPage() {
   const [newCategorySlug, setNewCategorySlug] = useState('');
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncCatalog = async () => {
+    if (!confirm('Esto sincronizara el catalogo completo (57 productos). ¿Continuar?')) return;
+    setSyncing(true);
+    try {
+      const res = await api.post('/products/admin/sync-catalog');
+      alert(`Sync completo: ${res.data.created} creados, ${res.data.updated} actualizados, ${res.data.unchanged} sin cambios`);
+      fetchCategories();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error sincronizando catalogo');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const fetchCategories = useCallback(() => {
     setLoading(true);
@@ -108,9 +123,20 @@ export default function AdminInventoryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Inventario</h1>
-        <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-          <Plus className="h-4 w-4 mr-1" /> Crear categoria
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSyncCatalog}
+            disabled={syncing}
+            className="border-orange-300 text-orange-600 hover:bg-orange-50"
+          >
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            Sync catalogo
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Crear categoria
+          </Button>
+        </div>
       </div>
 
       {loading ? (

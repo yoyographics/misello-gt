@@ -1,14 +1,13 @@
 import CategoryPage from './category-page';
 
 const DEFAULT_SLUGS = [
-  'montura_automatica',
-  'fechador',
-  'portatil',
+  'sello-automatico',
+  'sello-fechador',
+  'sello-portatil',
+  'sello-madera',
   'embosadora',
-  'madera',
-  'almohadilla_automatica',
-  'almohadilla_madera',
-  'tinta',
+  'almohadillas',
+  'tintas',
 ];
 
 export async function generateStaticParams() {
