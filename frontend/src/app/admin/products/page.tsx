@@ -191,6 +191,17 @@ export default function AdminProductsPage() {
     setAdjustOpen(true);
   };
 
+  const handleFixCategories = async () => {
+    if (!confirm('Esto corregira las categorias de todos los productos segun su SKU. ¿Continuar?')) return;
+    try {
+      const res = await api.post('/products/admin/fix-categories');
+      alert(`Categorias corregidas: ${res.data.fixed}\n\n${res.data.changes.join('\n')}`);
+      fetchProducts();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error corrigiendo categorias');
+    }
+  };
+
   const handleAdjust = async () => {
     if (!adjustProduct || !adjustQty) return;
     setAdjusting(true);
@@ -216,9 +227,14 @@ export default function AdminProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Productos</h1>
-        <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-          <Plus className="h-4 w-4 mr-1" /> Agregar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleFixCategories}>
+            Corregir categorias
+          </Button>
+          <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Agregar
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
