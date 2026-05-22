@@ -319,11 +319,19 @@ export default function DesignPage() {
 
   const STAMP_CATEGORIES = ['MONTURA_AUTOMATICA', 'FECHADOR', 'PORTATIL', 'MADERA'];
 
+  // Mapeo de tipo de sello seleccionado a categorias de producto en DB
+  const categoryMap: Record<string, string[]> = {
+    MONTURA_AUTOMATICA: ['MONTURA_AUTOMATICA', 'ALMOHADILLA_AUTOMATICA'],
+    FECHADOR: ['FECHADOR'],
+    PORTATIL: ['PORTATIL'],
+    MADERA: ['MADERA'],
+  };
+
   // Filtrar productos por tipo de sello y forma seleccionados
   const filteredProducts = products.filter((p) => {
     if (!p.shape) return false;
-    if (!STAMP_CATEGORIES.includes(p.category)) return false;
-    if (stampType && p.category !== stampType) return false;
+    const allowedCategories = stampType ? categoryMap[stampType] || [stampType] : STAMP_CATEGORIES;
+    if (!allowedCategories.includes(p.category)) return false;
     return !shape || p.shape === shape;
   });
 

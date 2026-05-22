@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, ImageIcon, ArrowUpDown } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -81,6 +81,10 @@ export default function AdminProductsPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [hoverImageFile, setHoverImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
+  const [adjustQty, setAdjustQty] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
@@ -181,6 +185,30 @@ export default function AdminProductsPage() {
     }
   };
 
+  const openAdjust = (product: Product) => {
+    setAdjustProduct(product);
+    setAdjustQty('');
+    setAdjustOpen(true);
+  };
+
+  const handleAdjust = async () => {
+    if (!adjustProduct || !adjustQty) return;
+    setAdjusting(true);
+    try {
+      const delta = parseInt(adjustQty);
+      await api.post('/inventory/adjust', {
+        productId: adjustProduct.id,
+        delta,
+      });
+      setAdjustOpen(false);
+      fetchProducts();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error ajustando stock');
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
   const getCategoryLabel = (cat: string) =>
     CATEGORIES.find((c) => c.value === cat)?.label || cat;
 
@@ -247,6 +275,9 @@ export default function AdminProductsPage() {
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openAdjust(p)}>
+                          <ArrowUpDown className="h-4 w-4 text-blue-500" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
                           <Trash2 className="h-4 w-4 text-red-500" />
@@ -379,6 +410,43 @@ export default function AdminProductsPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog ajustar stock */}
+      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ajustar stock</DialogTitle>
+          </DialogHeader>
+          {adjustProduct && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-3 rounded text-sm">
+                <p><span className="font-medium">{adjustProduct.name}</span></p>
+                <p className="text-gray-500">Stock actual: {adjustProduct.stock}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Cantidad a agregar (+) o quitar (-)</label>
+                <Input
+                  type="number"
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  placeholder="Ej: 10 o -5"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancelar</Button>
+                <Button
+                  onClick={handleAdjust}
+                  disabled={adjusting || !adjustQty}
+                  className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+                >
+                  {adjusting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

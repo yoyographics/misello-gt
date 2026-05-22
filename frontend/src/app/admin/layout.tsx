@@ -22,7 +22,6 @@ const navItems = [
   { href: '/admin/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/products/', label: 'Productos', icon: Package },
   { href: '/admin/fonts/', label: 'Tipografias', icon: Type },
-  { href: '/admin/inventory/', label: 'Inventario', icon: Warehouse },
   { href: '/admin/orders/', label: 'Pedidos', icon: ShoppingBag },
   { href: '/admin/settings/', label: 'Configuracion', icon: Settings },
 ];
