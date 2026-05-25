@@ -287,7 +287,7 @@ export default function DesignPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/products'),
+      api.get('/products?take=9999'),
       api.get('/categories?showInWizard=true'),
       api.get('/fonts'),
       api.get('/inks'),
