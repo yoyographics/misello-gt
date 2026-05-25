@@ -735,6 +735,8 @@ export default function DesignPage() {
     let shapeEl;
     if (selectedProduct.shape === 'RECTANGULAR') {
       shapeEl = <rect x={0} y={0} width={w} height={h} rx={Math.min(w, h) * 0.08} fill="#fafafa" stroke="#d1d5db" strokeWidth={0.4} />;
+    } else if (selectedProduct.shape === 'SQUARE') {
+      shapeEl = <rect x={0} y={0} width={w} height={h} rx={0} fill="#fafafa" stroke="#d1d5db" strokeWidth={0.4} />;
     } else if (selectedProduct.shape === 'CIRCULAR') {
       const r = Math.min(w, h) / 2;
       shapeEl = <circle cx={w / 2} cy={h / 2} r={r} fill="#fafafa" stroke="#d1d5db" strokeWidth={0.4} />;
