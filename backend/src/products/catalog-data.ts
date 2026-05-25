@@ -48,10 +48,10 @@ export const CATALOG_PRODUCTS = [
   { sku: 'S-837', name: 'Sello automático S-837', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 40, widthPx: 1193, heightPx: 957, basePrice: 215 },
   { sku: 'S-310', name: 'Sello automático S-310', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 54, heightMm: 13, widthPx: 1287, heightPx: 319, basePrice: 120 },
   { sku: 'S-308', name: 'Sello automático S-308', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 45, heightMm: 10, widthPx: 1075, heightPx: 248, basePrice: 110 },
-  { sku: 'S-520', name: 'Sello automático S-520', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 20, heightMm: 20, widthPx: 484, heightPx: 484, basePrice: 115 },
-  { sku: 'S-524', name: 'Sello automático S-524', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 24, heightMm: 24, widthPx: 579, heightPx: 579, basePrice: 125 },
-  { sku: 'S-530', name: 'Sello automático S-530', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 145 },
-  { sku: 'S-542', name: 'Sello automático S-542', categorySlug: 'sello-automatico', shape: ProductShape.RECTANGULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 205 },
+  { sku: 'S-520', name: 'Sello automático S-520', categorySlug: 'sello-automatico', shape: ProductShape.SQUARE, widthMm: 20, heightMm: 20, widthPx: 484, heightPx: 484, basePrice: 115 },
+  { sku: 'S-524', name: 'Sello automático S-524', categorySlug: 'sello-automatico', shape: ProductShape.SQUARE, widthMm: 24, heightMm: 24, widthPx: 579, heightPx: 579, basePrice: 125 },
+  { sku: 'S-530', name: 'Sello automático S-530', categorySlug: 'sello-automatico', shape: ProductShape.SQUARE, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 145 },
+  { sku: 'S-542', name: 'Sello automático S-542', categorySlug: 'sello-automatico', shape: ProductShape.SQUARE, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 205 },
   { sku: 'R-524', name: 'Sello automático R-524', categorySlug: 'sello-automatico', shape: ProductShape.CIRCULAR, widthMm: 24, heightMm: 24, widthPx: 579, heightPx: 579, basePrice: 110 },
   { sku: 'R-532', name: 'Sello automático R-532', categorySlug: 'sello-automatico', shape: ProductShape.CIRCULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 145 },
   { sku: 'R-538', name: 'Sello automático R-538', categorySlug: 'sello-automatico', shape: ProductShape.CIRCULAR, widthMm: 38, heightMm: 38, widthPx: 909, heightPx: 909, basePrice: 175 },
@@ -69,8 +69,8 @@ export const CATALOG_PRODUCTS = [
   { sku: 'S-835D', name: 'Fechador S-835 D', categorySlug: 'sello-fechador', shape: ProductShape.RECTANGULAR, widthMm: 30, heightMm: 20, widthPx: 720, heightPx: 484, basePrice: 175 },
   { sku: 'S-836D', name: 'Fechador S-836 D', categorySlug: 'sello-fechador', shape: ProductShape.RECTANGULAR, widthMm: 45, heightMm: 30, widthPx: 1075, heightPx: 720, basePrice: 200 },
   { sku: 'S-837D', name: 'Fechador S-837 D', categorySlug: 'sello-fechador', shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 40, widthPx: 1193, heightPx: 957, basePrice: 240 },
-  { sku: 'S-530D', name: 'Fechador S-530 D', categorySlug: 'sello-fechador', shape: ProductShape.RECTANGULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 175 },
-  { sku: 'S-542D', name: 'Fechador S-542 D', categorySlug: 'sello-fechador', shape: ProductShape.RECTANGULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 235 },
+  { sku: 'S-530D', name: 'Fechador S-530 D', categorySlug: 'sello-fechador', shape: ProductShape.SQUARE, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 175 },
+  { sku: 'S-542D', name: 'Fechador S-542 D', categorySlug: 'sello-fechador', shape: ProductShape.SQUARE, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 235 },
   { sku: 'R-532D', name: 'Fechador R-532 D', categorySlug: 'sello-fechador', shape: ProductShape.CIRCULAR, widthMm: 32, heightMm: 32, widthPx: 768, heightPx: 768, basePrice: 175 },
   { sku: 'R-542D', name: 'Fechador R-542 D', categorySlug: 'sello-fechador', shape: ProductShape.CIRCULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 235 },
   { sku: 'O-3555D', name: 'Fechador O-3555 D', categorySlug: 'sello-fechador', shape: ProductShape.OVAL, widthMm: 55, heightMm: 35, widthPx: 1311, heightPx: 839, basePrice: 255 },
@@ -85,8 +85,8 @@ export const CATALOG_PRODUCTS = [
   { sku: 'EL-42', name: 'Sello portátil EL-42', categorySlug: 'sello-portatil', shape: ProductShape.CIRCULAR, widthMm: 42, heightMm: 42, widthPx: 1004, heightPx: 1004, basePrice: 180 },
 
   // === EMBOSADORAS (2) ===
-  { sku: 'EM-50', name: 'Embosadora portátil EM', categorySlug: 'embosadora', shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 50, widthPx: 1181, heightPx: 1181, basePrice: 795 },
-  { sku: 'ED-50', name: 'Embosadora de escritorio ED', categorySlug: 'embosadora', shape: ProductShape.RECTANGULAR, widthMm: 50, heightMm: 50, widthPx: 1181, heightPx: 1181, basePrice: 795 },
+  { sku: 'EM-50', name: 'Embosadora portátil EM', categorySlug: 'embosadora', shape: ProductShape.SQUARE, widthMm: 50, heightMm: 50, widthPx: 1181, heightPx: 1181, basePrice: 795 },
+  { sku: 'ED-50', name: 'Embosadora de escritorio ED', categorySlug: 'embosadora', shape: ProductShape.SQUARE, widthMm: 50, heightMm: 50, widthPx: 1181, heightPx: 1181, basePrice: 795 },
 
   // === ALMOHADILLA AUTOMATICA (2) ===
   { sku: 'ALM-AUTO', name: 'Almohadilla automática', categorySlug: 'almohadillas', shape: null, widthMm: null, heightMm: null, widthPx: null, heightPx: null, basePrice: 36 },

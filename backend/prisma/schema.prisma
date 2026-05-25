@@ -42,6 +42,7 @@ enum ProductShape {
   RECTANGULAR
   CIRCULAR
   OVAL
+  SQUARE
 }
 
 enum OrderStatus {

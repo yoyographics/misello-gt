@@ -152,6 +152,17 @@ const SHAPES = [
     ),
   },
   {
+    id: 'SQUARE',
+    name: 'Cuadrado',
+    description: 'Forma cuadrada',
+    svg: (
+      <svg viewBox="0 0 100 100" className="w-16 h-16">
+        <rect x="8" y="8" width="84" height="84" rx="8" fill="none" stroke="currentColor" strokeWidth="4" />
+        <rect x="28" y="28" width="44" height="44" rx="4" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+      </svg>
+    ),
+  },
+  {
     id: 'CIRCULAR',
     name: 'Redondo',
     description: 'Forma circular',
