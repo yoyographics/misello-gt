@@ -11,6 +11,7 @@ import { DesignModule } from './design/design.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { CategoriesModule } from './categories/categories.module';
+import { CustomersModule } from './customers/customers.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CategoriesModule } from './categories/categories.module';
     NotificationsModule,
     AdminModule,
     CategoriesModule,
+    CustomersModule,
     RouterModule.register([
       { path: 'api/v1', module: AuthModule },
       { path: 'api/v1', module: ProductsModule },
@@ -37,6 +39,7 @@ import { CategoriesModule } from './categories/categories.module';
       { path: 'api/v1', module: NotificationsModule },
       { path: 'api/v1', module: AdminModule },
       { path: 'api/v1', module: CategoriesModule },
+      { path: 'api/v1', module: CustomersModule },
     ]),
   ],
 })

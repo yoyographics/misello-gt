@@ -83,13 +83,16 @@ enum EmailStage {
 // ============================================================
 
 model User {
-  id        String   @id @default(uuid())
-  googleId  String   @unique
-  email     String   @unique
-  name      String?
-  picture   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  googleId        String   @unique
+  email           String   @unique
+  name            String?
+  picture         String?
+  phone           String?
+  billingAddress  Json?    // { address, municipality, department, nitOrCui, invoiceName }
+  deliveryAddress Json?    // { address, municipality, department }
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   orders Order[]
 }

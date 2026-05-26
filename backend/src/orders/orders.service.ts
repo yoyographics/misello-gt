@@ -92,6 +92,34 @@ export class OrdersService {
     const requiresAdminApproval =
       dto.isGovernment || dto.isLawyerReplica || false;
 
+    // Actualizar datos del cliente si se proporcionan
+    const userUpdateData: Prisma.UserUpdateInput = {};
+    if (dto.customerName) userUpdateData.name = dto.customerName;
+    if (dto.customerPhone) userUpdateData.phone = dto.customerPhone;
+    if (dto.shippingAddress) {
+      userUpdateData.deliveryAddress = dto.shippingAddress as Prisma.JsonObject;
+    }
+    if (dto.nitOrCui || dto.invoiceName) {
+      const existingBilling = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { billingAddress: true },
+      });
+      const currentBilling = (existingBilling?.billingAddress as Record<string, any>) || {};
+      userUpdateData.billingAddress = {
+        ...currentBilling,
+        ...(dto.nitOrCui ? { nitOrCui: dto.nitOrCui } : {}),
+        ...(dto.invoiceName ? { invoiceName: dto.invoiceName } : {}),
+        ...(dto.shippingAddress ? { ...dto.shippingAddress } : {}),
+      } as Prisma.JsonObject;
+    }
+
+    if (Object.keys(userUpdateData).length > 0) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: userUpdateData,
+      });
+    }
+
     // Transacción atómica
     const order = await this.prisma.$transaction(async (tx) => {
       // Crear orden
@@ -203,7 +231,7 @@ export class OrdersService {
         take: query.take,
         orderBy: { [query.sortBy as string]: query.sortOrder } as any,
         include: {
-          user: { select: { id: true, email: true, name: true } },
+          user: { select: { id: true, email: true, name: true, phone: true } },
           items: { include: { product: true, ink: true } },
           payments: true,
           approvedBy: { select: { id: true, name: true, email: true } },
@@ -219,7 +247,7 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        user: { select: { id: true, email: true, name: true } },
+        user: { select: { id: true, email: true, name: true, phone: true } },
         items: { include: { product: true, ink: true } },
         payments: true,
         approvedBy: { select: { id: true, name: true, email: true } },

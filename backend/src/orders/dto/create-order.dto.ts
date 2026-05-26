@@ -50,4 +50,14 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   paymentMethod?: 'CARD' | 'TRANSFER';
+
+  @ApiPropertyOptional({ example: 'Juan Perez' })
+  @IsString()
+  @IsOptional()
+  customerName?: string;
+
+  @ApiPropertyOptional({ example: '+502 5555 1234' })
+  @IsString()
+  @IsOptional()
+  customerPhone?: string;
 }

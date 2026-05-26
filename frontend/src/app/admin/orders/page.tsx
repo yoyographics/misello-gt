@@ -53,7 +53,7 @@ interface Order {
   nitOrCui?: string;
   invoiceName?: string;
   courierTracking?: string;
-  user?: { name: string; email: string };
+  user?: { id: string; name: string; email: string; phone?: string };
   items?: OrderItem[];
   payments?: Payment[];
 }
@@ -91,7 +91,7 @@ export default function AdminOrdersPage() {
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
-    api.get('/orders/admin/all')
+    api.get('/orders/admin/all?take=9999')
       .then((res) => setOrders(res.data.items || res.data || []))
       .catch((err) => console.error('Error cargando pedidos:', err))
       .finally(() => setLoading(false));
@@ -179,7 +179,11 @@ export default function AdminOrdersPage() {
                 {orders.map((order) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => openDetail(order)}>
                     <td className="py-2 font-medium">{order.orderNumber}</td>
-                    <td className="py-2">{order.user?.name || order.user?.email || 'N/A'}</td>
+                    <td className="py-2">
+                      <div className="text-sm">{order.user?.name || 'N/A'}</div>
+                      <div className="text-xs text-gray-500">{order.user?.email}</div>
+                      {order.user?.phone && <div className="text-xs text-gray-500">{order.user.phone}</div>}
+                    </td>
                     <td className="py-2">{getStatusBadge(order.status)}</td>
                     <td className="py-2">Q{order.totalAmount.toFixed(2)}</td>
                     <td className="py-2 text-gray-500">{new Date(order.createdAt).toLocaleDateString('es-GT')}</td>
@@ -253,6 +257,7 @@ export default function AdminOrdersPage() {
                   <div className="space-y-1 text-sm">
                     <p><span className="text-gray-500">Nombre:</span> {selectedOrder.user?.name || 'N/A'}</p>
                     <p><span className="text-gray-500">Email:</span> {selectedOrder.user?.email || 'N/A'}</p>
+                    <p><span className="text-gray-500">Telefono:</span> {selectedOrder.user?.phone || 'N/A'}</p>
                     <p><span className="text-gray-500">NIT/CUI:</span> {selectedOrder.nitOrCui || 'N/A'}</p>
                     <p><span className="text-gray-500">Factura a:</span> {selectedOrder.invoiceName || 'N/A'}</p>
                   </div>

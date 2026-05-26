@@ -37,6 +37,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [form, setForm] = useState({
+    fullName: '',
+    phone: '',
     address: '',
     municipality: '',
     department: '',
@@ -64,6 +66,14 @@ export default function CheckoutPage() {
       alert('Debes aceptar los terminos y condiciones');
       return;
     }
+    if (!form.fullName.trim()) {
+      alert('Ingresa tu nombre completo');
+      return;
+    }
+    if (!form.phone.trim()) {
+      alert('Ingresa tu numero de telefono');
+      return;
+    }
     setLoading(true);
     try {
       const order = await api.post('/orders', {
@@ -80,6 +90,8 @@ export default function CheckoutPage() {
         },
         nitOrCui: form.nitOrCui,
         invoiceName: form.invoiceName,
+        customerName: form.fullName,
+        customerPhone: form.phone,
         paymentMethod: 'TRANSFER',
       });
 
@@ -114,6 +126,16 @@ export default function CheckoutPage() {
               Datos de envio y facturacion
             </h2>
             <div className="space-y-4">
+              <Input
+                placeholder="Nombre completo"
+                value={form.fullName}
+                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              />
+              <Input
+                placeholder="Telefono"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
               <Input
                 placeholder="Direccion completa"
                 value={form.address}
