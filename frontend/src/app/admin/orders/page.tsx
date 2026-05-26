@@ -200,138 +200,100 @@ export default function AdminOrdersPage() {
 
       {/* Modal de detalle */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-5xl w-[92vw] p-0 gap-0 border-gray-300">
+        <DialogContent className="max-w-4xl w-[90vw] p-0 gap-0">
           {detailLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <div className="flex items-center justify-center h-48">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
           ) : !selectedOrder ? (
             <div className="p-6">
               <p className="text-gray-500">No se pudo cargar el pedido.</p>
             </div>
           ) : (
-            <div ref={printRef} className="flex flex-col">
-              {/* Header sobrio */}
-              <div className="border-b border-gray-200 p-5">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Pedido</p>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedOrder.orderNumber}</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(selectedOrder.createdAt).toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(selectedOrder.status)}
-                    <Select value={selectedOrder.status} onValueChange={updateStatus}>
-                      <SelectTrigger className="w-48 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 text-xs">
-                      <Printer className="h-3.5 w-3.5 mr-1" /> Imprimir
-                    </Button>
-                  </div>
+            <div ref={printRef}>
+              {/* Header */}
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <div>
+                  <p className="text-xs text-gray-500">Pedido {selectedOrder.orderNumber}</p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(selectedOrder.createdAt).toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(selectedOrder.status)}
+                  <Select value={selectedOrder.status} onValueChange={updateStatus}>
+                    <SelectTrigger className="w-40 h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="sm" onClick={handlePrint} className="h-7 px-2 text-xs">
+                    <Printer className="h-3 w-3 mr-1" /> Imprimir
+                  </Button>
                 </div>
               </div>
 
-              <div className="p-5 space-y-5">
-                {/* Cliente + Envio + Resumen en una fila */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2 space-y-4">
-                    {/* Cliente */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <User className="h-3.5 w-3.5" /> Informacion del cliente
-                      </h4>
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-2 text-sm">
-                        <div>
-                          <p className="text-gray-400 text-xs">Nombre</p>
-                          <p className="font-medium text-gray-900">{selectedOrder.user?.name || 'N/A'}</p>
-                        </div>
-                        <div className="col-span-2 lg:col-span-1">
-                          <p className="text-gray-400 text-xs">Email</p>
-                          <p className="font-medium text-gray-900 truncate" title={selectedOrder.user?.email || ''}>{selectedOrder.user?.email || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">Telefono</p>
-                          <p className="font-medium text-gray-900">{selectedOrder.user?.phone || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">NIT / CUI</p>
-                          <p className="font-medium text-gray-900">{selectedOrder.nitOrCui || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">Factura a</p>
-                          <p className="font-medium text-gray-900">{selectedOrder.invoiceName || 'N/A'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Envio */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5" /> Direccion de envio
-                      </h4>
-                      {selectedOrder.shippingAddress ? (
-                        <div className="text-sm">
-                          <p className="font-medium text-gray-900">{selectedOrder.shippingAddress.address}</p>
-                          <p className="text-gray-500">{selectedOrder.shippingAddress.municipality}, {selectedOrder.shippingAddress.department}</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">Sin direccion registrada</p>
-                      )}
+              <div className="px-6 py-4 space-y-4">
+                {/* Cliente | Envio | Resumen — todo en una fila */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 text-sm">
+                  {/* Cliente */}
+                  <div className="lg:col-span-5">
+                    <p className="text-xs text-gray-500 mb-1.5">Cliente</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div><span className="text-gray-400 text-xs">Nombre:</span> <span className="text-gray-900">{selectedOrder.user?.name || 'N/A'}</span></div>
+                      <div><span className="text-gray-400 text-xs">Telefono:</span> <span className="text-gray-900">{selectedOrder.user?.phone || 'N/A'}</span></div>
+                      <div className="col-span-2"><span className="text-gray-400 text-xs">Email:</span> <span className="text-gray-900">{selectedOrder.user?.email || 'N/A'}</span></div>
+                      <div><span className="text-gray-400 text-xs">NIT/CUI:</span> <span className="text-gray-900">{selectedOrder.nitOrCui || 'N/A'}</span></div>
+                      <div><span className="text-gray-400 text-xs">Factura:</span> <span className="text-gray-900">{selectedOrder.invoiceName || 'N/A'}</span></div>
                     </div>
                   </div>
 
+                  {/* Envio */}
+                  <div className="lg:col-span-4">
+                    <p className="text-xs text-gray-500 mb-1.5">Direccion de envio</p>
+                    {selectedOrder.shippingAddress ? (
+                      <div>
+                        <p className="text-gray-900">{selectedOrder.shippingAddress.address}</p>
+                        <p className="text-gray-500">{selectedOrder.shippingAddress.municipality}, {selectedOrder.shippingAddress.department}</p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">Sin direccion registrada</p>
+                    )}
+                  </div>
+
                   {/* Resumen */}
-                  <div className="border border-gray-200 rounded-md p-4 bg-gray-50/50">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5" /> Resumen
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Metodo</span>
-                        <span className="font-medium text-gray-900">{selectedOrder.paymentMethod === 'TRANSFER' ? 'Transferencia' : selectedOrder.paymentMethod || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Productos</span>
-                        <span className="font-medium text-gray-900">{selectedOrder.items?.length || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Pagos</span>
-                        <span className="font-medium text-gray-900">{selectedOrder.payments?.length || 0}</span>
-                      </div>
+                  <div className="lg:col-span-3 border border-gray-200 rounded p-3 bg-gray-50">
+                    <p className="text-xs text-gray-500 mb-1.5">Resumen</p>
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between"><span className="text-gray-500 text-xs">Metodo:</span><span className="text-gray-900">{selectedOrder.paymentMethod === 'TRANSFER' ? 'Transferencia' : selectedOrder.paymentMethod || 'N/A'}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-xs">Productos:</span><span className="text-gray-900">{selectedOrder.items?.length || 0}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-xs">Pagos:</span><span className="text-gray-900">{selectedOrder.payments?.length || 0}</span></div>
                     </div>
-                    <Separator className="my-3" />
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-sm text-gray-500">Total</span>
-                      <span className="text-xl font-bold text-gray-900">Q{selectedOrder.totalAmount.toFixed(2)}</span>
+                    <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Total</span>
+                      <span className="text-lg font-bold text-gray-900">Q{selectedOrder.totalAmount.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
+                <Separator />
+
                 {/* Productos */}
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Package className="h-3.5 w-3.5" /> Productos
-                  </h4>
-                  <div className="space-y-3">
+                  <p className="text-xs text-gray-500 mb-2">Productos</p>
+                  <div className="space-y-2">
                     {selectedOrder.items?.map((item) => (
-                      <div key={item.id} className="border border-gray-200 rounded-md p-4">
+                      <div key={item.id} className="border border-gray-200 rounded p-3">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm text-gray-900">{item.product.name}</p>
-                            <p className="text-gray-500 text-xs">SKU: {item.product.sku}</p>
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">{item.product.name}</p>
+                            <p className="text-xs text-gray-500">SKU: {item.product.sku}</p>
                             {item.ink && (
-                              <p className="text-xs flex items-center gap-1.5 mt-1.5">
+                              <p className="text-xs flex items-center gap-1 mt-1">
                                 <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: item.ink.hexCode }} />
                                 Tinta: {item.ink.color}
                               </p>
@@ -344,30 +306,24 @@ export default function AdminOrdersPage() {
                         </div>
 
                         {item.designJson && (
-                          <div className="mt-3 p-2.5 bg-gray-50 rounded border border-gray-100">
-                            <p className="text-xs text-gray-500 mb-1">Texto del sello</p>
+                          <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Texto del sello:</p>
                             {(() => {
                               const dj = item.designJson;
                               const lines = dj?.textLines || dj?.lines || [];
                               if (Array.isArray(lines) && lines.length > 0) {
-                                return (
-                                  <div className="space-y-0.5">
-                                    {lines.map((line: any, idx: number) => (
-                                      <p key={idx} className="text-sm text-gray-700">
-                                        {line.text || line.content || '-'}
-                                      </p>
-                                    ))}
-                                  </div>
-                                );
+                                return lines.map((line: any, idx: number) => (
+                                  <p key={idx} className="text-sm text-gray-700">{line.text || line.content || '-'}</p>
+                                ));
                               }
                               return <p className="text-xs text-gray-600">-</p>;
                             })()}
                           </div>
                         )}
 
-                        <div className="flex flex-wrap items-center gap-3 mt-3">
+                        <div className="flex items-center gap-3 mt-2">
                           {item.previewPngUrl && (
-                            <SvgImage src={item.previewPngUrl} alt="Preview" className="h-16 w-16 object-contain border rounded bg-white" />
+                            <SvgImage src={item.previewPngUrl} alt="Preview" className="h-14 w-14 object-contain border rounded bg-white" />
                           )}
                           {item.productionSvgUrl && (
                             <a href={item.productionSvgUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-900 underline">
@@ -380,49 +336,47 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Pago y Tracking */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Separator />
+
+                {/* Pagos | Envio */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5" /> Pagos
-                    </h4>
+                    <p className="text-xs text-gray-500 mb-1.5">Pagos</p>
                     {selectedOrder.payments && selectedOrder.payments.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         {selectedOrder.payments.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between p-2.5 border border-gray-200 rounded-md">
+                          <div key={p.id} className="flex items-center justify-between p-2 border border-gray-200 rounded">
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className={p.status === 'CONFIRMED' ? 'text-green-700 border-green-300 bg-green-50' : 'text-yellow-700 border-yellow-300 bg-yellow-50'}>
+                              <span className={`text-xs px-1.5 py-0.5 rounded border ${p.status === 'CONFIRMED' ? 'border-green-300 text-green-700 bg-green-50' : 'border-yellow-300 text-yellow-700 bg-yellow-50'}`}>
                                 {p.status === 'CONFIRMED' ? 'Confirmado' : 'Pendiente'}
-                              </Badge>
-                              <span className="text-sm font-semibold">Q{p.amount.toFixed(2)}</span>
+                              </span>
+                              <span className="font-semibold">Q{p.amount.toFixed(2)}</span>
                             </div>
                             <span className="text-gray-400 text-xs">{new Date(p.createdAt).toLocaleDateString('es-GT')}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 p-2.5 border border-gray-200 rounded-md">Sin pagos registrados</p>
+                      <p className="text-sm text-gray-500 p-2 border border-gray-200 rounded">Sin pagos registrados</p>
                     )}
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Truck className="h-3.5 w-3.5" /> Envio
-                    </h4>
-                    {selectedOrder.courierTracking ? (
-                      <div className="mb-2 p-2.5 border border-gray-200 rounded-md bg-gray-50">
-                        <p className="text-xs text-gray-500">Numero de guia</p>
+                    <p className="text-xs text-gray-500 mb-1.5">Envio</p>
+                    {selectedOrder.courierTracking && (
+                      <div className="mb-2 p-2 border border-gray-200 rounded bg-gray-50">
+                        <p className="text-xs text-gray-500">Guia:</p>
                         <p className="text-sm font-bold text-gray-900">{selectedOrder.courierTracking}</p>
                       </div>
-                    ) : null}
+                    )}
                     <div className="flex gap-2">
                       <Input
                         value={trackingInput}
                         onChange={(e) => setTrackingInput(e.target.value)}
-                        placeholder="Numero de guia / tracking"
-                        className="h-8 text-xs"
+                        placeholder="Numero de guia"
+                        className="h-7 text-xs"
                       />
-                      <Button onClick={updateTracking} variant="outline" className="h-8 text-xs">
+                      <Button onClick={updateTracking} variant="outline" className="h-7 text-xs px-3">
                         Guardar
                       </Button>
                     </div>
@@ -430,10 +384,10 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* Footer del invoice (solo visible al imprimir) */}
-              <div className="hidden print:block mt-8 pt-4 border-t text-center text-sm text-gray-500">
+              {/* Footer invoice (solo imprimir) */}
+              <div className="hidden print:block px-6 pt-4 pb-6 border-t text-center text-xs text-gray-500">
                 <p>Gracias por tu compra en misello.gt</p>
-                <p>YOYO GRAPHICS, S.A. — Guatemala</p>
+                <p>YOYO GRAPHICS, S.A.</p>
               </div>
             </div>
           )}
