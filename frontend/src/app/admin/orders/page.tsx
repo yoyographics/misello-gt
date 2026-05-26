@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, ShoppingBag, Printer, Package, User, MapPin, CreditCard, Truck, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface OrderItem {
   id: string;
@@ -124,7 +125,7 @@ export default function AdminOrdersPage() {
       setSelectedOrder(res.data);
       fetchOrders();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error actualizando estado');
+      toast.error(err.response?.data?.message || 'Error actualizando estado');
     }
   };
 
@@ -135,9 +136,9 @@ export default function AdminOrdersPage() {
       const res = await api.get(`/orders/admin/${selectedOrder.id}`);
       setSelectedOrder(res.data);
       fetchOrders();
-      alert('Tracking actualizado');
+      toast.success('Tracking actualizado');
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error actualizando tracking');
+      toast.error(err.response?.data?.message || 'Error actualizando tracking');
     }
   };
 

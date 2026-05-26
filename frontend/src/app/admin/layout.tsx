@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Toaster } from 'sonner';
 
 const navItems = [
   { href: '/admin/', label: 'Dashboard', icon: LayoutDashboard },
@@ -182,6 +183,8 @@ export default function AdminLayout({
       <main className="flex-1 md:ml-64 p-6 pt-16 md:pt-6">
         {children}
       </main>
+
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }
