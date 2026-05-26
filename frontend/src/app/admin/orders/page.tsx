@@ -308,7 +308,22 @@ export default function AdminOrdersPage() {
                       {item.designJson && (
                         <div className="mt-2 bg-gray-50 rounded p-2">
                           <p className="text-xs font-medium text-gray-500 mb-1">Diseno:</p>
-                          <pre className="text-xs text-gray-600 overflow-x-auto">{JSON.stringify(item.designJson, null, 2)}</pre>
+                          {(() => {
+                            const dj = item.designJson;
+                            const lines = dj?.textLines || dj?.lines || [];
+                            if (Array.isArray(lines) && lines.length > 0) {
+                              return (
+                                <div className="space-y-1">
+                                  {lines.map((line: any, idx: number) => (
+                                    <p key={idx} className="text-xs text-gray-700">
+                                      {line.text || line.content || '-'}
+                                    </p>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return <p className="text-xs text-gray-600">-</p>;
+                          })()}
                         </div>
                       )}
                       {item.previewPngUrl && (
