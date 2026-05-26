@@ -143,7 +143,134 @@ export default function AdminOrdersPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!selectedOrder) return;
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (!w) return;
+
+    const itemsHtml = selectedOrder.items?.map((item: any) => {
+      const designLines = (() => {
+        const dj = item.designJson;
+        const lines = dj?.textLines || dj?.lines || [];
+        if (Array.isArray(lines) && lines.length > 0) {
+          return lines.map((l: any) => l.text || l.content || '').filter(Boolean).join('<br>');
+        }
+        return '';
+      })();
+
+      return `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;">
+            <div style="font-weight:600;font-size:14px;">${item.product.name}</div>
+            <div style="font-size:12px;color:#6b7280;">SKU: ${item.product.sku}</div>
+            ${item.ink ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">Tinta: ${item.ink.color}</div>` : ''}
+            ${designLines ? `<div style="font-size:12px;color:#374151;margin-top:6px;padding:6px;background:#f9fafb;border-radius:4px;">${designLines}</div>` : ''}
+          </td>
+          <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;font-size:13px;">
+            Q${item.unitPrice.toFixed(2)} x ${item.quantity}
+          </td>
+          <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;font-weight:600;">
+            Q${(item.unitPrice * item.quantity).toFixed(2)}
+          </td>
+        </tr>
+      `;
+    }).join('') || '';
+
+    const paymentsHtml = selectedOrder.payments?.map((p: any) => `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #f3f4f6;">
+        <span>${p.status === 'CONFIRMED' ? 'Confirmado' : 'Pendiente'} — Q${p.amount.toFixed(2)}</span>
+        <span style="color:#9ca3af;">${new Date(p.createdAt).toLocaleDateString('es-GT')}</span>
+      </div>
+    `).join('') || '<p style="font-size:13px;color:#6b7280;">Sin pagos registrados</p>';
+
+    const addr = selectedOrder.shippingAddress;
+    const addressHtml = addr
+      ? `<p style="margin:0;font-size:13px;">${addr.address}</p><p style="margin:0;font-size:13px;color:#6b7280;">${addr.municipality}, ${addr.department}</p>`
+      : '<p style="font-size:13px;color:#6b7280;">Sin direccion registrada</p>';
+
+    w.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Pedido ${selectedOrder.orderNumber}</title>
+        <style>
+          @media print { body { margin: 0; } }
+          body { font-family: system-ui, -apple-system, sans-serif; color: #111827; margin: 40px; }
+        </style>
+      </head>
+      <body>
+        <div style="max-width:700px;margin:0 auto;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;">
+            <div>
+              <h1 style="margin:0;font-size:22px;font-weight:700;color:#1B2A6B;">misello.gt</h1>
+              <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">YOYO GRAPHICS, S.A. — Guatemala</p>
+            </div>
+            <div style="text-align:right;">
+              <p style="margin:0;font-size:18px;font-weight:700;">Pedido ${selectedOrder.orderNumber}</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">
+                ${new Date(selectedOrder.createdAt).toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+              <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">
+                Estado: ${STATUS_OPTIONS.find((s) => s.value === selectedOrder.status)?.label || selectedOrder.status}
+              </p>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+            <div>
+              <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Cliente</p>
+              <p style="margin:0;font-size:13px;font-weight:600;">${selectedOrder.user?.name || 'N/A'}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#374151;">${selectedOrder.user?.email || 'N/A'}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#374151;">Tel: ${selectedOrder.user?.phone || 'N/A'}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#374151;">NIT/CUI: ${selectedOrder.nitOrCui || 'N/A'}</p>
+            </div>
+            <div>
+              <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Direccion de envio</p>
+              ${addressHtml}
+            </div>
+          </div>
+
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+            <thead>
+              <tr style="border-bottom:2px solid #e5e7eb;">
+                <th style="text-align:left;padding:8px 0;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Producto</th>
+                <th style="text-align:right;padding:8px 0;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Precio</th>
+                <th style="text-align:right;padding:8px 0;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+
+          <div style="display:flex;justify-content:flex-end;margin-bottom:24px;">
+            <div style="text-align:right;">
+              <p style="margin:0;font-size:12px;color:#6b7280;">Total</p>
+              <p style="margin:0;font-size:22px;font-weight:700;">Q${selectedOrder.totalAmount.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+            <div>
+              <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Pagos</p>
+              ${paymentsHtml}
+            </div>
+            <div>
+              <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Envio</p>
+              ${selectedOrder.courierTracking
+                ? `<p style="margin:0;font-size:13px;font-weight:600;">Guia: ${selectedOrder.courierTracking}</p>`
+                : '<p style="margin:0;font-size:13px;color:#6b7280;">Sin numero de guia</p>'}
+            </div>
+          </div>
+
+          <div style="border-top:1px solid #e5e7eb;padding-top:16px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">Gracias por tu compra en misello.gt</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
   };
 
   const getStatusBadge = (status: string) => (
@@ -395,31 +522,7 @@ export default function AdminOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Estilos de impresion */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          [data-state="open"] > div,
-          [data-state="open"] > div * {
-            visibility: visible;
-          }
-          [data-state="open"] > div {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 20px;
-            box-shadow: none;
-            border: none;
-          }
-          [data-state="open"] button,
-          [data-state="open"] [role="dialog"] > button {
-            display: none !important;
-          }
-        }
-      `}</style>
+
     </div>
   );
 }
