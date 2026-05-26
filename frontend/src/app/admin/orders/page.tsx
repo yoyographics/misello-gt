@@ -247,9 +247,9 @@ export default function AdminOrdersPage() {
 
               <div className="p-6 space-y-6">
                 {/* Cliente + Envio (2/3) | Resumen (1/3) */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
                   {/* Card ancha: Cliente y Envio */}
-                  <Card className="lg:col-span-2 p-5 shadow-sm border-gray-200">
+                  <Card className="md:col-span-3 p-5 shadow-sm border-gray-200">
                     <h3 className="font-semibold mb-4 flex items-center gap-2 text-[#1B2A6B]">
                       <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
                         <User className="h-4 w-4 text-blue-600" />
@@ -258,14 +258,14 @@ export default function AdminOrdersPage() {
                     </h3>
 
                     {/* Datos en grid horizontal */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
                       <div>
                         <p className="text-gray-500 text-xs uppercase tracking-wider">Nombre</p>
                         <p className="font-semibold text-gray-900">{selectedOrder.user?.name || 'N/A'}</p>
                       </div>
-                      <div>
+                      <div className="col-span-2 md:col-span-1">
                         <p className="text-gray-500 text-xs uppercase tracking-wider">Email</p>
-                        <p className="font-semibold text-gray-900 break-all">{selectedOrder.user?.email || 'N/A'}</p>
+                        <p className="font-semibold text-gray-900 truncate" title={selectedOrder.user?.email || ''}>{selectedOrder.user?.email || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs uppercase tracking-wider">Telefono</p>
@@ -303,7 +303,7 @@ export default function AdminOrdersPage() {
                   </Card>
 
                   {/* Resumen */}
-                  <Card className="p-5 shadow-sm border-gray-200 bg-gradient-to-br from-gray-50 to-white flex flex-col">
+                  <Card className="md:col-span-2 p-5 shadow-sm border-gray-200 bg-gradient-to-br from-gray-50 to-white flex flex-col">
                     <h3 className="font-semibold mb-4 flex items-center gap-2 text-[#1B2A6B]">
                       <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center">
                         <CreditCard className="h-4 w-4 text-green-600" />
