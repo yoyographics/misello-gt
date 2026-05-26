@@ -46,6 +46,13 @@ export default function AdminLayout({
 
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp < now) {
+        localStorage.removeItem('adminToken');
+        router.push('/admin/login/');
+        setLoading(false);
+        return;
+      }
       if (payload.role === 'CLIENT') {
         localStorage.removeItem('adminToken');
         router.push('/admin/login/');
