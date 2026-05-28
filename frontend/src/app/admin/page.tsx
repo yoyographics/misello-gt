@@ -133,7 +133,7 @@ export default function AdminDashboardPage() {
             </thead>
             <tbody>
               {orders.slice(0, 20).map((order) => (
-                <tr key={order.id} className="border-b cursor-pointer hover:bg-gray-50" onClick={() => router.push('/admin/orders')}>
+                <tr key={order.id} className="border-b cursor-pointer hover:bg-gray-50" onClick={() => { sessionStorage.setItem('openOrderId', order.id); router.push('/admin/orders'); }}>
                   <td className="py-2 font-medium">{order.orderNumber}</td>
                   <td className="py-2">{order.user?.name || order.user?.email || 'N/A'}</td>
                   <td className="py-2">{getStatusBadge(order.status)}</td>

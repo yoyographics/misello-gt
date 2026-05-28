@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { SvgImage } from '@/components/svg-image';
 import { Button } from '@/components/ui/button';
@@ -88,7 +88,9 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [trackingInput, setTrackingInput] = useState('');
-  const printRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -101,6 +103,25 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Auto-open order from dashboard
+  useEffect(() => {
+    const orderId = sessionStorage.getItem('openOrderId');
+    if (orderId) {
+      sessionStorage.removeItem('openOrderId');
+      const order = orders.find((o) => o.id === orderId);
+      if (order) {
+        openDetail(order);
+      } else if (!loading && orders.length > 0) {
+        // If not found in current list, fetch by id
+        api.get(`/orders/admin/${orderId}`).then((res) => {
+          setSelectedOrder(res.data);
+          setTrackingInput(res.data.courierTracking || '');
+          setDetailOpen(true);
+        }).catch(() => {});
+      }
+    }
+  }, [orders, loading]);
 
   const openDetail = async (order: Order) => {
     setDetailOpen(true);
@@ -277,10 +298,45 @@ export default function AdminOrdersPage() {
     <Badge className={STATUS_COLORS[status] || ''}>{STATUS_OPTIONS.find((s) => s.value === status)?.label || status}</Badge>
   );
 
+  const filteredOrders = orders.filter((order) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesQuery = !q ||
+      order.orderNumber.toLowerCase().includes(q) ||
+      (order.user?.name || '').toLowerCase().includes(q) ||
+      (order.user?.email || '').toLowerCase().includes(q);
+
+    const orderDate = new Date(order.createdAt);
+    orderDate.setHours(0, 0, 0, 0);
+    const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+    const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+    const matchesFrom = !fromDate || orderDate >= fromDate;
+    const matchesTo = !toDate || orderDate <= toDate;
+
+    return matchesQuery && matchesFrom && matchesTo;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Pedidos</h1>
+      </div>
+
+      {/* Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Input
+          placeholder="Buscar por cliente, email o numero de pedido..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <div className="flex gap-2">
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="text-sm" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="text-sm" />
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setSearchQuery(''); setDateFrom(''); setDateTo(''); }} className="w-full">
+            Limpiar filtros
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
@@ -288,10 +344,11 @@ export default function AdminOrdersPage() {
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
           </div>
-        ) : orders.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay pedidos.</p>
+        ) : filteredOrders.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No hay pedidos que coincidan con los filtros.</p>
         ) : (
           <div className="overflow-x-auto">
+            <p className="text-xs text-gray-500 mb-2">{filteredOrders.length} pedido{filteredOrders.length !== 1 ? 's' : ''}</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
@@ -304,7 +361,7 @@ export default function AdminOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => openDetail(order)}>
                     <td className="py-2 font-medium">{order.orderNumber}</td>
                     <td className="py-2">
@@ -338,7 +395,7 @@ export default function AdminOrdersPage() {
               <p className="text-gray-500">No se pudo cargar el pedido.</p>
             </div>
           ) : (
-            <div ref={printRef}>
+            <div>
               {/* Header */}
               <div className="flex items-center justify-between border-b px-6 py-4">
                 <div>
