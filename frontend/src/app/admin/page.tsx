@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ interface DashboardStats {
 }
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export default function AdminDashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
+        <Card className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/orders')}>
           <div className="flex items-center gap-3">
             <Package className="h-8 w-8 text-orange-500" />
             <div>
@@ -86,7 +88,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/orders')}>
           <div className="flex items-center gap-3">
             <TrendingUp className="h-8 w-8 text-blue-500" />
             <div>
@@ -95,7 +97,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/inventory')}>
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-8 w-8 text-red-500" />
             <div>
@@ -104,7 +106,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/admin/customers')}>
           <div className="flex items-center gap-3">
             <Users className="h-8 w-8 text-green-500" />
             <div>
@@ -131,7 +133,7 @@ export default function AdminDashboardPage() {
             </thead>
             <tbody>
               {orders.slice(0, 20).map((order) => (
-                <tr key={order.id} className="border-b">
+                <tr key={order.id} className="border-b cursor-pointer hover:bg-gray-50" onClick={() => router.push('/admin/orders')}>
                   <td className="py-2 font-medium">{order.orderNumber}</td>
                   <td className="py-2">{order.user?.name || order.user?.email || 'N/A'}</td>
                   <td className="py-2">{getStatusBadge(order.status)}</td>
