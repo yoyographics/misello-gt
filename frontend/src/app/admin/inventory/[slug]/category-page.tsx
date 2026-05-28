@@ -55,6 +55,7 @@ const SHAPES = [
   { value: 'RECTANGULAR', label: 'Rectangular' },
   { value: 'CIRCULAR', label: 'Circular' },
   { value: 'OVAL', label: 'Oval' },
+  { value: 'SQUARE', label: 'Cuadrado' },
 ];
 
 const EMPTY_FORM = {
