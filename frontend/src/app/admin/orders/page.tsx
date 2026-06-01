@@ -107,19 +107,22 @@ export default function AdminOrdersPage() {
   // Auto-open order from dashboard
   useEffect(() => {
     const orderId = sessionStorage.getItem('openOrderId');
-    if (orderId) {
+    if (!orderId || loading) return;
+
+    const order = orders.find((o) => o.id === orderId);
+    if (order) {
       sessionStorage.removeItem('openOrderId');
-      const order = orders.find((o) => o.id === orderId);
-      if (order) {
-        openDetail(order);
-      } else if (!loading && orders.length > 0) {
-        // If not found in current list, fetch by id
-        api.get(`/orders/admin/${orderId}`).then((res) => {
-          setSelectedOrder(res.data);
-          setTrackingInput(res.data.courierTracking || '');
-          setDetailOpen(true);
-        }).catch(() => {});
-      }
+      openDetail(order);
+    } else if (orders.length > 0) {
+      // If not found in current list, fetch by id
+      api.get(`/orders/admin/${orderId}`).then((res) => {
+        sessionStorage.removeItem('openOrderId');
+        setSelectedOrder(res.data);
+        setTrackingInput(res.data.courierTracking || '');
+        setDetailOpen(true);
+      }).catch(() => {
+        sessionStorage.removeItem('openOrderId');
+      });
     }
   }, [orders, loading]);
 
