@@ -160,6 +160,11 @@ function ProductDetailContent() {
 
   const dims = product.widthMm && product.heightMm ? `${product.widthMm} x ${product.heightMm} mm` : '';
 
+  // Solo sellos de ciertas categorias se pueden personalizar en el wizard
+  const WIZARD_SLUGS = ['sello-automatico', 'sello-fechador', 'sello-portatil', 'embosadora'];
+  const productSlug = typeof product.category === 'string' ? product.category : product.category?.slug;
+  const isCustomizable = productSlug ? WIZARD_SLUGS.includes(productSlug) : false;
+
   return (
     <div className="min-h-screen bg-white">
       {/* Breadcrumb */}
@@ -257,19 +262,30 @@ function ProductDetailContent() {
 
             {/* Buttons */}
             <div className="space-y-3 pt-2">
-              <Button
-                onClick={handleBuyNow}
-                className="w-full h-[60px] text-lg font-semibold rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] transition-all duration-300"
-              >
-                {adding ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Personalizar y comprar'}
-              </Button>
-              <Button
-                onClick={handleAddToCart}
-                variant="outline"
-                className="w-full h-[52px] text-base font-semibold rounded-2xl border-2 hover:bg-gray-50"
-              >
-                Agregar al carrito
-              </Button>
+              {isCustomizable ? (
+                <>
+                  <Button
+                    onClick={handleBuyNow}
+                    className="w-full h-[60px] text-lg font-semibold rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] transition-all duration-300"
+                  >
+                    {adding ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Personalizar y comprar'}
+                  </Button>
+                  <Button
+                    onClick={handleAddToCart}
+                    variant="outline"
+                    className="w-full h-[52px] text-base font-semibold rounded-2xl border-2 hover:bg-gray-50"
+                  >
+                    Agregar al carrito
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={handleAddToCart}
+                  className="w-full h-[60px] text-lg font-semibold rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] transition-all duration-300"
+                >
+                  {adding ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Agregar al carrito'}
+                </Button>
+              )}
             </div>
 
             {/* Trust card */}
