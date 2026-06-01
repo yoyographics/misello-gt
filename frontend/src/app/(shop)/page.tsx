@@ -31,7 +31,7 @@ export default function Home() {
               <Button size="lg" className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg px-8">Crear mi sello</Button>
             </Link>
             <Link href="/store">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8">Ver catalogo</Button>
+              <Button size="lg" variant="outline" className="border-white text-white bg-transparent hover:bg-white/20 text-lg px-8">Ver catalogo</Button>
             </Link>
           </div>
         </div>
