@@ -296,6 +296,14 @@ export default function DesignPage() {
     }
   }, []);
 
+  // Leer productId de la URL para auto-precargar desde detalle de producto
+  const [autoProductId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('productId');
+    }
+    return null;
+  });
+
   useEffect(() => {
     Promise.all([
       api.get('/products?take=9999'),
@@ -314,6 +322,37 @@ export default function DesignPage() {
         setFonts(fontsArr);
         setInks(Array.isArray(i) ? i : []);
         setApiLoading(false);
+
+        // Auto-precargar producto desde URL (viene de /store/product)
+        if (autoProductId) {
+          const targetProduct = p.find((prod: Product) => prod.id === autoProductId);
+          if (targetProduct) {
+            const productCategory = c.find((cat: Category) => cat.id === targetProduct.categoryId);
+            if (productCategory) {
+              const SLUG_TO_STAMP_TYPE: Record<string, StampType> = {
+                'sello-automatico': 'MONTURA_AUTOMATICA',
+                'sello-fechador': 'FECHADOR',
+                'sello-portatil': 'PORTATIL',
+                'embosadora': 'EMBOSADORA',
+              };
+              const autoStampType = SLUG_TO_STAMP_TYPE[productCategory.slug];
+              if (autoStampType) {
+                // Limpiar estado previo del wizard para evitar conflictos
+                localStorage.removeItem(STORAGE_KEY);
+                setStampType(autoStampType);
+                setShape(targetProduct.shape || '');
+                setSelectedProduct(targetProduct);
+                setStep(3); // Saltar directo al paso de diseño
+                // Limpiar query param de la URL
+                if (typeof window !== 'undefined' && window.history.replaceState) {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('productId');
+                  window.history.replaceState({}, '', url.toString());
+                }
+              }
+            }
+          }
+        }
 
         // Auto-seleccionar fuente predeterminada si no hay ninguna en las lineas
         const hasAnyFont = lines.some((l) => l.fontId);

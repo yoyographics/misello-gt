@@ -130,8 +130,8 @@ function ProductDetailContent() {
   };
 
   const handleBuyNow = () => {
-    handleAddToCart();
-    router.push('/cart');
+    if (!product) return;
+    router.push(`/design?productId=${product.id}`);
   };
 
   const featView = useInView<HTMLDivElement>();
