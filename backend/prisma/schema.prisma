@@ -283,3 +283,16 @@ model RoleConfig {
   permissions Json      // { orders: true, inventory: true, payments: true, design: true, notifications: true, admin: true, discounts: true, fonts: true }
   updatedAt   DateTime  @updatedAt
 }
+
+model SliderImage {
+  id          String   @id @default(uuid())
+  title       String
+  subtitle    String?
+  imageUrl    String
+  buttonText  String   @default("Crear mi sello")
+  buttonLink  String   @default("/design")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -12,6 +12,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CustomersModule } from './customers/customers.module';
+import { SlidersModule } from './sliders/sliders.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { CustomersModule } from './customers/customers.module';
     AdminModule,
     CategoriesModule,
     CustomersModule,
+    SlidersModule,
     RouterModule.register([
       { path: 'api/v1', module: AuthModule },
       { path: 'api/v1', module: ProductsModule },
@@ -40,6 +42,7 @@ import { CustomersModule } from './customers/customers.module';
       { path: 'api/v1', module: AdminModule },
       { path: 'api/v1', module: CategoriesModule },
       { path: 'api/v1', module: CustomersModule },
+      { path: 'api/v1', module: SlidersModule },
     ]),
   ],
 })
