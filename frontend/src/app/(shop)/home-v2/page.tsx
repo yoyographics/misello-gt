@@ -383,12 +383,12 @@ export default function HomeV2() {
               }}
               navigation
               pagination={{ clickable: true }}
-              className="pb-10"
+              className="pb-10 px-1"
             >
               {products.map((product) => (
-                <SwiperSlide key={product.id}>
-                  <Link href={`/store/product?id=${product.id}`} className="block h-full">
-                    <Card className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 h-full cursor-pointer">
+                <SwiperSlide key={product.id} className="!h-auto">
+                  <Link href={`/store/product?id=${product.id}`} className="block h-full py-2 px-1">
+                    <Card className="group overflow-hidden border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 h-full cursor-pointer rounded-xl">
                       <div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
                         {product.imageUrl ? (
                           <img
