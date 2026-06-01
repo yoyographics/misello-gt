@@ -13,7 +13,7 @@ interface Product {
   id: string;
   sku: string;
   name: string;
-  category: string;
+  category: string | { name: string; slug: string };
   shape: string;
   widthMm: number;
   heightMm: number;
@@ -21,6 +21,14 @@ interface Product {
   imageUrl?: string;
   imageUrlHover?: string;
   stock: number;
+}
+
+function getCategoryName(cat: Product['category']) {
+  return typeof cat === 'string' ? cat : cat?.name || '';
+}
+
+function getCategorySlug(cat: Product['category']) {
+  return typeof cat === 'string' ? cat : cat?.slug || '';
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -48,11 +56,11 @@ export default function StorePage() {
     api.get('/products').then((res) => setProducts(res.data.items || res.data));
   }, []);
 
-  const categories = Array.from(new Set(products.map((p) => p.category)));
+  const categories = Array.from(new Set(products.map((p) => getCategoryName(p.category))));
 
   const filtered = products.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = !categoryFilter || p.category === categoryFilter;
+    const matchesCategory = !categoryFilter || getCategoryName(p.category) === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
@@ -139,7 +147,7 @@ export default function StorePage() {
                   <span className="absolute inset-0 flex items-center justify-center text-4xl">📐</span>
                 )}
               </div>
-              <Badge variant="secondary" className="mb-2">{CATEGORY_LABELS[product.category] || product.category}</Badge>
+              <Badge variant="secondary" className="mb-2">{CATEGORY_LABELS[getCategoryName(product.category)] || getCategoryName(product.category)}</Badge>
               <h3 className="font-semibold text-sm">{product.name}</h3>
               <p className="text-xs text-gray-500">{product.sku}</p>
               <p className="text-xs text-gray-500">{product.widthMm}mm x {product.heightMm}mm</p>
