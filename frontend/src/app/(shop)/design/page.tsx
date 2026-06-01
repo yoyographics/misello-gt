@@ -251,6 +251,11 @@ export default function DesignPage() {
 
   // Restaurar estado al montar
   useEffect(() => {
+    // Si venimos desde el catalogo con un productId precargado, no restaurar localStorage
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('productId')) return;
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     try {
@@ -296,15 +301,12 @@ export default function DesignPage() {
     }
   }, []);
 
-  // Leer productId de la URL para auto-precargar desde detalle de producto
-  const [autoProductId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get('productId');
-    }
-    return null;
-  });
-
   useEffect(() => {
+    // Leer productId de la URL para auto-precargar desde detalle de producto
+    const urlProductId = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('productId')
+      : null;
+
     Promise.all([
       api.get('/products?take=9999'),
       api.get('/categories?showInWizard=true'),
@@ -324,8 +326,8 @@ export default function DesignPage() {
         setApiLoading(false);
 
         // Auto-precargar producto desde URL (viene de /store/product)
-        if (autoProductId) {
-          const targetProduct = p.find((prod: Product) => prod.id === autoProductId);
+        if (urlProductId) {
+          const targetProduct = p.find((prod: Product) => prod.id === urlProductId);
           if (targetProduct) {
             const productCategory = c.find((cat: Category) => cat.id === targetProduct.categoryId);
             if (productCategory) {
