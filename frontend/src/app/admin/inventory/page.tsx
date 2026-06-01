@@ -169,9 +169,25 @@ export default function AdminInventoryPage() {
           {activeCategories.map((cat) => (
             <Card
               key={cat.id}
-              className="p-5 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200 hover:border-orange-300"
+              className="relative p-5 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200 hover:border-orange-300"
               onClick={() => router.push(`/admin/inventory/${cat.slug}/`)}
             >
+              {/* Switch estilo Apple - esquina superior derecha */}
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleCustomizable(cat); }}
+                disabled={togglingId === cat.id}
+                className={`absolute top-3 right-3 w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
+                  cat.isCustomizable ? 'bg-green-500' : 'bg-gray-300'
+                } ${togglingId === cat.id ? 'opacity-60' : ''}`}
+                title={cat.isCustomizable ? 'Personalizable' : 'No personalizable'}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                    cat.isCustomizable ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
                   {cat.imageUrl ? (
@@ -187,23 +203,9 @@ export default function AdminInventoryPage() {
                 <div className="min-w-0">
                   <h3 className="font-semibold text-base truncate">{cat.name}</h3>
                   <p className="text-xs text-gray-500 truncate">{cat.description || 'Sin descripcion'}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <Badge variant="secondary" className="text-xs">
-                      {cat._count?.products ?? 0} productos
-                    </Badge>
-                    <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={cat.isCustomizable || false}
-                        onChange={(e) => { e.stopPropagation(); toggleCustomizable(cat); }}
-                        disabled={togglingId === cat.id}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                      />
-                      <span className={cat.isCustomizable ? 'text-orange-600 font-medium' : 'text-gray-500'}>
-                        {togglingId === cat.id ? '...' : 'Personalizable'}
-                      </span>
-                    </label>
-                  </div>
+                  <Badge variant="secondary" className="mt-1.5 text-xs">
+                    {cat._count?.products ?? 0} productos
+                  </Badge>
                 </div>
               </div>
             </Card>
