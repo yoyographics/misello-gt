@@ -109,51 +109,60 @@ export default function StorePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filtered.map((product) => (
-          <Card
-            key={product.id}
-            className="group p-4 border-2 border-blue-100 hover:border-blue-400 rounded-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgba(59,130,246,0.25)] cursor-pointer"
-          >
-            <div className="relative aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden">
-              {product.imageUrl ? (
-                <>
-                  <img
-                    src={getImageUrl(product.imageUrl)}
-                    alt={product.name}
-                    className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
-                  />
-                  {product.imageUrlHover ? (
-                    <img
-                      src={getImageUrl(product.imageUrlHover)}
-                      alt={`${product.name} - hover`}
-                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    />
-                  ) : (
+          <Link key={product.id} href={`/store/product?id=${product.id}`} className="block">
+            <Card
+              className="group p-4 border-2 border-blue-100 hover:border-blue-400 rounded-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgba(59,130,246,0.25)]"
+            >
+              <div className="relative aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden">
+                {product.imageUrl ? (
+                  <>
                     <img
                       src={getImageUrl(product.imageUrl)}
                       alt={product.name}
-                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
                     />
-                  )}
-                </>
-              ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-4xl">📐</span>
-              )}
-            </div>
-            <Badge variant="secondary" className="mb-2">{CATEGORY_LABELS[product.category] || product.category}</Badge>
-            <h3 className="font-semibold text-sm">{product.name}</h3>
-            <p className="text-xs text-gray-500">{product.sku}</p>
-            <p className="text-xs text-gray-500">{product.widthMm}mm x {product.heightMm}mm</p>
-            <div className="flex items-center justify-between mt-3">
-              <span className="font-bold text-[#1B2A6B]">Q{product.basePrice.toFixed(2)}</span>
-              {product.stock > 0 ? (
-                <Button size="sm" variant="outline" onClick={() => addToCart(product)}>
-                  <ShoppingCart className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Badge variant="destructive">Agotado</Badge>
-              )}
-            </div>
-          </Card>
+                    {product.imageUrlHover ? (
+                      <img
+                        src={getImageUrl(product.imageUrlHover)}
+                        alt={`${product.name} - hover`}
+                        className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      />
+                    ) : (
+                      <img
+                        src={getImageUrl(product.imageUrl)}
+                        alt={product.name}
+                        className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <span className="absolute inset-0 flex items-center justify-center text-4xl">📐</span>
+                )}
+              </div>
+              <Badge variant="secondary" className="mb-2">{CATEGORY_LABELS[product.category] || product.category}</Badge>
+              <h3 className="font-semibold text-sm">{product.name}</h3>
+              <p className="text-xs text-gray-500">{product.sku}</p>
+              <p className="text-xs text-gray-500">{product.widthMm}mm x {product.heightMm}mm</p>
+              <div className="flex items-center justify-between mt-3">
+                <span className="font-bold text-[#1B2A6B]">Q{product.basePrice.toFixed(2)}</span>
+                {product.stock > 0 ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      addToCart(product);
+                    }}
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Badge variant="destructive">Agotado</Badge>
+                )}
+              </div>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

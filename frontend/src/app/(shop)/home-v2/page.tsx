@@ -387,35 +387,37 @@ export default function HomeV2() {
             >
               {products.map((product) => (
                 <SwiperSlide key={product.id}>
-                  <Card className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 h-full">
-                    <div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
-                      {product.imageUrl ? (
-                        <img
-                          src={getImageUrl(product.imageUrl)}
-                          alt={product.name}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="h-10 w-10 text-gray-300" />
-                        </div>
-                      )}
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-gray-900 line-clamp-2">
-                        {product.name}
-                      </h3>
-                      <p className="text-orange-600 font-bold mt-1">
-                        Q{product.basePrice?.toFixed(2)}
-                      </p>
-                      <div className="mt-3 transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                        <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0">
-                          <ShoppingCart className="h-4 w-4 mr-2" />
-                          Comprar
-                        </Button>
+                  <Link href={`/store/product?id=${product.id}`} className="block h-full">
+                    <Card className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 h-full cursor-pointer">
+                      <div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
+                        {product.imageUrl ? (
+                          <img
+                            src={getImageUrl(product.imageUrl)}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="h-10 w-10 text-gray-300" />
+                          </div>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-gray-900 line-clamp-2">
+                          {product.name}
+                        </h3>
+                        <p className="text-orange-600 font-bold mt-1">
+                          Q{product.basePrice?.toFixed(2)}
+                        </p>
+                        <div className="mt-3 transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                          <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0">
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Comprar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </SwiperSlide>
               ))}
             </Swiper>
