@@ -57,7 +57,6 @@ export default function AdminInventoryPage() {
   const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
   const [newCategoryIsCustomizable, setNewCategoryIsCustomizable] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const handleSyncCatalog = async () => {
     if (!confirm('Esto sincronizara el catalogo completo (57 productos). ¿Continuar?')) return;
@@ -93,16 +92,21 @@ export default function AdminInventoryPage() {
   }, [newCategoryName]);
 
   const toggleCustomizable = async (cat: Category) => {
-    setTogglingId(cat.id);
+    const newValue = !cat.isCustomizable;
+    // Optimistic update: cambiar estado local inmediatamente sin recargar
+    setCategories((prev) =>
+      prev.map((c) => (c.id === cat.id ? { ...c, isCustomizable: newValue } : c))
+    );
     try {
       await api.patch(`/categories/admin/${cat.id}`, {
-        isCustomizable: !cat.isCustomizable,
+        isCustomizable: newValue,
       });
-      fetchCategories();
     } catch (err: any) {
+      // Revertir si falla
+      setCategories((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, isCustomizable: !newValue } : c))
+      );
       alert(err.response?.data?.message || 'Error actualizando categoria');
-    } finally {
-      setTogglingId(null);
     }
   };
 
@@ -175,10 +179,9 @@ export default function AdminInventoryPage() {
               {/* Switch estilo Apple - esquina superior derecha */}
               <button
                 onClick={(e) => { e.stopPropagation(); toggleCustomizable(cat); }}
-                disabled={togglingId === cat.id}
                 className={`absolute top-3 right-3 w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
                   cat.isCustomizable ? 'bg-green-500' : 'bg-gray-300'
-                } ${togglingId === cat.id ? 'opacity-60' : ''}`}
+                }`}
                 title={cat.isCustomizable ? 'Personalizable' : 'No personalizable'}
               >
                 <span
