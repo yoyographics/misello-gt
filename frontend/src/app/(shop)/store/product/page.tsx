@@ -160,10 +160,9 @@ function ProductDetailContent() {
 
   const dims = product.widthMm && product.heightMm ? `${product.widthMm} x ${product.heightMm} mm` : '';
 
-  // Solo sellos de ciertas categorias se pueden personalizar en el wizard
-  const WIZARD_SLUGS = ['sello-automatico', 'sello-fechador', 'sello-portatil', 'embosadora'];
-  const productSlug = typeof product.category === 'string' ? product.category : product.category?.slug;
-  const isCustomizable = productSlug ? WIZARD_SLUGS.includes(productSlug) : false;
+  // Los sellos tienen forma (Rectangular, Circular, etc.) y son personalizables.
+  // Almohadillas y tintas no tienen forma y no se personalizan en el wizard.
+  const isCustomizable = !!product.shape;
 
   return (
     <div className="min-h-screen bg-white">
