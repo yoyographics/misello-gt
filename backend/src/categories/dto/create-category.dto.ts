@@ -39,4 +39,9 @@ export class CreateCategoryDto {
   @IsBoolean()
   @IsOptional()
   showInWizard?: boolean;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsBoolean()
+  @IsOptional()
+  isCustomizable?: boolean;
 }

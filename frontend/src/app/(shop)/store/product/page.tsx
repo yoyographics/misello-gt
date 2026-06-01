@@ -22,7 +22,7 @@ interface Product {
   sku: string;
   name: string;
   description?: string;
-  category?: { name: string; slug: string } | string;
+  category?: { name: string; slug: string; isCustomizable?: boolean } | string;
   shape?: string;
   widthMm?: number;
   heightMm?: number;
@@ -160,9 +160,10 @@ function ProductDetailContent() {
 
   const dims = product.widthMm && product.heightMm ? `${product.widthMm} x ${product.heightMm} mm` : '';
 
-  // Los sellos tienen forma (Rectangular, Circular, etc.) y son personalizables.
-  // Almohadillas y tintas no tienen forma y no se personalizan en el wizard.
-  const isCustomizable = !!product.shape;
+  // La categoria define si los productos son personalizables en el wizard
+  const isCustomizable = typeof product.category === 'object'
+    ? product.category?.isCustomizable || false
+    : false;
 
   return (
     <div className="min-h-screen bg-white">

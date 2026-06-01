@@ -32,6 +32,7 @@ model Category {
   sortOrder   Int       @default(0)
   isActive    Boolean   @default(true)
   showInWizard Boolean  @default(false)
+  isCustomizable Boolean @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   

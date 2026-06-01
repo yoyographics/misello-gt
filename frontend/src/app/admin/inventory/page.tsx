@@ -24,6 +24,7 @@ interface Category {
   sortOrder?: number;
   isActive: boolean;
   showInWizard?: boolean;
+  isCustomizable?: boolean;
   _count?: { products: number };
 }
 
@@ -54,7 +55,9 @@ export default function AdminInventoryPage() {
   const [newCategorySlug, setNewCategorySlug] = useState('');
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
+  const [newCategoryIsCustomizable, setNewCategoryIsCustomizable] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const handleSyncCatalog = async () => {
     if (!confirm('Esto sincronizara el catalogo completo (57 productos). ¿Continuar?')) return;
@@ -89,6 +92,20 @@ export default function AdminInventoryPage() {
     setNewCategorySlug(slugify(newCategoryName));
   }, [newCategoryName]);
 
+  const toggleCustomizable = async (cat: Category) => {
+    setTogglingId(cat.id);
+    try {
+      await api.patch(`/categories/admin/${cat.id}`, {
+        isCustomizable: !cat.isCustomizable,
+      });
+      fetchCategories();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error actualizando categoria');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleCreate = async () => {
     if (!newCategoryName || !newCategorySlug) return;
     setCreating(true);
@@ -97,6 +114,7 @@ export default function AdminInventoryPage() {
         name: newCategoryName,
         slug: newCategorySlug,
         description: newCategoryDescription || undefined,
+        isCustomizable: newCategoryIsCustomizable,
       };
       const res = await api.post('/categories/admin', payload);
       const created = res.data;
@@ -109,6 +127,7 @@ export default function AdminInventoryPage() {
       setNewCategorySlug('');
       setNewCategoryDescription('');
       setNewCategoryImage(null);
+      setNewCategoryIsCustomizable(false);
       fetchCategories();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error creando categoria');
@@ -168,9 +187,23 @@ export default function AdminInventoryPage() {
                 <div className="min-w-0">
                   <h3 className="font-semibold text-base truncate">{cat.name}</h3>
                   <p className="text-xs text-gray-500 truncate">{cat.description || 'Sin descripcion'}</p>
-                  <Badge variant="secondary" className="mt-1.5 text-xs">
-                    {cat._count?.products ?? 0} productos
-                  </Badge>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <Badge variant="secondary" className="text-xs">
+                      {cat._count?.products ?? 0} productos
+                    </Badge>
+                    <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={cat.isCustomizable || false}
+                        onChange={(e) => { e.stopPropagation(); toggleCustomizable(cat); }}
+                        disabled={togglingId === cat.id}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                      />
+                      <span className={cat.isCustomizable ? 'text-orange-600 font-medium' : 'text-gray-500'}>
+                        {togglingId === cat.id ? '...' : 'Personalizable'}
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -218,6 +251,15 @@ export default function AdminInventoryPage() {
                 onChange={(e) => setNewCategoryImage(e.target.files?.[0] || null)}
               />
             </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newCategoryIsCustomizable}
+                onChange={(e) => setNewCategoryIsCustomizable(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+              />
+              <span className="text-sm">Permite personalizar diseño (wizard)</span>
+            </label>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
               <Button

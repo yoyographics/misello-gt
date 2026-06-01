@@ -50,6 +50,7 @@ export class ProductsService {
         skip: query.skip,
         take: query.take,
         orderBy: { [query.sortBy as string]: query.sortOrder } as any,
+        include: { category: true },
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -86,6 +87,7 @@ export class ProductsService {
   async findOnePublic(id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, isActive: true },
+      include: { category: true },
     });
     if (!product) throw new NotFoundException('Producto no encontrado');
     return product;
