@@ -70,6 +70,23 @@ const STATUS_OPTIONS = [
   { value: 'CANCELLED', label: 'Cancelado' },
 ];
 
+// Transiciones permitidas (debe coincidir con backend)
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ['PENDING_PAYMENT', 'CANCELLED'],
+  PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
+  PAYMENT_RECEIVED: ['CONFIRMED'],
+  CONFIRMED: ['IN_PRODUCTION'],
+  IN_PRODUCTION: ['FINISHED'],
+  FINISHED: ['SHIPPED'],
+  SHIPPED: [],
+  CANCELLED: [],
+};
+
+function getAllowedStatuses(currentStatus: string) {
+  const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
+  return STATUS_OPTIONS.filter((s) => allowed.includes(s.value));
+}
+
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-700',
   PENDING_PAYMENT: 'bg-yellow-100 text-yellow-700',
@@ -414,7 +431,7 @@ export default function AdminOrdersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_OPTIONS.map((s) => (
+                      {getAllowedStatuses(selectedOrder.status).map((s) => (
                         <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                       ))}
                     </SelectContent>
