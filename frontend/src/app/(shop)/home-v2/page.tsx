@@ -496,11 +496,11 @@ export default function HomeV2() {
             }}
             autoplay={{ delay: 5000, disableOnInteraction: false }}
             pagination={{ clickable: true }}
-            className="pb-10"
+            className="pb-10 px-1"
           >
             {testimonials.map((t, i) => (
-              <SwiperSlide key={i}>
-                <Card className="h-full border-0 shadow-md bg-white">
+              <SwiperSlide key={i} className="!h-auto py-2 px-1">
+                <Card className="h-full border border-gray-200 shadow-sm bg-white rounded-xl">
                   <CardContent className="p-6 flex flex-col h-full">
                     <div className="flex gap-1 mb-4">
                       {Array.from({ length: t.rating }).map((_, r) => (
