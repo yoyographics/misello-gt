@@ -372,55 +372,74 @@ export default function HomeV2() {
               <div className="animate-spin h-6 w-6 border-4 border-orange-500 border-t-transparent rounded-full" />
             </div>
           ) : (
-            <Swiper
-              modules={[Pagination, Navigation]}
-              spaceBetween={16}
-              slidesPerView={1}
-              breakpoints={{
-                480: { slidesPerView: 2 },
-                768: { slidesPerView: 3 },
-                1024: { slidesPerView: 4 },
-              }}
-              navigation
-              pagination={{ clickable: true }}
-              className="pb-10 px-1"
-            >
-              {products.map((product) => (
-                <SwiperSlide key={product.id} className="!h-auto">
-                  <Link href={`/store/product?id=${product.id}`} className="block h-full py-2 px-1">
-                    <Card className="group overflow-hidden border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 h-full cursor-pointer rounded-xl">
-                      <div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
-                        {product.imageUrl ? (
-                          <img
-                            src={getImageUrl(product.imageUrl)}
-                            alt={product.name}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon className="h-10 w-10 text-gray-300" />
-                          </div>
-                        )}
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-900 line-clamp-2">
-                          {product.name}
-                        </h3>
-                        <p className="text-orange-600 font-bold mt-1">
-                          Q{product.basePrice?.toFixed(2)}
-                        </p>
-                        <div className="mt-3 transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                          <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0">
-                            <ShoppingCart className="h-4 w-4 mr-2" />
-                            Comprar
-                          </Button>
+            <div className="featured-swiper">
+              <Swiper
+                modules={[Pagination, Navigation]}
+                spaceBetween={16}
+                slidesPerView={1}
+                breakpoints={{
+                  480: { slidesPerView: 2 },
+                  768: { slidesPerView: 3 },
+                  1024: { slidesPerView: 4 },
+                }}
+                navigation
+                pagination={{ clickable: true }}
+                className="px-1"
+              >
+                {products.map((product) => (
+                  <SwiperSlide key={product.id} className="!h-auto">
+                    <Link href={`/store/product?id=${product.id}`} className="block h-full py-2 px-1">
+                      <Card className="group overflow-hidden border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 h-full cursor-pointer rounded-xl">
+                        <div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
+                          {product.imageUrl ? (
+                            <img
+                              src={getImageUrl(product.imageUrl)}
+                              alt={product.name}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="h-10 w-10 text-gray-300" />
+                            </div>
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </SwiperSlide>
-              ))}
-            </Swiper>
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold text-gray-900 line-clamp-2">
+                            {product.name}
+                          </h3>
+                          <p className="text-orange-600 font-bold mt-1">
+                            Q{product.basePrice?.toFixed(2)}
+                          </p>
+                          <div className="mt-3 transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                            <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0">
+                              <ShoppingCart className="h-4 w-4 mr-2" />
+                              Comprar
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+              <style>{`
+                .featured-swiper .swiper-pagination {
+                  position: relative !important;
+                  bottom: auto !important;
+                  margin-top: 1.25rem;
+                }
+                .featured-swiper .swiper-pagination-bullet {
+                  width: 10px;
+                  height: 10px;
+                  background: #d1d5db;
+                  opacity: 1;
+                  margin: 0 6px !important;
+                }
+                .featured-swiper .swiper-pagination-bullet-active {
+                  background: #1B2A6B;
+                }
+              `}</style>
+            </div>
           )}
         </div>
       </section>
@@ -486,42 +505,61 @@ export default function HomeV2() {
           >
             Lo que dicen nuestros clientes
           </h2>
-          <Swiper
-            modules={[Autoplay, Pagination]}
-            spaceBetween={16}
-            slidesPerView={1}
-            breakpoints={{
-              640: { slidesPerView: 2 },
-              1024: { slidesPerView: 3 },
-            }}
-            autoplay={{ delay: 5000, disableOnInteraction: false }}
-            pagination={{ clickable: true }}
-            className="pb-10 px-1"
-          >
-            {testimonials.map((t, i) => (
-              <SwiperSlide key={i} className="!h-auto py-2 px-1">
-                <Card className="h-full border border-gray-200 shadow-sm bg-white rounded-xl">
-                  <CardContent className="p-6 flex flex-col h-full">
-                    <div className="flex gap-1 mb-4">
-                      {Array.from({ length: t.rating }).map((_, r) => (
-                        <StarIcon
-                          key={r}
-                          className="h-4 w-4 text-orange-400"
-                        />
-                      ))}
-                    </div>
-                    <p className="text-gray-700 text-sm leading-relaxed flex-1 mb-4">
-                      &ldquo;{t.comment}&rdquo;
-                    </p>
-                    <div className="mt-auto">
-                      <p className="font-semibold text-gray-900">{t.name}</p>
-                      <p className="text-xs text-gray-500">{t.company}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </SwiperSlide>
-            ))}
-          </Swiper>
+          <div className="testimonials-swiper">
+            <Swiper
+              modules={[Autoplay, Pagination]}
+              spaceBetween={16}
+              slidesPerView={1}
+              breakpoints={{
+                640: { slidesPerView: 2 },
+                1024: { slidesPerView: 3 },
+              }}
+              autoplay={{ delay: 5000, disableOnInteraction: false }}
+              pagination={{ clickable: true }}
+              className="px-1"
+            >
+              {testimonials.map((t, i) => (
+                <SwiperSlide key={i} className="!h-auto py-2 px-1">
+                  <Card className="h-full border border-gray-200 shadow-sm bg-white rounded-xl">
+                    <CardContent className="p-6 flex flex-col h-full">
+                      <div className="flex gap-1 mb-4">
+                        {Array.from({ length: t.rating }).map((_, r) => (
+                          <StarIcon
+                            key={r}
+                            className="h-4 w-4 text-orange-400"
+                          />
+                        ))}
+                      </div>
+                      <p className="text-gray-700 text-sm leading-relaxed flex-1 mb-4">
+                        &ldquo;{t.comment}&rdquo;
+                      </p>
+                      <div className="mt-auto">
+                        <p className="font-semibold text-gray-900">{t.name}</p>
+                        <p className="text-xs text-gray-500">{t.company}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+            <style>{`
+              .testimonials-swiper .swiper-pagination {
+                position: relative !important;
+                bottom: auto !important;
+                margin-top: 1.25rem;
+              }
+              .testimonials-swiper .swiper-pagination-bullet {
+                width: 10px;
+                height: 10px;
+                background: #d1d5db;
+                opacity: 1;
+                margin: 0 6px !important;
+              }
+              .testimonials-swiper .swiper-pagination-bullet-active {
+                background: #1B2A6B;
+              }
+            `}</style>
+          </div>
         </div>
       </section>
 
