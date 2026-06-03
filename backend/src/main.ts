@@ -30,11 +30,13 @@ async function bootstrap() {
           defaultSrc: ["'self'", 'https:', 'data:'],
           scriptSrc: [
             "'self'",
+            "'unsafe-inline'",
             'https://cdn.jsdelivr.net',
             'https://cdnjs.cloudflare.com',
           ],
           styleSrc: [
             "'self'",
+            "'unsafe-inline'",
             'https://cdnjs.cloudflare.com',
           ],
           fontSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
