@@ -40,38 +40,42 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      if (!pathname.startsWith('/admin/login') && !pathname.startsWith('/admin/setup')) {
+    const checkAuth = () => {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        if (!pathname || (!pathname.startsWith('/admin/login') && !pathname.startsWith('/admin/setup'))) {
+          router.push('/admin/login/');
+        }
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+          localStorage.removeItem('adminToken');
+          router.push('/admin/login/');
+          return;
+        }
+        if (payload.role === 'CLIENT') {
+          localStorage.removeItem('adminToken');
+          router.push('/admin/login/');
+          return;
+        }
+        setAdminUser(payload);
+      } catch {
+        localStorage.removeItem('adminToken');
         router.push('/admin/login/');
       }
-      setLoading(false);
-      return;
-    }
+    };
 
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const now = Math.floor(Date.now() / 1000);
-      if (payload.exp && payload.exp < now) {
-        localStorage.removeItem('adminToken');
-        router.push('/admin/login/');
-        setLoading(false);
-        return;
-      }
-      if (payload.role === 'CLIENT') {
-        localStorage.removeItem('adminToken');
-        router.push('/admin/login/');
-        setLoading(false);
-        return;
-      }
-      setAdminUser(payload);
-    } catch {
-      localStorage.removeItem('adminToken');
-      router.push('/admin/login/');
+      checkAuth();
+    } catch (err) {
+      console.error('Auth check error:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-    setLoading(false);
   }, [pathname, router]);
 
   const handleLogout = () => {
