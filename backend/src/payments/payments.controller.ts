@@ -7,7 +7,9 @@ import {
   Param,
   Query,
   Req,
+  Headers,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';

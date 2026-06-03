@@ -31,7 +31,17 @@ export class DesignController {
   @Post('upload-logo')
   @UseGuards(JwtClientGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('logo'))
+  @UseInterceptors(FileInterceptor('logo', {
+    fileFilter: (_req, file, cb) => {
+      const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten imagenes PNG, JPEG, WEBP o SVG'), false);
+      }
+    },
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  }))
   uploadLogo(@UploadedFile() file: Express.Multer.File) {
     const base64 = file.buffer.toString('base64');
     const mimeType = file.mimetype;

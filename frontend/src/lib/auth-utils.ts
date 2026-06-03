@@ -20,8 +20,9 @@ export function redirectToGoogleLogin() {
 export function handleGoogleCallback(): boolean {
   if (typeof window === 'undefined') return false;
 
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
+  // Leer token del hash fragment (seguro: no va a server logs ni referrer)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const token = hashParams.get('token');
 
   if (!token) return false;
 

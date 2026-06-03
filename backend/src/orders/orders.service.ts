@@ -10,6 +10,16 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateTrackingDto } from './dto/update-tracking.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 
+const ALLOWED_ORDER_SORT_FIELDS = ['createdAt', 'status', 'totalAmount', 'orderNumber'] as const;
+type OrderSortField = typeof ALLOWED_ORDER_SORT_FIELDS[number];
+
+function buildOrderOrderBy(sortBy?: string, sortOrder: 'asc' | 'desc' = 'desc') {
+  if (!sortBy || !ALLOWED_ORDER_SORT_FIELDS.includes(sortBy as OrderSortField)) {
+    return { createdAt: sortOrder };
+  }
+  return { [sortBy]: sortOrder };
+}
+
 @Injectable()
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -229,7 +239,7 @@ export class OrdersService {
         where,
         skip: query.skip,
         take: query.take,
-        orderBy: { [query.sortBy as string]: query.sortOrder } as any,
+        orderBy: buildOrderOrderBy(query.sortBy, query.sortOrder),
         include: {
           user: { select: { id: true, email: true, name: true, phone: true } },
           items: { include: { product: true, ink: true } },

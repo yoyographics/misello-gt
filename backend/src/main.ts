@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -29,16 +30,11 @@ async function bootstrap() {
           defaultSrc: ["'self'", 'https:', 'data:'],
           scriptSrc: [
             "'self'",
-            "'unsafe-inline'",
-            "'unsafe-eval'",
-            'https://cdn.tailwindcss.com',
             'https://cdn.jsdelivr.net',
             'https://cdnjs.cloudflare.com',
           ],
           styleSrc: [
             "'self'",
-            "'unsafe-inline'",
-            'https://cdn.tailwindcss.com',
             'https://cdnjs.cloudflare.com',
           ],
           fontSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
@@ -50,7 +46,10 @@ async function bootstrap() {
   );
 
   // ── CORS: solo permitir el origen del frontend ──
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
+  const frontendUrl = configService.get<string>('FRONTEND_URL');
+  if (!frontendUrl) {
+    throw new Error('FRONTEND_URL is required');
+  }
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
@@ -64,6 +63,9 @@ async function bootstrap() {
       transform: true,             // transforma tipos automáticamente
     }),
   );
+
+  // Filtro global de excepciones para sanitizar errores
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // ── Servir frontend estatico (Next.js exportado) ──
   app.use(express.static(join(process.cwd(), 'public')));
@@ -90,9 +92,10 @@ async function bootstrap() {
   const port = configService.get<number>('PORT') || 3000;
   await app.listen(port);
 
-  console.log(`🚀 Servidor corriendo en: http://localhost:${port}`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`🚀 Servidor corriendo en puerto ${port}`);
   if (nodeEnv === 'development') {
-    console.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
+    logger.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
   }
 }
 

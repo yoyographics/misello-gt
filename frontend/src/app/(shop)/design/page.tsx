@@ -369,7 +369,7 @@ export default function DesignPage() {
         // Cargar fuentes via @font-face inyectado en <head>
         fontsArr.forEach((font: Font) => {
           if (!font.fileData || font.fileData.length < 100) {
-            console.warn(`[Design Font] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
+            // font skipped (no fileData)
             return;
           }
 
@@ -389,15 +389,15 @@ export default function DesignPage() {
             style.textContent = `@font-face { font-family: 'font-${font.id}'; src: url('${fontUrl}') format('${format}'); }`;
             document.head.appendChild(style);
 
-            console.log(`[Design Font] ${font.name}: @font-face inyectada`);
+            // font face injected
             setLoadedFonts((prev) => new Set(prev).add(font.id));
           } catch (err: any) {
-            console.error(`[Design Font] Error inyectando fuente ${font.name}:`, err.message || err);
+            // font face injection error
           }
         });
       })
       .catch((err) => {
-        console.error('API error:', err);
+        // api error
         setApiError(err.response?.data?.message || err.message || 'Error cargando datos');
         setApiLoading(false);
       });
@@ -484,7 +484,7 @@ export default function DesignPage() {
         setTextValidation({ ...widest, fits: true });
       }
     } catch (err: any) {
-      console.error('Error validando texto:', err);
+        // text validation error
       setTextValidation(null);
     } finally {
       setValidatingText(false);
@@ -1181,8 +1181,10 @@ export default function DesignPage() {
                   a.download = `sello-${designResult.designId}.svg`;
                   a.click();
                   URL.revokeObjectURL(url);
+                } else if (/^https?:\/\//.test(svgUrl)) {
+                  window.open(svgUrl, '_blank', 'noopener,noreferrer');
                 } else {
-                  window.open(svgUrl, '_blank');
+                  console.error('Invalid SVG URL:', svgUrl);
                 }
               }}
             >

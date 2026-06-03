@@ -74,7 +74,7 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
 
     fonts.forEach((font) => {
       if (!font.fileData || font.fileData.length < 100) {
-        console.warn(`[FontPreview] ${font.name}: sin fileData válido (length=${font.fileData?.length})`);
+        // font preview skipped (no fileData)
         return;
       }
 
@@ -96,10 +96,10 @@ function FontPreviewGrid({ fonts }: { fonts: Font[] }) {
         document.head.appendChild(style);
         injectedIds.push(font.id);
 
-        console.log(`[FontPreview] ${font.name}: @font-face inyectada`);
+        // font face injected
         setLoadedFonts((prev) => new Set(prev).add(font.id));
       } catch (err: any) {
-        console.error(`[FontPreview] Error inyectando fuente ${font.name}:`, err.message || err);
+        // font face injection error
       }
     });
 
@@ -170,7 +170,7 @@ export default function AdminFontsPage() {
     setLoading(true);
     api.get('/fonts/admin/all')
       .then((res) => setFonts(res.data || []))
-      .catch((err) => console.error('Error cargando fuentes:', err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -181,11 +181,6 @@ export default function AdminFontsPage() {
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
-
-    // Debug: log token being used
-    const token = localStorage.getItem('adminToken');
-    console.log('[Upload Debug] adminToken exists:', !!token);
-    if (token) console.log('[Upload Debug] token prefix:', token.substring(0, 30) + '...');
 
     // Convert file to base64
     const toBase64 = (f: File): Promise<string> =>
@@ -212,11 +207,10 @@ export default function AdminFontsPage() {
 
       console.log('[Upload Debug] Sending POST /fonts/admin/base64');
       await api.post('/fonts/admin/base64', payload);
-      console.log('[Upload Debug] Upload OK');
       setFile(null);
       fetchFonts();
     } catch (err: any) {
-      console.error('[Upload Debug] Upload failed:', err.response?.status, err.response?.data);
+      console.error('Upload failed');
       alert(
         'Error subiendo fuente. Status: ' + (err.response?.status || 'unknown') +
         '\nMensaje: ' + (err.response?.data?.message || err.message)

@@ -7,6 +7,16 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CATALOG_PRODUCTS, CATEGORY_DEFINITIONS } from './catalog-data';
 
+const ALLOWED_PRODUCT_SORT_FIELDS = ['createdAt', 'name', 'sku', 'basePrice', 'stock'] as const;
+type ProductSortField = typeof ALLOWED_PRODUCT_SORT_FIELDS[number];
+
+function buildProductOrderBy(sortBy?: string, sortOrder: 'asc' | 'desc' = 'desc') {
+  if (!sortBy || !ALLOWED_PRODUCT_SORT_FIELDS.includes(sortBy as ProductSortField)) {
+    return { createdAt: sortOrder };
+  }
+  return { [sortBy]: sortOrder };
+}
+
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -49,7 +59,7 @@ export class ProductsService {
         where,
         skip: query.skip,
         take: query.take,
-        orderBy: { [query.sortBy as string]: query.sortOrder } as any,
+        orderBy: buildProductOrderBy(query.sortBy, query.sortOrder),
         include: { category: true },
       }),
       this.prisma.product.count({ where }),
@@ -76,7 +86,7 @@ export class ProductsService {
         where,
         skip: query.skip,
         take: query.take,
-        orderBy: { [query.sortBy as string]: query.sortOrder } as any,
+        orderBy: buildProductOrderBy(query.sortBy, query.sortOrder),
       }),
       this.prisma.product.count({ where }),
     ]);

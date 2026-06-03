@@ -25,7 +25,18 @@ export class SlidersController {
 
   @Post('admin/upload')
   @UseGuards(JwtAdminGuard)
-  @UseInterceptors(FileInterceptor('image', { storage: memoryStorage() }))
+  @UseInterceptors(FileInterceptor('image', {
+    storage: memoryStorage(),
+    fileFilter: (_req, file, cb) => {
+      const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten imagenes PNG, JPEG o WEBP'), false);
+      }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  }))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file || !file.buffer) {
       return { error: 'No se recibio ninguna imagen' };

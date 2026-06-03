@@ -55,18 +55,28 @@ export class NotificationsService {
    * Enviar email usando un template y variables.
    * Las variables se reemplazan en el formato {{variableName}}.
    */
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   async sendEmail(stage: EmailStage, to: string, variables?: Record<string, string>) {
     const template = await this.findTemplateByStage(stage);
 
     let html = template.htmlBody;
     let subject = template.subject;
 
-    // Reemplazar variables
+    // Reemplazar variables (escapadas para evitar XSS en email)
     if (variables) {
       for (const [key, value] of Object.entries(variables)) {
         const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-        html = html.replace(regex, value);
-        subject = subject.replace(regex, value);
+        const safeValue = this.escapeHtml(value);
+        html = html.replace(regex, safeValue);
+        subject = subject.replace(regex, safeValue);
       }
     }
 

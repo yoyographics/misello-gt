@@ -43,6 +43,15 @@ interface Payment {
   createdAt: string;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface Order {
   id: string;
   orderNumber: string;
@@ -193,7 +202,7 @@ export default function AdminOrdersPage() {
         const dj = item.designJson;
         const lines = dj?.textLines || dj?.lines || [];
         if (Array.isArray(lines) && lines.length > 0) {
-          return lines.map((l: any) => l.text || l.content || '').filter(Boolean).join('<br>');
+          return lines.map((l: any) => escapeHtml(l.text || l.content || '')).filter(Boolean).join('<br>');
         }
         return '';
       })();
@@ -201,9 +210,9 @@ export default function AdminOrdersPage() {
       return `
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;">
-            <div style="font-weight:600;font-size:14px;">${item.product.name}</div>
-            <div style="font-size:12px;color:#6b7280;">SKU: ${item.product.sku}</div>
-            ${item.ink ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">Tinta: ${item.ink.color}</div>` : ''}
+            <div style="font-weight:600;font-size:14px;">${escapeHtml(item.product.name)}</div>
+            <div style="font-size:12px;color:#6b7280;">SKU: ${escapeHtml(item.product.sku)}</div>
+            ${item.ink ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">Tinta: ${escapeHtml(item.ink.color)}</div>` : ''}
             ${designLines ? `<div style="font-size:12px;color:#374151;margin-top:6px;padding:6px;background:#f9fafb;border-radius:4px;">${designLines}</div>` : ''}
           </td>
           <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;font-size:13px;">
@@ -225,15 +234,23 @@ export default function AdminOrdersPage() {
 
     const addr = selectedOrder.shippingAddress;
     const addressHtml = addr
-      ? `<p style="margin:0;font-size:13px;">${addr.address}</p><p style="margin:0;font-size:13px;color:#6b7280;">${addr.municipality}, ${addr.department}</p>`
+      ? `<p style="margin:0;font-size:13px;">${escapeHtml(addr.address)}</p><p style="margin:0;font-size:13px;color:#6b7280;">${escapeHtml(addr.municipality)}, ${escapeHtml(addr.department)}</p>`
       : '<p style="font-size:13px;color:#6b7280;">Sin direccion registrada</p>';
+
+    const safeOrderNumber = escapeHtml(selectedOrder.orderNumber);
+    const safeStatus = escapeHtml(STATUS_OPTIONS.find((s) => s.value === selectedOrder.status)?.label || selectedOrder.status);
+    const safeUserName = escapeHtml(selectedOrder.user?.name || 'N/A');
+    const safeUserEmail = escapeHtml(selectedOrder.user?.email || 'N/A');
+    const safeUserPhone = escapeHtml(selectedOrder.user?.phone || 'N/A');
+    const safeNitOrCui = escapeHtml(selectedOrder.nitOrCui || 'N/A');
+    const safeCourierTracking = selectedOrder.courierTracking ? escapeHtml(selectedOrder.courierTracking) : null;
 
     w.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Pedido ${selectedOrder.orderNumber}</title>
+        <title>Pedido ${safeOrderNumber}</title>
         <style>
           @media print { body { margin: 0; } }
           body { font-family: system-ui, -apple-system, sans-serif; color: #111827; margin: 40px; }
@@ -247,12 +264,12 @@ export default function AdminOrdersPage() {
               <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">YOYO GRAPHICS, S.A. — Guatemala</p>
             </div>
             <div style="text-align:right;">
-              <p style="margin:0;font-size:18px;font-weight:700;">Pedido ${selectedOrder.orderNumber}</p>
+              <p style="margin:0;font-size:18px;font-weight:700;">Pedido ${safeOrderNumber}</p>
               <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">
                 ${new Date(selectedOrder.createdAt).toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
               <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">
-                Estado: ${STATUS_OPTIONS.find((s) => s.value === selectedOrder.status)?.label || selectedOrder.status}
+                Estado: ${safeStatus}
               </p>
             </div>
           </div>
@@ -260,10 +277,10 @@ export default function AdminOrdersPage() {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
             <div>
               <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Cliente</p>
-              <p style="margin:0;font-size:13px;font-weight:600;">${selectedOrder.user?.name || 'N/A'}</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#374151;">${selectedOrder.user?.email || 'N/A'}</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#374151;">Tel: ${selectedOrder.user?.phone || 'N/A'}</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#374151;">NIT/CUI: ${selectedOrder.nitOrCui || 'N/A'}</p>
+              <p style="margin:0;font-size:13px;font-weight:600;">${safeUserName}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#374151;">${safeUserEmail}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#374151;">Tel: ${safeUserPhone}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#374151;">NIT/CUI: ${safeNitOrCui}</p>
             </div>
             <div>
               <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Direccion de envio</p>
@@ -296,8 +313,8 @@ export default function AdminOrdersPage() {
             </div>
             <div>
               <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Envio</p>
-              ${selectedOrder.courierTracking
-                ? `<p style="margin:0;font-size:13px;font-weight:600;">Guia: ${selectedOrder.courierTracking}</p>`
+              ${safeCourierTracking
+                ? `<p style="margin:0;font-size:13px;font-weight:600;">Guia: ${safeCourierTracking}</p>`
                 : '<p style="margin:0;font-size:13px;color:#6b7280;">Sin numero de guia</p>'}
             </div>
           </div>
@@ -530,7 +547,7 @@ export default function AdminOrdersPage() {
                           {item.previewPngUrl && (
                             <SvgImage src={item.previewPngUrl} alt="Preview" className="h-14 w-14 object-contain border rounded bg-white" />
                           )}
-                          {item.productionSvgUrl && (
+                          {item.productionSvgUrl && /^https?:\/\//.test(item.productionSvgUrl) && (
                             <a href={item.productionSvgUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-900 underline">
                               Ver SVG de produccion
                             </a>

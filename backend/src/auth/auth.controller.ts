@@ -41,17 +41,9 @@ export class AuthController {
   /**
    * Diagnóstico: muestra la configuración de Google OAuth (sin secret).
    */
-  @Get('google/debug')
-  googleDebug() {
-    const clientId = process.env.GOOGLE_CLIENT_ID || '';
-    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || '';
-    return {
-      clientIdConfigured: !!clientId,
-      clientIdPrefix: clientId.substring(0, 20) + '...',
-      callbackUrl,
-      fullAuthUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&scope=email profile`,
-    };
-  }
+  /**
+   * Endpoint de debug eliminado para evitar filtrar configuracion OAuth.
+   */
 
   /**
    * Inicia el flujo de autenticación con Google.
@@ -77,7 +69,8 @@ export class AuthController {
     // El frontend Next.js esta servido en la raiz del dominio (/)
     let frontendUrl = (process.env.FRONTEND_URL || 'https://misello-gt-production.up.railway.app').trim();
     frontendUrl = frontendUrl.replace(/\/+$/, ''); // quitar trailing slashes
-    return res.redirect(`${frontendUrl}/?token=${token}`);
+    // Pasar token en hash fragment para evitar que quede en server logs / browser history query params
+    return res.redirect(`${frontendUrl}/#token=${encodeURIComponent(token)}`);
   }
 
   // ============================================================
