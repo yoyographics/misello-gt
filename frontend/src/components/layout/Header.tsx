@@ -4,16 +4,12 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
-import { Stamp, ShoppingCart, User, LogOut, Menu } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { Stamp, ShoppingCart, User, LogOut } from 'lucide-react';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { totalItems } = useCart();
-  const [open, setOpen] = useState(false);
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const baseUrl = apiUrl.replace('/api/v1', '');
 
@@ -55,28 +51,7 @@ export default function Header() {
           )}
         </nav>
 
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <div className="flex flex-col gap-4 mt-8">
-              <Link href="/store" onClick={() => setOpen(false)} className="text-lg font-medium">Tienda</Link>
-              <Link href="/design" onClick={() => setOpen(false)} className="text-lg font-medium">Crear Sello</Link>
-              <Link href="/cart" onClick={() => setOpen(false)} className="text-lg font-medium">Carrito</Link>
-              {user ? (
-                <>
-                  <span className="text-sm text-gray-600">{user.name}</span>
-                  <Button onClick={() => { logout(); setOpen(false); }}>Cerrar sesion</Button>
-                </>
-              ) : (
-                <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>Ingresar con Google</Button>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+        {/* Mobile nav removed — links already visible in top nav */}
       </div>
     </header>
   );

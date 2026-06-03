@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination, Navigation, EffectFade } from 'swiper/modules';
+import { Autoplay, Pagination, Navigation } from 'swiper/modules';
 import AOS from 'aos';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -229,9 +229,7 @@ export default function HomeV2() {
       {/* Hero Slider */}
       <section className="relative w-full">
         <Swiper
-          modules={[Autoplay, EffectFade, Pagination]}
-          effect="fade"
-          fadeEffect={{ crossFade: true }}
+          modules={[Autoplay, Pagination]}
           autoplay={{ delay: 6000, disableOnInteraction: false }}
           speed={700}
           loop={true}
