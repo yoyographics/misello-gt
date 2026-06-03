@@ -26,6 +26,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Primero revisar si hay token en el hash fragment (Google OAuth redirect)
+    //    El backend redirige con #token=... para evitar que el token viaje al server
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const hashToken = hashParams.get('token');
+      if (hashToken) {
+        login(hashToken);
+        // Limpiar el hash de la URL sin recargar la página
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // 2. Si no hay token en hash, revisar query params (legacy / fallback)
+    if (typeof window !== 'undefined' && window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      if (urlToken) {
+        login(urlToken);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // 3. Revisar token almacenado en localStorage
     const storedToken = localStorage.getItem('clientToken');
     if (storedToken) {
       setToken(storedToken);
@@ -42,14 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setIsLoading(false);
-
-    // Capturar token de URL (Google OAuth redirect)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    if (urlToken) {
-      login(urlToken);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
   }, []);
 
   const login = (newToken: string) => {
