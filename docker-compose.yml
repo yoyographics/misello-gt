@@ -1,71 +1,60 @@
+# ============================================================
+# docker-compose.yml — misello.gt
+# Levanta todo el stack localmente o en cualquier VPS.
+#
+# Uso:
+#   docker-compose up --build
+#
+# Requiere:
+#   - Docker + Docker Compose
+#   - Archivo .env en backend/ (copiar de .env.example y completar)
+#   - Frontend buildeado: cd frontend && npm run build
+# ============================================================
+
 version: '3.8'
 
 services:
+  # ── PostgreSQL ──
   postgres:
     image: postgres:16-alpine
     container_name: misello-postgres
-    restart: always
-    ports:
-      - "5432:5432"
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: misello_user
-      POSTGRES_PASSWORD: misello_password
-      POSTGRES_DB: misello_db
+      POSTGRES_USER: ${POSTGRES_USER:-misello}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-misello123}
+      POSTGRES_DB: ${POSTGRES_DB:-misello_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups  # para restore de dumps de Railway
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U misello_user -d misello_db"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-misello} -d ${POSTGRES_DB:-misello_db}"]
+      interval: 5s
       timeout: 5s
       retries: 5
 
+  # ── Backend (NestJS + Frontend estático servido) ──
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: ../Dockerfile
     container_name: misello-backend
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override para conectar al contenedor de Postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-misello}:${POSTGRES_PASSWORD:-misello123}@postgres:5432/${POSTGRES_DB:-misello_db}
+      NODE_ENV: production
+      PORT: 3000
     ports:
       - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://misello_user:misello_password@postgres:5432/misello_db
-      NODE_ENV: development
-      PORT: 3000
-      FRONTEND_URL: http://localhost
-    env_file:
-      - backend/.env
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - uploads_data:/app/uploads
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: misello-frontend
-    restart: always
-    ports:
-      - "3001:3001"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost/api/v1
-    env_file:
-      - frontend/.env.local
-    depends_on:
-      - backend
-
-  nginx:
-    image: nginx:alpine
-    container_name: misello-nginx
-    restart: always
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - frontend
-      - backend
 
 volumes:
   postgres_data:

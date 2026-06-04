@@ -1,59 +1,62 @@
 # ============================================================
-# Dockerfile multi-etapa: Frontend Next.js + Backend NestJS
+# Dockerfile — misello.gt Backend + Frontend
+# Multi-stage build: compila frontend y backend, luego los une.
 # ============================================================
 
-# ── ETAPA 1: Build del Frontend Next.js ──
-FROM node:20-alpine AS frontend-builder
+# ── Stage 1: Build Frontend ──
+FROM node:20-slim AS frontend-builder
+WORKDIR /app/frontend
 
-WORKDIR /frontend
+# Copiar package.json e instalar dependencias
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
+# Copiar código fuente del frontend y buildear
 COPY frontend/ ./
-ENV NEXT_PUBLIC_API_URL=/api/v1
 RUN npm run build
+# El output va a /app/frontend/out (Next.js static export)
 
-# ── ETAPA 2: Build del Backend NestJS ──
-FROM node:20-alpine AS backend-builder
+# ── Stage 2: Build Backend ──
+FROM node:20-slim AS backend-builder
+WORKDIR /app/backend
 
-# Dependencias para compilar modulos nativos (bcrypt, etc.)
-RUN apk add --no-cache python3 make g++
-
-WORKDIR /app
-
-# Dependencias del backend
+# Copiar package.json e instalar dependencias (incluyendo devDependencies para compilar)
 COPY backend/package*.json ./
-COPY backend/prisma ./prisma/
-RUN npm install
+RUN npm ci --legacy-peer-deps
+
+# Copiar código fuente del backend y prisma schema
+COPY backend/ ./
+
+# Generar Prisma Client
 RUN npx prisma generate
 
-# Copiar código fuente del backend
-COPY backend/src ./src/
-COPY backend/tsconfig*.json ./
-COPY backend/nest-cli.json ./
-
-# Copiar frontend buildado desde etapa 1 al public/ del backend
-COPY --from=frontend-builder /frontend/out ./public/
-
-# Compilar backend
+# Compilar TypeScript a JavaScript
 RUN npm run build
 
-# ── ETAPA 3: Imagen final de produccion ──
-FROM node:20-alpine AS runner
-
+# ── Stage 3: Production ──
+FROM node:20-slim AS production
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
 
-# Copiar solo lo necesario
-COPY --from=backend-builder /app/node_modules ./node_modules
-COPY --from=backend-builder /app/prisma ./prisma
-COPY --from=backend-builder /app/dist ./dist
-COPY --from=backend-builder /app/public ./public
+# Instalar solo dependencias de producción
+COPY backend/package*.json ./
+RUN npm ci --omit=dev --legacy-peer-deps
 
-# Crear carpetas para uploads
-RUN mkdir -p uploads/fonts uploads/logos uploads/designs uploads/receipts uploads/product-photos
+# Copiar Prisma schema y cliente generado
+COPY backend/prisma ./prisma
+RUN npx prisma generate
 
+# Copiar código compilado del backend
+COPY --from=backend-builder /app/backend/dist ./dist
+
+# Copiar frontend estático al directorio public/ del backend
+# El backend sirve express.static desde process.cwd()/public
+COPY --from=frontend-builder /app/frontend/out ./public
+
+# Crear directorio para uploads
+RUN mkdir -p /app/uploads
+
+# Puerto expuesto
 EXPOSE 3000
 
+# Comando de inicio: aplicar migraciones y levantar servidor
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]
