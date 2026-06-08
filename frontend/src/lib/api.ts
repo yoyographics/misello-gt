@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+// NEXT_PUBLIC_API_URL se define en build time (.env.local).
+// En produccion Railway no tiene .env.local (esta en .gitignore),
+// asi que usamos '/api/v1' que es una ruta relativa al mismo dominio.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
