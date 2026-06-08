@@ -226,18 +226,15 @@ export default function HomeV2() {
     AOS.init({ duration: 600, once: true });
 
     api
-      .get('/products?take=12')
+      .get('/products?take=100')
       .then((res) => {
         const raw = res.data?.items || res.data || [];
-        // Ordenar: sellos automaticos primero, luego los demas
-        const sorted = [...raw].sort((a: Product, b: Product) => {
-          const aIsAuto = a.category?.slug === 'sello-automatico';
-          const bIsAuto = b.category?.slug === 'sello-automatico';
-          if (aIsAuto && !bIsAuto) return -1;
-          if (!aIsAuto && bIsAuto) return 1;
-          return 0;
-        });
-        setProducts(sorted);
+        // Separar sellos automaticos del resto
+        const auto = raw.filter((p: Product) => p.category?.slug === 'sello-automatico');
+        const others = raw.filter((p: Product) => p.category?.slug !== 'sello-automatico');
+        // Mostrar max 8 destacados: primero sellos automaticos, luego otros
+        const featured = [...auto, ...others].slice(0, 8);
+        setProducts(featured);
         setProductsLoading(false);
       })
       .catch((err) => {
