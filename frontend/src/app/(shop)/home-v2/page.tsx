@@ -37,6 +37,11 @@ interface Product {
   name: string;
   basePrice: number;
   imageUrl?: string;
+  category?: {
+    id: string;
+    slug: string;
+    name: string;
+  };
 }
 
 function getImageUrl(url?: string) {
@@ -214,14 +219,32 @@ function TwitterIcon({ className }: { className?: string }) {
 
 export default function HomeV2() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(false);
 
   useEffect(() => {
     AOS.init({ duration: 600, once: true });
 
     api
-      .get('/products?take=8')
-      .then((res) => setProducts(res.data.items || res.data || []))
-      .catch((err) => console.error('Error cargando productos:', err));
+      .get('/products?take=12')
+      .then((res) => {
+        const raw = res.data?.items || res.data || [];
+        // Ordenar: sellos automaticos primero, luego los demas
+        const sorted = [...raw].sort((a: Product, b: Product) => {
+          const aIsAuto = a.category?.slug === 'sello-automatico';
+          const bIsAuto = b.category?.slug === 'sello-automatico';
+          if (aIsAuto && !bIsAuto) return -1;
+          if (!aIsAuto && bIsAuto) return 1;
+          return 0;
+        });
+        setProducts(sorted);
+        setProductsLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error cargando productos:', err);
+        setProductsError(true);
+        setProductsLoading(false);
+      });
   }, []);
 
   return (
@@ -365,9 +388,17 @@ export default function HomeV2() {
           >
             Productos destacados
           </h2>
-          {products.length === 0 ? (
+          {productsLoading ? (
             <div className="flex items-center justify-center h-32">
               <div className="animate-spin h-6 w-6 border-4 border-orange-500 border-t-transparent rounded-full" />
+            </div>
+          ) : productsError ? (
+            <div className="text-center text-gray-500 py-8">
+              No se pudieron cargar los productos. Intenta recargar la página.
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No hay productos disponibles en este momento.
             </div>
           ) : (
             <div className="featured-swiper">
