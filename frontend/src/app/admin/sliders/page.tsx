@@ -20,18 +20,34 @@ interface Slider {
   title: string;
   subtitle: string;
   imageUrl: string;
+  gradient?: string;
+  animation?: string;
   buttonText?: string;
-  buttonLink?: string;
+  buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
+  buttonUrl?: string;
+  buttonCategorySlug?: string;
+  buttonProductId?: string;
   sortOrder: number;
   isActive: boolean;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 const EMPTY_FORM = {
   title: '',
   subtitle: '',
   imageUrl: '',
+  gradient: '',
+  animation: 'fade-up',
   buttonText: '',
-  buttonLink: '',
+  buttonType: 'URL',
+  buttonUrl: '',
+  buttonCategorySlug: '',
+  buttonProductId: '',
   sortOrder: 0,
   isActive: true,
 };
@@ -45,6 +61,7 @@ function getImageUrl(url?: string) {
 
 export default function AdminSlidersPage() {
   const [sliders, setSliders] = useState<Slider[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,6 +80,7 @@ export default function AdminSlidersPage() {
 
   useEffect(() => {
     fetchSliders();
+    api.get('/categories').then((res) => setCategories(res.data || [])).catch(() => {});
   }, [fetchSliders]);
 
   const openCreate = () => {
@@ -76,9 +94,14 @@ export default function AdminSlidersPage() {
     setForm({
       title: slider.title,
       subtitle: slider.subtitle,
-      imageUrl: slider.imageUrl,
+      imageUrl: slider.imageUrl || '',
+      gradient: slider.gradient || '',
+      animation: slider.animation || 'fade-up',
       buttonText: slider.buttonText || '',
-      buttonLink: slider.buttonLink || '',
+      buttonType: slider.buttonType || 'URL',
+      buttonUrl: slider.buttonUrl || '',
+      buttonCategorySlug: slider.buttonCategorySlug || '',
+      buttonProductId: slider.buttonProductId || '',
       sortOrder: slider.sortOrder,
       isActive: slider.isActive,
     });
@@ -88,15 +111,25 @@ export default function AdminSlidersPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         title: form.title,
         subtitle: form.subtitle,
-        imageUrl: form.imageUrl,
+        imageUrl: form.imageUrl || undefined,
+        gradient: form.gradient || undefined,
+        animation: form.animation,
         buttonText: form.buttonText || undefined,
-        buttonLink: form.buttonLink || undefined,
+        buttonType: form.buttonType,
         sortOrder: Number(form.sortOrder) || 0,
         isActive: form.isActive,
       };
+
+      if (form.buttonType === 'URL') {
+        payload.buttonUrl = form.buttonUrl || undefined;
+      } else if (form.buttonType === 'CATEGORY') {
+        payload.buttonCategorySlug = form.buttonCategorySlug || undefined;
+      } else if (form.buttonType === 'PRODUCT') {
+        payload.buttonProductId = form.buttonProductId || undefined;
+      }
 
       if (editingId) {
         await api.patch(`/sliders/admin/${editingId}`, payload);
@@ -323,6 +356,40 @@ export default function AdminSlidersPage() {
                 La imagen se comprime automaticamente a WebP via Cloudinary.
               </p>
             </div>
+            {/* Gradiente (alternativa a imagen) */}
+            <div>
+              <label className="text-xs font-medium block mb-1.5">
+                Gradiente CSS (opcional — si no hay imagen)
+              </label>
+              <Input
+                value={form.gradient}
+                onChange={(e) => setForm({ ...form, gradient: e.target.value })}
+                placeholder="from-[#1B2A6B] to-[#0f1a4a]"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Dejar vacío para usar imagen. Ejemplo: from-orange-600 to-red-700
+              </p>
+            </div>
+
+            {/* Animación */}
+            <div>
+              <label className="text-xs font-medium block mb-1.5">
+                Animación de textos
+              </label>
+              <select
+                value={form.animation}
+                onChange={(e) => setForm({ ...form, animation: e.target.value })}
+                className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm"
+              >
+                <option value="fade-up">Fade up (aparece desde abajo)</option>
+                <option value="fade-left">Fade left (aparece desde derecha)</option>
+                <option value="fade-right">Fade right (aparece desde izquierda)</option>
+                <option value="zoom-in">Zoom in (aparece con zoom)</option>
+                <option value="slide-up">Slide up (desliza hacia arriba)</option>
+              </select>
+            </div>
+
+            {/* Botón del slide */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1.5">
@@ -330,25 +397,62 @@ export default function AdminSlidersPage() {
                 </label>
                 <Input
                   value={form.buttonText}
-                  onChange={(e) =>
-                    setForm({ ...form, buttonText: e.target.value })
-                  }
-                  placeholder="Ej: Ver mas"
+                  onChange={(e) => setForm({ ...form, buttonText: e.target.value })}
+                  placeholder="Ej: Ver oferta"
                 />
               </div>
               <div>
                 <label className="text-xs font-medium block mb-1.5">
-                  Link del boton
+                  Tipo de link
                 </label>
-                <Input
-                  value={form.buttonLink}
-                  onChange={(e) =>
-                    setForm({ ...form, buttonLink: e.target.value })
-                  }
-                  placeholder="/store"
-                />
+                <select
+                  value={form.buttonType}
+                  onChange={(e) => setForm({ ...form, buttonType: e.target.value as any })}
+                  className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm"
+                >
+                  <option value="URL">URL libre</option>
+                  <option value="CATEGORY">Categoría de productos</option>
+                  <option value="PRODUCT">Producto específico</option>
+                </select>
               </div>
             </div>
+
+            {/* Campo condicional según tipo de link */}
+            {form.buttonType === 'URL' && (
+              <div>
+                <label className="text-xs font-medium block mb-1.5">URL de destino</label>
+                <Input
+                  value={form.buttonUrl}
+                  onChange={(e) => setForm({ ...form, buttonUrl: e.target.value })}
+                  placeholder="/store o https://..."
+                />
+              </div>
+            )}
+            {form.buttonType === 'CATEGORY' && (
+              <div>
+                <label className="text-xs font-medium block mb-1.5">Categoría</label>
+                <select
+                  value={form.buttonCategorySlug}
+                  onChange={(e) => setForm({ ...form, buttonCategorySlug: e.target.value })}
+                  className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm"
+                >
+                  <option value="">Selecciona una categoría</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {form.buttonType === 'PRODUCT' && (
+              <div>
+                <label className="text-xs font-medium block mb-1.5">ID del producto</label>
+                <Input
+                  value={form.buttonProductId}
+                  onChange={(e) => setForm({ ...form, buttonProductId: e.target.value })}
+                  placeholder="ID del producto"
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs font-medium block mb-1.5">
                 Orden
@@ -381,7 +485,7 @@ export default function AdminSlidersPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={saving || !form.title || !form.imageUrl}
+                disabled={saving || !form.title || (!form.imageUrl && !form.gradient)}
                 className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
               >
                 {saving ? (

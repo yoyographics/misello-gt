@@ -4,6 +4,8 @@ import { memoryStorage } from 'multer';
 import { SlidersService } from './sliders.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { JwtAdminGuard } from '../auth/guards/jwt-admin.guard';
+import { CreateSliderDto } from './dto/create-slider.dto';
+import { UpdateSliderDto } from './dto/update-slider.dto';
 
 @Controller('sliders')
 export class SlidersController {
@@ -47,13 +49,13 @@ export class SlidersController {
 
   @Post('admin')
   @UseGuards(JwtAdminGuard)
-  create(@Body() dto: any) {
+  create(@Body() dto: CreateSliderDto) {
     return this.slidersService.create(dto);
   }
 
   @Patch('admin/:id')
   @UseGuards(JwtAdminGuard)
-  update(@Param('id') id: string, @Body() dto: any) {
+  update(@Param('id') id: string, @Body() dto: UpdateSliderDto) {
     return this.slidersService.update(id, dto);
   }
 

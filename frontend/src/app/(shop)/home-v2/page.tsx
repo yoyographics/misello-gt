@@ -51,69 +51,41 @@ function getImageUrl(url?: string) {
     : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
 }
 
-interface HeroButton {
-  label: string;
-  href: string;
-  variant: 'primary' | 'outline';
-}
-
-interface HeroSlide {
+interface ApiSlider {
+  id: string;
   title: string;
-  subtitle: string;
-  gradient: string;
-  animation: 'fade-up' | 'fade-left' | 'fade-right' | 'zoom-in' | 'slide-up';
-  buttons: HeroButton[];
+  subtitle?: string;
+  imageUrl?: string;
+  gradient?: string;
+  animation?: string;
+  buttonText?: string;
+  buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
+  buttonUrl?: string;
+  buttonCategorySlug?: string;
+  buttonProductId?: string;
 }
-
-const heroSlides: HeroSlide[] = [
-  {
-    title: 'Sellos personalizados sin salir de casa',
-    subtitle:
-      'Diseña tu sello en minutos y recíbelo en cualquier departamento de Guatemala.',
-    gradient: 'from-[#1B2A6B] to-[#0f1a4a]',
-    animation: 'fade-up',
-    buttons: [
-      { label: 'Crear mi sello', href: '/design/', variant: 'primary' },
-      { label: 'Ver catálogo', href: '/store/', variant: 'outline' },
-    ],
-  },
-  {
-    title: 'Calidad profesional garantizada',
-    subtitle: 'Fabricados con tecnología láser de alta precisión.',
-    gradient: 'from-[#1B2A6B] to-[#16245c]',
-    animation: 'fade-left',
-    buttons: [
-      { label: 'Ver sellos automáticos', href: '/store/', variant: 'primary' },
-    ],
-  },
-  {
-    title: 'Fabricación rápida',
-    subtitle: 'Producción y envío en tiempo récord.',
-    gradient: 'from-[#1B2A6B] to-[#243885]',
-    animation: 'fade-right',
-    buttons: [
-      { label: 'Ver catálogo', href: '/store/', variant: 'outline' },
-    ],
-  },
-  {
-    title: 'Envíos a toda Guatemala',
-    subtitle: 'Recibe tu pedido en 3 a 4 días hábiles.',
-    gradient: 'from-[#1B2A6B] to-[#122052]',
-    animation: 'zoom-in',
-    buttons: [
-      { label: 'Hacer pedido', href: '/design/', variant: 'primary' },
-    ],
-  },
-];
 
 // Mapeo de animaciones configurables a atributos AOS
-const aosAnimations: Record<HeroSlide['animation'], { title: string; subtitle: string }> = {
+const aosAnimations: Record<string, { title: string; subtitle: string }> = {
   'fade-up': { title: 'fade-up', subtitle: 'fade-up' },
   'fade-left': { title: 'fade-right', subtitle: 'fade-right' },
   'fade-right': { title: 'fade-left', subtitle: 'fade-left' },
   'zoom-in': { title: 'zoom-in', subtitle: 'zoom-in' },
   'slide-up': { title: 'slide-up', subtitle: 'slide-up' },
 };
+
+// Genera el href del botón según el tipo
+function getSliderButtonHref(slider: ApiSlider): string {
+  switch (slider.buttonType) {
+    case 'CATEGORY':
+      return slider.buttonCategorySlug ? `/store?category=${slider.buttonCategorySlug}` : '/store';
+    case 'PRODUCT':
+      return slider.buttonProductId ? `/store/product?id=${slider.buttonProductId}` : '/store';
+    case 'URL':
+    default:
+      return slider.buttonUrl || '/store';
+  }
+}
 
 const categories = [
   {
@@ -257,10 +229,25 @@ export default function HomeV2() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(false);
+  const [sliders, setSliders] = useState<ApiSlider[]>([]);
+  const [slidersLoading, setSlidersLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
     AOS.init({ duration: 600, once: true });
+
+    // Cargar sliders dinámicos desde la API
+    api
+      .get('/sliders')
+      .then((res) => {
+        const data = res.data || [];
+        setSliders(data);
+        setSlidersLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error cargando sliders:', err);
+        setSlidersLoading(false);
+      });
 
     api
       .get('/products?take=100')
@@ -289,61 +276,86 @@ export default function HomeV2() {
           modules={[Autoplay, Pagination]}
           autoplay={{ delay: 6000, disableOnInteraction: false }}
           speed={700}
-          loop={true}
+          loop={sliders.length > 1}
           pagination={{ clickable: true }}
           className="h-[350px] md:h-[450px] lg:h-[550px] w-full"
           onSlideChange={(swiper) => setActiveSlide(swiper.realIndex)}
         >
-          {heroSlides.map((slide, i) => {
-            const anim = aosAnimations[slide.animation];
-            return (
-              <SwiperSlide key={i}>
-                <div
-                  className={`h-full w-full bg-gradient-to-br ${slide.gradient} flex items-center justify-center px-4`}
-                >
-                  <div className="container mx-auto max-w-4xl text-center text-white">
-                    <h1
-                      className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6"
-                      data-aos={anim.title}
-                      data-aos-delay="100"
-                    >
-                      {slide.title}
-                    </h1>
-                    <p
-                      className="text-base md:text-lg lg:text-xl text-gray-200 mb-6 md:mb-8 max-w-2xl mx-auto"
-                      data-aos={anim.subtitle}
-                      data-aos-delay="200"
-                    >
-                      {slide.subtitle}
-                    </p>
-                    {/* Botones personalizados del slide */}
-                    {slide.buttons.length > 0 && (
-                      <div
-                        className="flex flex-wrap gap-3 justify-center"
-                        data-aos="fade-up"
-                        data-aos-delay="300"
+          {slidersLoading ? (
+            <SwiperSlide>
+              <div className="h-full w-full bg-gradient-to-br from-[#1B2A6B] to-[#0f1a4a] flex items-center justify-center">
+                <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full" />
+              </div>
+            </SwiperSlide>
+          ) : sliders.length === 0 ? (
+            <SwiperSlide>
+              <div className="h-full w-full bg-gradient-to-br from-[#1B2A6B] to-[#0f1a4a] flex items-center justify-center px-4">
+                <div className="text-center text-white">
+                  <h1 className="text-3xl md:text-5xl font-bold mb-4">Sellos personalizados sin salir de casa</h1>
+                  <p className="text-lg text-gray-200 max-w-2xl mx-auto">Diseña tu sello en minutos y recíbelo en cualquier departamento de Guatemala.</p>
+                </div>
+              </div>
+            </SwiperSlide>
+          ) : (
+            sliders.map((slide, i) => {
+              const anim = aosAnimations[slide.animation || 'fade-up'] || aosAnimations['fade-up'];
+              const hasImage = slide.imageUrl && slide.imageUrl.trim() !== '';
+              return (
+                <SwiperSlide key={slide.id || i}>
+                  <div
+                    className={
+                      hasImage
+                        ? 'h-full w-full flex items-center justify-center px-4'
+                        : `h-full w-full bg-gradient-to-br ${slide.gradient || 'from-[#1B2A6B] to-[#0f1a4a]'} flex items-center justify-center px-4`
+                    }
+                    style={
+                      hasImage
+                        ? {
+                            backgroundImage: `linear-gradient(to bottom right, rgba(27,42,107,0.85), rgba(15,26,74,0.9)), url(${getImageUrl(slide.imageUrl)})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }
+                        : undefined
+                    }
+                  >
+                    <div className="container mx-auto max-w-4xl text-center text-white">
+                      <h1
+                        className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6"
+                        data-aos={anim.title}
+                        data-aos-delay="100"
                       >
-                        {slide.buttons.map((btn, idx) => (
-                          <Link key={idx} href={btn.href}>
+                        {slide.title}
+                      </h1>
+                      <p
+                        className="text-base md:text-lg lg:text-xl text-gray-200 mb-6 md:mb-8 max-w-2xl mx-auto"
+                        data-aos={anim.subtitle}
+                        data-aos-delay="200"
+                      >
+                        {slide.subtitle || ''}
+                      </p>
+                      {/* Botón del slide */}
+                      {slide.buttonText && (
+                        <div
+                          className="flex flex-wrap gap-3 justify-center"
+                          data-aos="fade-up"
+                          data-aos-delay="300"
+                        >
+                          <Link href={getSliderButtonHref(slide)}>
                             <Button
                               size="lg"
-                              className={
-                                btn.variant === 'primary'
-                                  ? 'bg-white text-[#1B2A6B] hover:bg-gray-100 text-base px-6 rounded-xl font-semibold shadow-lg hover:-translate-y-0.5 transition-all'
-                                  : 'bg-white/10 backdrop-blur text-white border border-white/30 hover:bg-white/20 text-base px-6 rounded-xl font-semibold hover:-translate-y-0.5 transition-all'
-                              }
+                              className="bg-white text-[#1B2A6B] hover:bg-gray-100 text-base px-6 rounded-xl font-semibold shadow-lg hover:-translate-y-0.5 transition-all"
                             >
-                              {btn.label}
+                              {slide.buttonText}
                             </Button>
                           </Link>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </SwiperSlide>
-            );
-          })}
+                </SwiperSlide>
+              );
+            })
+          )}
         </Swiper>
 
         {/* CTA Buttons — minimalistas, alineados con el Trust Bar */}
