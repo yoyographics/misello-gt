@@ -43,6 +43,8 @@ api.interceptors.response.use(
       if (isAdminUrl(url)) {
         localStorage.removeItem('adminToken');
         window.location.href = '/admin/login';
+        // No propagar el error: ya redirigimos al login.
+        return new Promise(() => {});
       }
     }
     return Promise.reject(error);
