@@ -103,49 +103,43 @@ function GradientPicker({ value, onChange }: { value: string; onChange: (v: stri
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5 flex-wrap">
         {colors.map((c, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
-            <input
-              type="color"
-              value={c}
-              onChange={(e) => updateColor(i, e.target.value)}
-              className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer"
-            />
-            <span className="text-[10px] text-gray-500 uppercase">{c}</span>
-          </div>
+          <input
+            key={i}
+            type="color"
+            value={c}
+            onChange={(e) => updateColor(i, e.target.value)}
+            className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+            title={c}
+          />
         ))}
-        <div className="flex gap-1">
-          {colors.length < 3 && (
-            <button
-              type="button"
-              onClick={addColor}
-              className="w-10 h-10 rounded-lg border border-dashed border-gray-400 flex items-center justify-center text-gray-500 hover:border-orange-500 hover:text-orange-500 transition-colors"
-              title="Agregar color"
-            >
-              +
-            </button>
-          )}
-          {colors.length > 2 && (
-            <button
-              type="button"
-              onClick={removeColor}
-              className="w-10 h-10 rounded-lg border border-dashed border-gray-400 flex items-center justify-center text-gray-500 hover:border-red-500 hover:text-red-500 transition-colors"
-              title="Quitar color"
-            >
-              −
-            </button>
-          )}
-        </div>
+        {colors.length < 3 && (
+          <button
+            type="button"
+            onClick={addColor}
+            className="w-8 h-8 rounded border border-dashed border-gray-400 flex items-center justify-center text-gray-500 hover:border-orange-500 hover:text-orange-500 transition-colors text-sm"
+            title="Agregar color"
+          >
+            +
+          </button>
+        )}
+        {colors.length > 2 && (
+          <button
+            type="button"
+            onClick={removeColor}
+            className="w-8 h-8 rounded border border-dashed border-gray-400 flex items-center justify-center text-gray-500 hover:border-red-500 hover:text-red-500 transition-colors text-sm"
+            title="Quitar color"
+          >
+            −
+          </button>
+        )}
       </div>
       <div
-        className="w-full h-12 rounded-lg border border-gray-200"
+        className="w-full h-6 rounded border border-gray-200"
         style={{ background: `linear-gradient(to right, ${colors.join(', ')})` }}
       />
-      <p className="text-[10px] text-gray-400">
-        Generado: <code className="bg-gray-100 px-1 rounded">{buildGradient(colors)}</code>
-      </p>
     </div>
   );
 }
@@ -391,47 +385,39 @@ export default function AdminSlidersPage() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl p-5">
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Editar Slider' : 'Nuevo Slider'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
-            <div>
-              <label className="text-xs font-medium block mb-1.5">
-                Titulo
-              </label>
-              <Input
-                value={form.title}
-                onChange={(e) =>
-                  setForm({ ...form, title: e.target.value })
-                }
-                placeholder="Titulo del slider"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-0.5">Titulo</label>
+                <Input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="Titulo del slider"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-0.5">Subtitulo</label>
+                <Input
+                  value={form.subtitle}
+                  onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+                  placeholder="Subtitulo"
+                />
+              </div>
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1.5">
-                Subtitulo
-              </label>
-              <Input
-                value={form.subtitle}
-                onChange={(e) =>
-                  setForm({ ...form, subtitle: e.target.value })
-                }
-                placeholder="Subtitulo"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1.5">
-                Imagen del slider
-              </label>
+              <label className="text-xs font-medium block mb-0.5">Imagen del slider</label>
               {form.imageUrl ? (
-                <div className="relative mb-2">
+                <div className="relative mb-1">
                   <img
                     src={form.imageUrl}
                     alt="Preview"
-                    className="w-full h-32 object-cover rounded-lg border"
+                    className="w-full h-20 object-cover rounded-lg border"
                   />
                   <button
                     onClick={() => setForm({ ...form, imageUrl: '' })}
@@ -515,10 +501,10 @@ export default function AdminSlidersPage() {
               )}
             </div>
             {/* Gradiente con picker visual */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
                 <label className="text-xs font-medium">Gradiente sobre imagen / fondo</label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <label className="flex items-center gap-1 text-xs cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.useGradient}
@@ -527,16 +513,15 @@ export default function AdminSlidersPage() {
                   Activar gradiente
                 </label>
               </div>
-
               {form.useGradient && (
                 <>
                   <GradientPicker
                     value={form.gradient}
                     onChange={(gradient) => setForm({ ...form, gradient })}
                   />
-                  <div className="pt-1">
-                    <label className="text-xs font-medium block mb-1">
-                      Opacidad del gradiente: {Math.round((form.gradientOpacity ?? 0.85) * 100)}%
+                  <div className="pt-0.5">
+                    <label className="text-xs font-medium block">
+                      Opacidad: {Math.round((form.gradientOpacity ?? 0.85) * 100)}%
                     </label>
                     <input
                       type="range"
@@ -544,37 +529,43 @@ export default function AdminSlidersPage() {
                       max="100"
                       value={Math.round((form.gradientOpacity ?? 0.85) * 100)}
                       onChange={(e) => setForm({ ...form, gradientOpacity: Number(e.target.value) / 100 })}
-                      className="w-full accent-orange-500"
+                      className="w-full accent-orange-500 h-4"
                     />
                   </div>
                 </>
               )}
             </div>
 
-            {/* Animación */}
-            <div>
-              <label className="text-xs font-medium block mb-1.5">
-                Animación de textos
-              </label>
-              <select
-                value={form.animation}
-                onChange={(e) => setForm({ ...form, animation: e.target.value })}
-                className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm"
-              >
-                <option value="fade-up">Fade up (aparece desde abajo)</option>
-                <option value="fade-left">Fade left (aparece desde derecha)</option>
-                <option value="fade-right">Fade right (aparece desde izquierda)</option>
-                <option value="zoom-in">Zoom in (aparece con zoom)</option>
-                <option value="slide-up">Slide up (desliza hacia arriba)</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-0.5">Animación de textos</label>
+                <select
+                  value={form.animation}
+                  onChange={(e) => setForm({ ...form, animation: e.target.value })}
+                  className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm"
+                >
+                  <option value="fade-up">Fade up</option>
+                  <option value="fade-left">Fade left</option>
+                  <option value="fade-right">Fade right</option>
+                  <option value="zoom-in">Zoom in</option>
+                  <option value="slide-up">Slide up</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-0.5">Orden</label>
+                <Input
+                  type="number"
+                  value={form.sortOrder}
+                  onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
+                  placeholder="0"
+                />
+              </div>
             </div>
 
             {/* Botón del slide */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  Texto del boton
-                </label>
+                <label className="text-xs font-medium block mb-0.5">Texto del boton</label>
                 <Input
                   value={form.buttonText}
                   onChange={(e) => setForm({ ...form, buttonText: e.target.value })}
@@ -582,9 +573,7 @@ export default function AdminSlidersPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  Tipo de link
-                </label>
+                <label className="text-xs font-medium block mb-0.5">Tipo de link</label>
                 <select
                   value={form.buttonType}
                   onChange={(e) => setForm({ ...form, buttonType: e.target.value as any })}
@@ -600,7 +589,7 @@ export default function AdminSlidersPage() {
             {/* Campo condicional según tipo de link */}
             {form.buttonType === 'URL' && (
               <div>
-                <label className="text-xs font-medium block mb-1.5">URL de destino</label>
+                <label className="text-xs font-medium block mb-0.5">URL de destino</label>
                 <Input
                   value={form.buttonUrl}
                   onChange={(e) => setForm({ ...form, buttonUrl: e.target.value })}
@@ -610,7 +599,7 @@ export default function AdminSlidersPage() {
             )}
             {form.buttonType === 'CATEGORY' && (
               <div>
-                <label className="text-xs font-medium block mb-1.5">Categoría</label>
+                <label className="text-xs font-medium block mb-0.5">Categoría</label>
                 <select
                   value={form.buttonCategorySlug}
                   onChange={(e) => setForm({ ...form, buttonCategorySlug: e.target.value })}
@@ -625,7 +614,7 @@ export default function AdminSlidersPage() {
             )}
             {form.buttonType === 'PRODUCT' && (
               <div>
-                <label className="text-xs font-medium block mb-1.5">ID del producto</label>
+                <label className="text-xs font-medium block mb-0.5">ID del producto</label>
                 <Input
                   value={form.buttonProductId}
                   onChange={(e) => setForm({ ...form, buttonProductId: e.target.value })}
@@ -633,47 +622,32 @@ export default function AdminSlidersPage() {
                 />
               </div>
             )}
-            <div>
-              <label className="text-xs font-medium block mb-1.5">
-                Orden
-              </label>
-              <Input
-                type="number"
-                value={form.sortOrder}
-                onChange={(e) =>
-                  setForm({ ...form, sortOrder: Number(e.target.value) })
-                }
-                placeholder="0"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={form.isActive}
-                onChange={(e) =>
-                  setForm({ ...form, isActive: e.target.checked })
-                }
-              />
-              <label htmlFor="isActive" className="text-sm">
-                Activo
-              </label>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving || !form.title || (!form.imageUrl && !form.gradient)}
-                className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Guardar'
-                )}
-              </Button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                />
+                <label htmlFor="isActive" className="text-sm">Activo</label>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !form.title || (!form.imageUrl && !form.gradient)}
+                  className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Guardar'
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
