@@ -298,6 +298,7 @@ model SliderImage {
   imageUrl       String
   gradient       String?          // CSS gradient classes, ej: "from-[#1B2A6B] to-[#0f1a4a]"
   useGradient    Boolean          @default(true)      // activar/desactivar capa de gradiente sobre imagen
+  gradientOpacity Float           @default(0.85)      // opacidad del overlay (0-1)
   animation      String           @default("fade-up") // fade-up, fade-left, fade-right, zoom-in, slide-up
   buttonText     String           @default("Crear mi sello")
   buttonType     SliderButtonType @default(URL)

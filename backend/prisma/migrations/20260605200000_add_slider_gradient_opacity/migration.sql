@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "SliderImage" ADD COLUMN "gradientOpacity" DOUBLE PRECISION NOT NULL DEFAULT 0.85;

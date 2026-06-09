@@ -40,6 +40,7 @@ export class SlidersService {
         imageUrl: '',
         gradient: 'from-[#1B2A6B] to-[#0f1a4a]',
         useGradient: true,
+        gradientOpacity: 0.85,
         animation: 'fade-up',
         buttonText: 'Crear mi sello',
         buttonType: 'URL' as const,

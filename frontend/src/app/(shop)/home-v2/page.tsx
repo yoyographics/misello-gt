@@ -58,6 +58,7 @@ interface ApiSlider {
   imageUrl?: string;
   gradient?: string;
   useGradient?: boolean;
+  gradientOpacity?: number;
   animation?: string;
   buttonText?: string;
   buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
@@ -314,7 +315,7 @@ export default function HomeV2() {
                       hasImage
                         ? {
                             backgroundImage: showGradient
-                              ? `linear-gradient(to bottom right, rgba(27,42,107,0.85), rgba(15,26,74,0.9)), url(${getImageUrl(slide.imageUrl)})`
+                              ? `linear-gradient(to bottom right, rgba(27,42,107,${slide.gradientOpacity ?? 0.85}), rgba(15,26,74,${(slide.gradientOpacity ?? 0.85) + 0.05})), url(${getImageUrl(slide.imageUrl)})`
                               : `url(${getImageUrl(slide.imageUrl)})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',

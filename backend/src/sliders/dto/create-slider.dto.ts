@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsBoolean, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean, IsEnum, IsNumber, Min, Max } from 'class-validator';
 import { SliderButtonType } from '@prisma/client';
 
 export class CreateSliderDto {
@@ -19,6 +19,12 @@ export class CreateSliderDto {
   @IsBoolean()
   @IsOptional()
   useGradient?: boolean = true;
+
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  @IsOptional()
+  gradientOpacity?: number = 0.85;
 
   @IsString()
   @IsOptional()

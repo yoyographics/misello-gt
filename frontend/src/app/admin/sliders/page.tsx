@@ -22,6 +22,7 @@ interface Slider {
   imageUrl: string;
   gradient?: string;
   useGradient?: boolean;
+  gradientOpacity?: number;
   animation?: string;
   buttonText?: string;
   buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
@@ -44,6 +45,7 @@ const EMPTY_FORM = {
   imageUrl: '',
   gradient: '',
   useGradient: true,
+  gradientOpacity: 0.85,
   animation: 'fade-up',
   buttonText: '',
   buttonType: 'URL',
@@ -187,6 +189,7 @@ export default function AdminSlidersPage() {
       imageUrl: slider.imageUrl || '',
       gradient: slider.gradient || '',
       useGradient: slider.useGradient !== false,
+      gradientOpacity: slider.gradientOpacity ?? 0.85,
       animation: slider.animation || 'fade-up',
       buttonText: slider.buttonText || '',
       buttonType: slider.buttonType || 'URL',
@@ -208,6 +211,7 @@ export default function AdminSlidersPage() {
         imageUrl: form.imageUrl || undefined,
         gradient: form.gradient || undefined,
         useGradient: form.useGradient,
+        gradientOpacity: form.gradientOpacity,
         animation: form.animation,
         buttonText: form.buttonText || undefined,
         buttonType: form.buttonType,
@@ -525,10 +529,25 @@ export default function AdminSlidersPage() {
               </div>
 
               {form.useGradient && (
-                <GradientPicker
-                  value={form.gradient}
-                  onChange={(gradient) => setForm({ ...form, gradient })}
-                />
+                <>
+                  <GradientPicker
+                    value={form.gradient}
+                    onChange={(gradient) => setForm({ ...form, gradient })}
+                  />
+                  <div className="pt-1">
+                    <label className="text-xs font-medium block mb-1">
+                      Opacidad del gradiente: {Math.round((form.gradientOpacity ?? 0.85) * 100)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={Math.round((form.gradientOpacity ?? 0.85) * 100)}
+                      onChange={(e) => setForm({ ...form, gradientOpacity: Number(e.target.value) / 100 })}
+                      className="w-full accent-orange-500"
+                    />
+                  </div>
+                </>
               )}
             </div>
 
