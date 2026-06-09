@@ -57,6 +57,7 @@ interface ApiSlider {
   subtitle?: string;
   imageUrl?: string;
   gradient?: string;
+  useGradient?: boolean;
   animation?: string;
   buttonText?: string;
   buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
@@ -300,6 +301,7 @@ export default function HomeV2() {
             sliders.map((slide, i) => {
               const anim = aosAnimations[slide.animation || 'fade-up'] || aosAnimations['fade-up'];
               const hasImage = slide.imageUrl && slide.imageUrl.trim() !== '';
+              const showGradient = slide.useGradient !== false;
               return (
                 <SwiperSlide key={slide.id || i}>
                   <div
@@ -311,7 +313,9 @@ export default function HomeV2() {
                     style={
                       hasImage
                         ? {
-                            backgroundImage: `linear-gradient(to bottom right, rgba(27,42,107,0.85), rgba(15,26,74,0.9)), url(${getImageUrl(slide.imageUrl)})`,
+                            backgroundImage: showGradient
+                              ? `linear-gradient(to bottom right, rgba(27,42,107,0.85), rgba(15,26,74,0.9)), url(${getImageUrl(slide.imageUrl)})`
+                              : `url(${getImageUrl(slide.imageUrl)})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                           }

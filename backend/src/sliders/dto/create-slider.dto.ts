@@ -16,6 +16,10 @@ export class CreateSliderDto {
   @IsOptional()
   gradient?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  useGradient?: boolean = true;
+
   @IsString()
   @IsOptional()
   animation?: string = 'fade-up';

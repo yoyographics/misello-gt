@@ -21,6 +21,7 @@ interface Slider {
   subtitle: string;
   imageUrl: string;
   gradient?: string;
+  useGradient?: boolean;
   animation?: string;
   buttonText?: string;
   buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
@@ -42,6 +43,7 @@ const EMPTY_FORM = {
   subtitle: '',
   imageUrl: '',
   gradient: '',
+  useGradient: true,
   animation: 'fade-up',
   buttonText: '',
   buttonType: 'URL',
@@ -57,6 +59,93 @@ function getImageUrl(url?: string) {
   return url.startsWith('http')
     ? url
     : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
+}
+
+// Extrae colores hex de un string tipo "from-[#1B2A6B] via-[#FF0000] to-[#0f1a4a]"
+function parseGradientColors(value: string): string[] {
+  const matches = value.match(/#([0-9A-Fa-f]{6})/g);
+  return matches || ['#1B2A6B', '#0f1a4a'];
+}
+
+function buildGradient(colors: string[]): string {
+  if (colors.length === 2) return `from-[${colors[0]}] to-[${colors[1]}]`;
+  if (colors.length >= 3) return `from-[${colors[0]}] via-[${colors[1]}] to-[${colors[2]}]`;
+  return '';
+}
+
+function GradientPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [colors, setColors] = useState<string[]>(() => {
+    const parsed = parseGradientColors(value);
+    return parsed.length >= 2 ? parsed : ['#1B2A6B', '#0f1a4a'];
+  });
+
+  const updateColor = (index: number, color: string) => {
+    const next = [...colors];
+    next[index] = color;
+    setColors(next);
+    onChange(buildGradient(next));
+  };
+
+  const addColor = () => {
+    if (colors.length >= 3) return;
+    const next = [...colors, '#ffffff'];
+    setColors(next);
+    onChange(buildGradient(next));
+  };
+
+  const removeColor = () => {
+    if (colors.length <= 2) return;
+    const next = colors.slice(0, -1);
+    setColors(next);
+    onChange(buildGradient(next));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        {colors.map((c, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <input
+              type="color"
+              value={c}
+              onChange={(e) => updateColor(i, e.target.value)}
+              className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer"
+            />
+            <span className="text-[10px] text-gray-500 uppercase">{c}</span>
+          </div>
+        ))}
+        <div className="flex gap-1">
+          {colors.length < 3 && (
+            <button
+              type="button"
+              onClick={addColor}
+              className="w-10 h-10 rounded-lg border border-dashed border-gray-400 flex items-center justify-center text-gray-500 hover:border-orange-500 hover:text-orange-500 transition-colors"
+              title="Agregar color"
+            >
+              +
+            </button>
+          )}
+          {colors.length > 2 && (
+            <button
+              type="button"
+              onClick={removeColor}
+              className="w-10 h-10 rounded-lg border border-dashed border-gray-400 flex items-center justify-center text-gray-500 hover:border-red-500 hover:text-red-500 transition-colors"
+              title="Quitar color"
+            >
+              −
+            </button>
+          )}
+        </div>
+      </div>
+      <div
+        className="w-full h-12 rounded-lg border border-gray-200"
+        style={{ background: `linear-gradient(to right, ${colors.join(', ')})` }}
+      />
+      <p className="text-[10px] text-gray-400">
+        Generado: <code className="bg-gray-100 px-1 rounded">{buildGradient(colors)}</code>
+      </p>
+    </div>
+  );
 }
 
 export default function AdminSlidersPage() {
@@ -97,6 +186,7 @@ export default function AdminSlidersPage() {
       subtitle: slider.subtitle,
       imageUrl: slider.imageUrl || '',
       gradient: slider.gradient || '',
+      useGradient: slider.useGradient !== false,
       animation: slider.animation || 'fade-up',
       buttonText: slider.buttonText || '',
       buttonType: slider.buttonType || 'URL',
@@ -117,6 +207,7 @@ export default function AdminSlidersPage() {
         subtitle: form.subtitle,
         imageUrl: form.imageUrl || undefined,
         gradient: form.gradient || undefined,
+        useGradient: form.useGradient,
         animation: form.animation,
         buttonText: form.buttonText || undefined,
         buttonType: form.buttonType,
@@ -419,19 +510,26 @@ export default function AdminSlidersPage() {
                 </>
               )}
             </div>
-            {/* Gradiente (alternativa a imagen) */}
-            <div>
-              <label className="text-xs font-medium block mb-1.5">
-                Gradiente CSS (opcional — si no hay imagen)
-              </label>
-              <Input
-                value={form.gradient}
-                onChange={(e) => setForm({ ...form, gradient: e.target.value })}
-                placeholder="from-[#1B2A6B] to-[#0f1a4a]"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Dejar vacío para usar imagen. Ejemplo: from-orange-600 to-red-700
-              </p>
+            {/* Gradiente con picker visual */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium">Gradiente sobre imagen / fondo</label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.useGradient}
+                    onChange={(e) => setForm({ ...form, useGradient: e.target.checked })}
+                  />
+                  Activar gradiente
+                </label>
+              </div>
+
+              {form.useGradient && (
+                <GradientPicker
+                  value={form.gradient}
+                  onChange={(gradient) => setForm({ ...form, gradient })}
+                />
+              )}
             </div>
 
             {/* Animación */}
