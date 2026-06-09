@@ -323,45 +323,66 @@ export default function HomeV2() {
           })}
         </Swiper>
 
-        {/* CTA Buttons — siempre visibles debajo del slider */}
-        <div className="bg-gradient-to-b from-[#1B2A6B]/5 to-white py-6 px-4">
+        {/* CTA Buttons — minimalistas, alineados con el Trust Bar */}
+        <div className="bg-white py-8 px-4 border-b border-gray-100">
           <div className="container mx-auto max-w-4xl">
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/design/">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg px-8 rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0 transition-all"
-                >
-                  Crear mi sello
-                </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
+              {/* Crear mi sello */}
+              <Link href="/design/" className="group">
+                <div className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-orange-200 transition-all duration-300 hover:-translate-y-0.5">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                    <PenTool className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <span className="block text-base font-semibold text-gray-800 group-hover:text-orange-600 transition-colors">
+                      Crear mi sello
+                    </span>
+                    <span className="block text-xs text-gray-400">
+                      Diseña en minutos
+                    </span>
+                  </div>
+                  <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-4 h-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
               </Link>
-              <Link href="/store/">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-orange-500 text-orange-600 bg-white hover:bg-orange-50 text-lg px-8 rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0 transition-all"
-                >
-                  Ver catálogo
-                </Button>
+
+              {/* Ver catálogo */}
+              <Link href="/store/" className="group">
+                <div className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 hover:-translate-y-0.5">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                    <Package className="h-5 w-5 text-[#1B2A6B]" />
+                  </div>
+                  <div>
+                    <span className="block text-base font-semibold text-gray-800 group-hover:text-[#1B2A6B] transition-colors">
+                      Ver catálogo
+                    </span>
+                    <span className="block text-xs text-gray-400">
+                      Explora todos los modelos
+                    </span>
+                  </div>
+                  <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
               </Link>
             </div>
 
             {/* Botones personalizados del slide activo */}
             {heroSlides[activeSlide]?.buttons && heroSlides[activeSlide].buttons.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center mt-3">
+              <div className="flex flex-wrap gap-2 justify-center mt-4">
                 {heroSlides[activeSlide].buttons.map((btn, idx) => (
-                  <Link key={idx} href={btn.href}>
-                    <Button
-                      size="sm"
-                      variant={btn.variant === 'primary' ? 'default' : 'outline'}
-                      className={
-                        btn.variant === 'primary'
-                          ? 'bg-[#1B2A6B] text-white hover:bg-[#0f1a4a] rounded-full px-4 text-sm'
-                          : 'border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full px-4 text-sm'
-                      }
-                    >
-                      {btn.label}
-                    </Button>
+                  <Link key={idx} href={btn.href} className="group">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:border-gray-300 hover:shadow-sm hover:text-gray-900 transition-all duration-200">
+                      <span>{btn.label}</span>
+                      <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </Link>
                 ))}
               </div>
