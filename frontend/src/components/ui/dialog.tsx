@@ -56,8 +56,8 @@ function DialogContent({
           inset: 0,
           zIndex: 50,
           backgroundColor: 'rgba(0,0,0,0.2)',
-          backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)',
+          backdropFilter: 'blur(7px)',
+          WebkitBackdropFilter: 'blur(7px)',
         }}
       />
       <DialogPrimitive.Popup
