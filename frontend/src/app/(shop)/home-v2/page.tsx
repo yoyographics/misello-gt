@@ -51,33 +51,69 @@ function getImageUrl(url?: string) {
     : `${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api/v1', '')}${url}`;
 }
 
-const heroSlides = [
+interface HeroButton {
+  label: string;
+  href: string;
+  variant: 'primary' | 'outline';
+}
+
+interface HeroSlide {
+  title: string;
+  subtitle: string;
+  gradient: string;
+  animation: 'fade-up' | 'fade-left' | 'fade-right' | 'zoom-in' | 'slide-up';
+  buttons: HeroButton[];
+}
+
+const heroSlides: HeroSlide[] = [
   {
     title: 'Sellos personalizados sin salir de casa',
     subtitle:
       'Diseña tu sello en minutos y recíbelo en cualquier departamento de Guatemala.',
     gradient: 'from-[#1B2A6B] to-[#0f1a4a]',
-    showButtons: true,
+    animation: 'fade-up',
+    buttons: [
+      { label: 'Crear mi sello', href: '/design/', variant: 'primary' },
+      { label: 'Ver catálogo', href: '/store/', variant: 'outline' },
+    ],
   },
   {
     title: 'Calidad profesional garantizada',
     subtitle: 'Fabricados con tecnología láser de alta precisión.',
     gradient: 'from-[#1B2A6B] to-[#16245c]',
-    showButtons: false,
+    animation: 'fade-left',
+    buttons: [
+      { label: 'Ver sellos automáticos', href: '/store/', variant: 'primary' },
+    ],
   },
   {
     title: 'Fabricación rápida',
     subtitle: 'Producción y envío en tiempo récord.',
     gradient: 'from-[#1B2A6B] to-[#243885]',
-    showButtons: false,
+    animation: 'fade-right',
+    buttons: [
+      { label: 'Ver catálogo', href: '/store/', variant: 'outline' },
+    ],
   },
   {
     title: 'Envíos a toda Guatemala',
     subtitle: 'Recibe tu pedido en 3 a 4 días hábiles.',
     gradient: 'from-[#1B2A6B] to-[#122052]',
-    showButtons: false,
+    animation: 'zoom-in',
+    buttons: [
+      { label: 'Hacer pedido', href: '/design/', variant: 'primary' },
+    ],
   },
 ];
+
+// Mapeo de animaciones configurables a atributos AOS
+const aosAnimations: Record<HeroSlide['animation'], { title: string; subtitle: string }> = {
+  'fade-up': { title: 'fade-up', subtitle: 'fade-up' },
+  'fade-left': { title: 'fade-right', subtitle: 'fade-right' },
+  'fade-right': { title: 'fade-left', subtitle: 'fade-left' },
+  'zoom-in': { title: 'zoom-in', subtitle: 'zoom-in' },
+  'slide-up': { title: 'slide-up', subtitle: 'slide-up' },
+};
 
 const categories = [
   {
@@ -221,6 +257,7 @@ export default function HomeV2() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
     AOS.init({ duration: 600, once: true });
@@ -254,58 +291,83 @@ export default function HomeV2() {
           speed={700}
           loop={true}
           pagination={{ clickable: true }}
-          className="h-[350px] md:h-[450px] lg:h-[650px] w-full"
+          className="h-[350px] md:h-[450px] lg:h-[550px] w-full"
+          onSlideChange={(swiper) => setActiveSlide(swiper.realIndex)}
         >
-          {heroSlides.map((slide, i) => (
-            <SwiperSlide key={i}>
-              <div
-                className={`h-full w-full bg-gradient-to-br ${slide.gradient} flex items-center justify-center px-4`}
-              >
-                <div className="container mx-auto max-w-4xl text-center text-white">
-                  <h1
-                    className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6"
-                    data-aos="fade-up"
-                    data-aos-delay="100"
-                  >
-                    {slide.title}
-                  </h1>
-                  <p
-                    className="text-base md:text-lg lg:text-xl text-gray-200 mb-6 md:mb-8 max-w-2xl mx-auto"
-                    data-aos="fade-up"
-                    data-aos-delay="200"
-                  >
-                    {slide.subtitle}
-                  </p>
-                  {slide.showButtons && (
-                    <div
-                      className="flex flex-col sm:flex-row gap-3 justify-center"
-                      data-aos="fade-up"
-                      data-aos-delay="300"
+          {heroSlides.map((slide, i) => {
+            const anim = aosAnimations[slide.animation];
+            return (
+              <SwiperSlide key={i}>
+                <div
+                  className={`h-full w-full bg-gradient-to-br ${slide.gradient} flex items-center justify-center px-4`}
+                >
+                  <div className="container mx-auto max-w-4xl text-center text-white">
+                    <h1
+                      className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6"
+                      data-aos={anim.title}
+                      data-aos-delay="100"
                     >
-                      <Link href="/design/">
-                        <Button
-                          size="lg"
-                          className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg px-8 rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0 transition-all"
-                        >
-                          Crear mi sello
-                        </Button>
-                      </Link>
-                      <Link href="/store/">
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="border-white text-white bg-transparent hover:bg-white/20 text-lg px-8 rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0 transition-all"
-                        >
-                          Ver catálogo
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
+                      {slide.title}
+                    </h1>
+                    <p
+                      className="text-base md:text-lg lg:text-xl text-gray-200 mb-6 md:mb-8 max-w-2xl mx-auto"
+                      data-aos={anim.subtitle}
+                      data-aos-delay="200"
+                    >
+                      {slide.subtitle}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </SwiperSlide>
-          ))}
+              </SwiperSlide>
+            );
+          })}
         </Swiper>
+
+        {/* CTA Buttons — siempre visibles debajo del slider */}
+        <div className="bg-gradient-to-b from-[#1B2A6B]/5 to-white py-6 px-4">
+          <div className="container mx-auto max-w-4xl">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/design/">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg px-8 rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0 transition-all"
+                >
+                  Crear mi sello
+                </Button>
+              </Link>
+              <Link href="/store/">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-orange-500 text-orange-600 bg-white hover:bg-orange-50 text-lg px-8 rounded-2xl font-semibold hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] active:!translate-y-0 transition-all"
+                >
+                  Ver catálogo
+                </Button>
+              </Link>
+            </div>
+
+            {/* Botones personalizados del slide activo */}
+            {heroSlides[activeSlide]?.buttons && heroSlides[activeSlide].buttons.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center mt-3">
+                {heroSlides[activeSlide].buttons.map((btn, idx) => (
+                  <Link key={idx} href={btn.href}>
+                    <Button
+                      size="sm"
+                      variant={btn.variant === 'primary' ? 'default' : 'outline'}
+                      className={
+                        btn.variant === 'primary'
+                          ? 'bg-[#1B2A6B] text-white hover:bg-[#0f1a4a] rounded-full px-4 text-sm'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full px-4 text-sm'
+                      }
+                    >
+                      {btn.label}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Trust Bar */}
