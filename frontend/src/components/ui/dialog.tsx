@@ -49,7 +49,10 @@ function DialogContent({
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <div
+        data-slot="dialog-backdrop"
+        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[50px]"
+      />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
