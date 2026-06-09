@@ -12,20 +12,25 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { items, totalItems, totalAmount, removeItem } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const cartRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Cerrar popover al hacer clic fuera
+  // Cerrar popovers al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (cartRef.current && !cartRef.current.contains(event.target as Node)) {
         setCartOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
     }
-    if (cartOpen) {
+    if (cartOpen || userMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [cartOpen]);
+  }, [cartOpen, userMenuOpen]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur">
@@ -116,11 +121,29 @@ export default function Header() {
           </div>
 
           {user ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">{user.name}</span>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-1.5 text-sm font-medium hover:text-orange-500 transition"
+              >
+                <User className="h-4 w-4" />
+                {user.name}
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                  <div className="p-3 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-800 truncate">{user.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { logout(); setUserMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition text-left"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Button size="sm" className="bg-gradient-to-r from-orange-500 to-pink-500 text-white" onClick={redirectToGoogleLogin}>
