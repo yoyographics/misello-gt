@@ -316,6 +316,29 @@ export default function HomeV2() {
                     >
                       {slide.subtitle}
                     </p>
+                    {/* Botones personalizados del slide */}
+                    {slide.buttons.length > 0 && (
+                      <div
+                        className="flex flex-wrap gap-3 justify-center"
+                        data-aos="fade-up"
+                        data-aos-delay="300"
+                      >
+                        {slide.buttons.map((btn, idx) => (
+                          <Link key={idx} href={btn.href}>
+                            <Button
+                              size="lg"
+                              className={
+                                btn.variant === 'primary'
+                                  ? 'bg-white text-[#1B2A6B] hover:bg-gray-100 text-base px-6 rounded-xl font-semibold shadow-lg hover:-translate-y-0.5 transition-all'
+                                  : 'bg-white/10 backdrop-blur text-white border border-white/30 hover:bg-white/20 text-base px-6 rounded-xl font-semibold hover:-translate-y-0.5 transition-all'
+                              }
+                            >
+                              {btn.label}
+                            </Button>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </SwiperSlide>
@@ -372,21 +395,7 @@ export default function HomeV2() {
               </Link>
             </div>
 
-            {/* Botones personalizados del slide activo */}
-            {heroSlides[activeSlide]?.buttons && heroSlides[activeSlide].buttons.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center mt-4">
-                {heroSlides[activeSlide].buttons.map((btn, idx) => (
-                  <Link key={idx} href={btn.href} className="group">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white text-sm text-gray-600 hover:border-gray-300 hover:shadow-sm hover:text-gray-900 transition-all duration-200">
-                      <span>{btn.label}</span>
-                      <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+
           </div>
         </div>
       </section>
