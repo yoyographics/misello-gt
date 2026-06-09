@@ -344,46 +344,80 @@ export default function AdminSlidersPage() {
                   >
                     <X className="h-3 w-3" />
                   </button>
+                  <label className="absolute bottom-1 right-1 bg-black/60 text-white text-xs rounded px-2 py-1 cursor-pointer hover:bg-black/80">
+                    Cambiar
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploadingImage}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('La imagen no debe superar 5MB');
+                          return;
+                        }
+                        setUploadingImage(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append('image', file);
+                          const res = await api.post('/sliders/admin/upload', fd, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                          });
+                          setForm({ ...form, imageUrl: res.data.url });
+                          toast.success('Imagen subida');
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.error || 'Error subiendo imagen');
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
-              ) : null}
-              <label className="flex items-center justify-center gap-2 w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50/30 transition-colors">
-                <Upload className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-500">
-                  {uploadingImage ? 'Subiendo...' : 'Arrastra o haz click para subir'}
-                </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={uploadingImage}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (file.size > 5 * 1024 * 1024) {
-                      toast.error('La imagen no debe superar 5MB');
-                      return;
-                    }
-                    setUploadingImage(true);
-                    try {
-                      const fd = new FormData();
-                      fd.append('image', file);
-                      const res = await api.post('/sliders/admin/upload', fd, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                      });
-                      setForm({ ...form, imageUrl: res.data.url });
-                      toast.success('Imagen subida');
-                    } catch (err: any) {
-                      toast.error(err.response?.data?.error || 'Error subiendo imagen');
-                    } finally {
-                      setUploadingImage(false);
-                    }
-                  }}
-                />
-              </label>
-              <p className="text-xs text-gray-400 mt-1.5">
-                Formato recomendado: <strong>1920 x 650 px</strong> (16:9), max 5MB. JPG o PNG.
-                La imagen se comprime automaticamente a WebP via Cloudinary.
-              </p>
+              ) : (
+                <>
+                  <label className="flex items-center justify-center gap-2 w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50/30 transition-colors">
+                    <Upload className="h-5 w-5 text-gray-400" />
+                    <span className="text-sm text-gray-500">
+                      {uploadingImage ? 'Subiendo...' : 'Arrastra o haz click para subir'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploadingImage}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('La imagen no debe superar 5MB');
+                          return;
+                        }
+                        setUploadingImage(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append('image', file);
+                          const res = await api.post('/sliders/admin/upload', fd, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                          });
+                          setForm({ ...form, imageUrl: res.data.url });
+                          toast.success('Imagen subida');
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.error || 'Error subiendo imagen');
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      }}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    Formato recomendado: <strong>1920 x 650 px</strong> (16:9), max 5MB. JPG o PNG.
+                    La imagen se comprime automaticamente a WebP via Cloudinary.
+                  </p>
+                </>
+              )}
             </div>
             {/* Gradiente (alternativa a imagen) */}
             <div>
