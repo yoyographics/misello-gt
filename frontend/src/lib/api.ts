@@ -42,7 +42,7 @@ api.interceptors.response.use(
       const url = error.config?.url || '';
       if (isAdminUrl(url)) {
         localStorage.removeItem('adminToken');
-        window.location.href = '/admin/login';
+        window.location.href = '/admin/login?expired=1';
         // No propagar el error: ya redirigimos al login.
         return new Promise(() => {});
       }
