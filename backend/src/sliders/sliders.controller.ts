@@ -64,4 +64,10 @@ export class SlidersController {
   remove(@Param('id') id: string) {
     return this.slidersService.remove(id);
   }
+
+  @Post('admin/seed')
+  @UseGuards(JwtAdminGuard)
+  seedDefaults() {
+    return this.slidersService.seedDefaults();
+  }
 }

@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, Pencil, Trash2, ImageIcon, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, ImageIcon, Upload, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Slider {
@@ -68,6 +68,7 @@ export default function AdminSlidersPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const fetchSliders = useCallback(() => {
     setLoading(true);
@@ -171,6 +172,23 @@ export default function AdminSlidersPage() {
     }
   };
 
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      const res = await api.post('/sliders/admin/seed');
+      if (res.data.seeded) {
+        toast.success(`Se crearon ${res.data.count} sliders por defecto`);
+        fetchSliders();
+      } else {
+        toast.info(res.data.message || 'Ya existen sliders');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error restaurando sliders');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -189,7 +207,18 @@ export default function AdminSlidersPage() {
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
           </div>
         ) : sliders.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay sliders.</p>
+          <div className="text-center py-8 space-y-4">
+            <p className="text-gray-500">No hay sliders.</p>
+            <Button
+              onClick={handleSeed}
+              disabled={seeding}
+              variant="outline"
+              className="border-orange-500 text-orange-600 hover:bg-orange-50"
+            >
+              {seeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Restaurar sliders por defecto
+            </Button>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
