@@ -51,7 +51,14 @@ function DialogContent({
     <DialogPortal>
       <div
         data-slot="dialog-backdrop"
-        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[50px]"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 50,
+          backgroundColor: 'rgba(0,0,0,0.2)',
+          backdropFilter: 'blur(50px)',
+          WebkitBackdropFilter: 'blur(50px)',
+        }}
       />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
