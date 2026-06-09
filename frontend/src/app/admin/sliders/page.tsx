@@ -387,7 +387,7 @@ export default function AdminSlidersPage() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Editar Slider' : 'Nuevo Slider'}
