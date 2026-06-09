@@ -289,7 +289,14 @@ export class OrdersService {
       [OrderStatus.IN_PRODUCTION]: [OrderStatus.FINISHED],
       [OrderStatus.FINISHED]: [OrderStatus.SHIPPED],
       [OrderStatus.SHIPPED]: [],
-      [OrderStatus.CANCELLED]: [],
+      [OrderStatus.CANCELLED]: [
+        OrderStatus.PENDING_PAYMENT,
+        OrderStatus.PAYMENT_RECEIVED,
+        OrderStatus.CONFIRMED,
+        OrderStatus.IN_PRODUCTION,
+        OrderStatus.FINISHED,
+        OrderStatus.SHIPPED,
+      ],
     };
 
     if (!allowedTransitions[order.status].includes(dto.status)) {

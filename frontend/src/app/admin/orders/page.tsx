@@ -88,7 +88,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   IN_PRODUCTION: ['FINISHED'],
   FINISHED: ['SHIPPED'],
   SHIPPED: [],
-  CANCELLED: [],
+  CANCELLED: ['PENDING_PAYMENT', 'PAYMENT_RECEIVED', 'CONFIRMED', 'IN_PRODUCTION', 'FINISHED', 'SHIPPED'],
 };
 
 function getAllowedStatuses(currentStatus: string) {
