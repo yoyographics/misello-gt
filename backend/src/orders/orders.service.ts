@@ -275,28 +275,25 @@ export class OrdersService {
     const order = await this.findOneAdmin(orderId);
 
     // Validar transiciones de estado permitidas
+    // El admin puede mover un pedido a cualquier estado activo para corregir errores.
+    const activeStatuses = [
+      OrderStatus.DRAFT,
+      OrderStatus.PENDING_PAYMENT,
+      OrderStatus.PAYMENT_RECEIVED,
+      OrderStatus.CONFIRMED,
+      OrderStatus.IN_PRODUCTION,
+      OrderStatus.FINISHED,
+      OrderStatus.SHIPPED,
+    ];
     const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.DRAFT]: [
-        OrderStatus.PENDING_PAYMENT,
-        OrderStatus.CANCELLED,
-      ],
-      [OrderStatus.PENDING_PAYMENT]: [
-        OrderStatus.CONFIRMED,
-        OrderStatus.CANCELLED,
-      ],
-      [OrderStatus.PAYMENT_RECEIVED]: [OrderStatus.CONFIRMED],
-      [OrderStatus.CONFIRMED]: [OrderStatus.IN_PRODUCTION],
-      [OrderStatus.IN_PRODUCTION]: [OrderStatus.FINISHED],
-      [OrderStatus.FINISHED]: [OrderStatus.SHIPPED],
-      [OrderStatus.SHIPPED]: [],
-      [OrderStatus.CANCELLED]: [
-        OrderStatus.PENDING_PAYMENT,
-        OrderStatus.PAYMENT_RECEIVED,
-        OrderStatus.CONFIRMED,
-        OrderStatus.IN_PRODUCTION,
-        OrderStatus.FINISHED,
-        OrderStatus.SHIPPED,
-      ],
+      [OrderStatus.DRAFT]: activeStatuses,
+      [OrderStatus.PENDING_PAYMENT]: activeStatuses,
+      [OrderStatus.PAYMENT_RECEIVED]: activeStatuses,
+      [OrderStatus.CONFIRMED]: activeStatuses,
+      [OrderStatus.IN_PRODUCTION]: activeStatuses,
+      [OrderStatus.FINISHED]: activeStatuses,
+      [OrderStatus.SHIPPED]: activeStatuses,
+      [OrderStatus.CANCELLED]: activeStatuses,
     };
 
     if (!allowedTransitions[order.status].includes(dto.status)) {
