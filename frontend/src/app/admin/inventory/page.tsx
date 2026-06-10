@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, Package, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, Package, RefreshCw, Droplets } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -57,6 +57,22 @@ export default function AdminInventoryPage() {
   const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
   const [newCategoryIsCustomizable, setNewCategoryIsCustomizable] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [seedingInks, setSeedingInks] = useState(false);
+
+  const handleSeedInks = async () => {
+    if (!confirm('Esto creara 12 productos de tintas (Negro, Rojo, Azul, Violeta, Verde, Vino, Cafe, Amarillo, Menta, Naranja, Rosa, Turquesa). ¿Continuar?')) return;
+    setSeedingInks(true);
+    try {
+      const res = await api.post('/products/admin/seed-inks');
+      const d = res.data;
+      alert(`Tintas creadas:\nInks: ${d.inksCreated}\nProductos: ${d.productsCreated}\nErrores: ${d.errors.length}`);
+      fetchCategories();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error creando tintas');
+    } finally {
+      setSeedingInks(false);
+    }
+  };
 
   const handleSyncCatalog = async () => {
     if (!confirm('Esto sincronizara el catalogo completo (57 productos). ¿Continuar?')) return;
@@ -155,6 +171,15 @@ export default function AdminInventoryPage() {
           >
             {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
             Sync catalogo
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSeedInks}
+            disabled={seedingInks}
+            className="border-blue-300 text-blue-600 hover:bg-blue-50"
+          >
+            {seedingInks ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Droplets className="h-4 w-4 mr-1" />}
+            Crear tintas
           </Button>
           <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
             <Plus className="h-4 w-4 mr-1" /> Crear categoria
