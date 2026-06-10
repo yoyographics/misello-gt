@@ -58,7 +58,11 @@ export default function StorePage() {
   const fetchCategories = useCallback(() => {
     api
       .get('/categories?showInStore=true')
-      .then((res) => setCategories(res.data || []))
+      .then((res) => {
+        const data = res.data || [];
+        // Ocultar Sellos de Madera de la tienda (se elige en el carrito)
+        setCategories(data.filter((c: Category) => c.name !== 'Sellos de Madera'));
+      })
       .catch(() => {});
   }, []);
 
@@ -117,7 +121,7 @@ export default function StorePage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, modelo, medida o forma..."
+            placeholder=""
             className="pl-10"
           />
         </div>
