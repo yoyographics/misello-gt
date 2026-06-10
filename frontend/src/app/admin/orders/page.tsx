@@ -93,7 +93,8 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 
 function getAllowedStatuses(currentStatus: string) {
   const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
-  return STATUS_OPTIONS.filter((s) => allowed.includes(s.value));
+  // Incluir el estado actual para que SelectValue pueda renderizar el label
+  return STATUS_OPTIONS.filter((s) => s.value === currentStatus || allowed.includes(s.value));
 }
 
 const STATUS_COLORS: Record<string, string> = {
