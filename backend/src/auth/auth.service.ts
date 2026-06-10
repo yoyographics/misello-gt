@@ -18,11 +18,13 @@ export class AuthService {
    * Genera un JWT para clientes públicos (autenticados con Google).
    * Expiración: 30 días.
    */
-  generateClientToken(user: { id: string; email: string }): string {
+  generateClientToken(user: { id: string; email: string; name?: string; picture?: string }): string {
     return this.jwtService.sign(
       {
         sub: user.id,
         email: user.email,
+        name: user.name || user.email,
+        picture: user.picture,
         role: 'CLIENT',
       },
       {
