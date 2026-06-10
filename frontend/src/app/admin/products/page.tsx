@@ -90,8 +90,7 @@ export default function AdminProductsPage() {
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [adjustQty, setAdjustQty] = useState('');
   const [adjusting, setAdjusting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [seedingInks, setSeedingInks] = useState(false);
+
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
@@ -207,36 +206,6 @@ export default function AdminProductsPage() {
     setAdjustOpen(true);
   };
 
-  const handleSyncCatalog = async () => {
-    if (!confirm('Esto sincronizara el catalogo completo (73 productos). No borrara productos existentes. ¿Continuar?')) return;
-    setSyncing(true);
-    try {
-      const res = await api.post('/products/admin/sync-catalog');
-      const d = res.data;
-      alert(`Sync completo:\nCreados: ${d.created}\nActualizados: ${d.updated}\nSin cambios: ${d.unchanged}\nErrores: ${d.errors.length}\nTotal en DB: ${d.totalInDb}`);
-      fetchProducts();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Error sincronizando catalogo');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleSeedInks = async () => {
-    if (!confirm('Esto creara 12 productos de tintas (Negro, Rojo, Azul, Violeta, Verde, Vino, Cafe, Amarillo, Menta, Naranja, Rosa, Turquesa). ¿Continuar?')) return;
-    setSeedingInks(true);
-    try {
-      const res = await api.post('/products/admin/seed-inks');
-      const d = res.data;
-      alert(`Tintas creadas:\nInks: ${d.inksCreated}\nProductos: ${d.productsCreated}\nErrores: ${d.errors.length}`);
-      fetchProducts();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Error creando tintas');
-    } finally {
-      setSeedingInks(false);
-    }
-  };
-
   const handleAdjust = async () => {
     if (!adjustProduct || !adjustQty) return;
     setAdjusting(true);
@@ -266,14 +235,6 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Productos</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSyncCatalog} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            Sync catalogo
-          </Button>
-          <Button variant="outline" onClick={handleSeedInks} disabled={seedingInks}>
-            {seedingInks ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            Crear tintas
-          </Button>
           <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
             <Plus className="h-4 w-4 mr-1" /> Agregar
           </Button>

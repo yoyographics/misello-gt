@@ -106,19 +106,5 @@ export class ProductsController {
     return this.productsService.remove(id);
   }
 
-  /** Sincronizar catálogo completo (upsert por SKU, no borra existentes) */
-  @Post('admin/sync-catalog')
-  @UseGuards(JwtAdminGuard)
-  @ApiBearerAuth()
-  async syncCatalog() {
-    return this.productsService.syncCatalog();
-  }
 
-  /** Crear productos de tintas (inks) */
-  @Post('admin/seed-inks')
-  @UseGuards(JwtAdminGuard)
-  @ApiBearerAuth()
-  async seedInks() {
-    return this.productsService.seedInks();
-  }
 }
