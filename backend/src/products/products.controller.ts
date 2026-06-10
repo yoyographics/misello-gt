@@ -113,4 +113,12 @@ export class ProductsController {
   async syncCatalog() {
     return this.productsService.syncCatalog();
   }
+
+  /** Crear productos de tintas (inks) */
+  @Post('admin/seed-inks')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  async seedInks() {
+    return this.productsService.seedInks();
+  }
 }

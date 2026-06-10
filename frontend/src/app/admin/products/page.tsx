@@ -91,6 +91,7 @@ export default function AdminProductsPage() {
   const [adjustQty, setAdjustQty] = useState('');
   const [adjusting, setAdjusting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [seedingInks, setSeedingInks] = useState(false);
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
@@ -221,6 +222,21 @@ export default function AdminProductsPage() {
     }
   };
 
+  const handleSeedInks = async () => {
+    if (!confirm('Esto creara 12 productos de tintas (Negro, Rojo, Azul, Violeta, Verde, Vino, Cafe, Amarillo, Menta, Naranja, Rosa, Turquesa). ¿Continuar?')) return;
+    setSeedingInks(true);
+    try {
+      const res = await api.post('/products/admin/seed-inks');
+      const d = res.data;
+      alert(`Tintas creadas:\nInks: ${d.inksCreated}\nProductos: ${d.productsCreated}\nErrores: ${d.errors.length}`);
+      fetchProducts();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error creando tintas');
+    } finally {
+      setSeedingInks(false);
+    }
+  };
+
   const handleAdjust = async () => {
     if (!adjustProduct || !adjustQty) return;
     setAdjusting(true);
@@ -253,6 +269,10 @@ export default function AdminProductsPage() {
           <Button variant="outline" onClick={handleSyncCatalog} disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
             Sync catalogo
+          </Button>
+          <Button variant="outline" onClick={handleSeedInks} disabled={seedingInks}>
+            {seedingInks ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+            Crear tintas
           </Button>
           <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
             <Plus className="h-4 w-4 mr-1" /> Agregar

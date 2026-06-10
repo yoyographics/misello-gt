@@ -207,6 +207,71 @@ export class ProductsService {
    * Usa upsert por SKU: crea productos nuevos, actualiza existentes,
    * preserva campos que el admin haya modificado (imágenes, stock, isActive).
    */
+  async seedInks() {
+    const inksData = [
+      { code: 'S-61', color: 'Negro', hexCode: '#000000', price: 40, stock: 100 },
+      { code: 'S-62', color: 'Rojo', hexCode: '#CF001D', price: 40, stock: 100 },
+      { code: 'S-63', color: 'Azul', hexCode: '#002183', price: 40, stock: 100 },
+      { code: 'S-64', color: 'Violeta', hexCode: '#700069', price: 40, stock: 100 },
+      { code: 'S-65', color: 'Verde', hexCode: '#004F27', price: 40, stock: 100 },
+      { code: 'SR-1', color: 'Vino', hexCode: '#700039', price: 40, stock: 100 },
+      { code: 'SR-2', color: 'Cafe', hexCode: '#4A0000', price: 40, stock: 100 },
+      { code: 'SR-3', color: 'Amarillo', hexCode: '#FDF63F', price: 40, stock: 100 },
+      { code: 'SR-4', color: 'Menta', hexCode: '#BADCCF', price: 40, stock: 100 },
+      { code: 'SR-5', color: 'Naranja', hexCode: '#E17600', price: 40, stock: 100 },
+      { code: 'SR-6', color: 'Rosa', hexCode: '#DF4889', price: 40, stock: 100 },
+      { code: 'SR-7', color: 'Turquesa', hexCode: '#0094D6', price: 40, stock: 100 },
+    ];
+
+    // 1. Find or create tintas category
+    let tintasCategory = await this.prisma.category.findUnique({
+      where: { slug: 'tintas' },
+    });
+    if (!tintasCategory) {
+      tintasCategory = await this.prisma.category.create({
+        data: { name: 'Tintas', slug: 'tintas', sortOrder: 99, showInStore: true },
+      });
+    }
+
+    const results = { inksCreated: 0, productsCreated: 0, errors: [] as string[] };
+
+    for (const ink of inksData) {
+      try {
+        // Create/update ink
+        await this.prisma.ink.upsert({
+          where: { code: ink.code },
+          update: {},
+          create: ink,
+        });
+        results.inksCreated++;
+
+        // Create product for ink if not exists
+        const existingProduct = await this.prisma.product.findUnique({
+          where: { sku: ink.code },
+        });
+        if (!existingProduct) {
+          await this.prisma.product.create({
+            data: {
+              sku: ink.code,
+              name: `Tinta ${ink.color}`,
+              categoryId: tintasCategory.id,
+              basePrice: ink.price,
+              stock: ink.stock,
+              isActive: true,
+              description: `Tinta de sello color ${ink.color}. Compatible con sellos automaticos, portatiles y fechadores.`,
+              cardLabel: ink.color,
+            },
+          });
+          results.productsCreated++;
+        }
+      } catch (err: any) {
+        results.errors.push(`${ink.code}: ${err.message}`);
+      }
+    }
+
+    return results;
+  }
+
   async syncCatalog() {
     // 1. Asegurar que todas las categorías existen
     const categoryMap = new Map<string, string>();
