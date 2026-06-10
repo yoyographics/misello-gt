@@ -23,11 +23,14 @@ export class CategoriesController {
   /** Listado público de categorías */
   @Get()
   @ApiQuery({ name: 'showInWizard', required: false, type: Boolean })
-  findAll(@Query('showInWizard') showInWizard?: string) {
-    const filter =
-      showInWizard !== undefined
-        ? { showInWizard: showInWizard === 'true' }
-        : {};
+  @ApiQuery({ name: 'showInStore', required: false, type: Boolean })
+  findAll(
+    @Query('showInWizard') showInWizard?: string,
+    @Query('showInStore') showInStore?: string,
+  ) {
+    const filter: any = {};
+    if (showInWizard !== undefined) filter.showInWizard = showInWizard === 'true';
+    if (showInStore !== undefined) filter.showInStore = showInStore === 'true';
     return this.categoriesService.findAll(filter);
   }
 
@@ -51,6 +54,14 @@ export class CategoriesController {
   @ApiBearerAuth()
   update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
     return this.categoriesService.update(id, dto);
+  }
+
+  /** Toggle visibilidad en tienda (admin) */
+  @Patch('admin/:id/show-in-store')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  toggleShowInStore(@Param('id') id: string) {
+    return this.categoriesService.toggleShowInStore(id);
   }
 
   /** Eliminar categoría — soft delete (admin) */

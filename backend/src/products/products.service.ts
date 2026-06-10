@@ -48,10 +48,32 @@ export class ProductsService {
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.shape) where.shape = query.shape;
     if (query.search) {
-      where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { sku: { contains: query.search, mode: 'insensitive' } },
+      const search = query.search.trim();
+      // Buscar por nombre, SKU, forma, o medidas (ej: "38x14", "38 x 14", "38")
+      const measurementMatch = search.match(/(\d+(?:\.\d+)?)\s*[xX\*]\s*(\d+(?:\.\d+)?)/);
+      const singleNumber = !measurementMatch && /^\d+(?:\.\d+)?$/.test(search);
+
+      const orConditions: any[] = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
       ];
+
+      if (measurementMatch) {
+        const w = parseFloat(measurementMatch[1]);
+        const h = parseFloat(measurementMatch[2]);
+        orConditions.push(
+          { widthMm: { gte: w - 1, lte: w + 1 } },
+          { heightMm: { gte: h - 1, lte: h + 1 } },
+        );
+      } else if (singleNumber) {
+        const n = parseFloat(search);
+        orConditions.push(
+          { widthMm: { gte: n - 1, lte: n + 1 } },
+          { heightMm: { gte: n - 1, lte: n + 1 } },
+        );
+      }
+
+      where.OR = orConditions;
     }
 
     const [items, total] = await Promise.all([
@@ -75,10 +97,32 @@ export class ProductsService {
     if (query.shape) where.shape = query.shape;
     if (query.isActive !== undefined) where.isActive = query.isActive;
     if (query.search) {
-      where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { sku: { contains: query.search, mode: 'insensitive' } },
+      const search = query.search.trim();
+      // Buscar por nombre, SKU, forma, o medidas (ej: "38x14", "38 x 14", "38")
+      const measurementMatch = search.match(/(\d+(?:\.\d+)?)\s*[xX\*]\s*(\d+(?:\.\d+)?)/);
+      const singleNumber = !measurementMatch && /^\d+(?:\.\d+)?$/.test(search);
+
+      const orConditions: any[] = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
       ];
+
+      if (measurementMatch) {
+        const w = parseFloat(measurementMatch[1]);
+        const h = parseFloat(measurementMatch[2]);
+        orConditions.push(
+          { widthMm: { gte: w - 1, lte: w + 1 } },
+          { heightMm: { gte: h - 1, lte: h + 1 } },
+        );
+      } else if (singleNumber) {
+        const n = parseFloat(search);
+        orConditions.push(
+          { widthMm: { gte: n - 1, lte: n + 1 } },
+          { heightMm: { gte: n - 1, lte: n + 1 } },
+        );
+      }
+
+      where.OR = orConditions;
     }
 
     const [items, total] = await Promise.all([

@@ -7,8 +7,10 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll({ showInWizard }: { showInWizard?: boolean } = {}) {
-    const where = showInWizard !== undefined ? { showInWizard } : {};
+  async findAll({ showInWizard, showInStore }: { showInWizard?: boolean; showInStore?: boolean } = {}) {
+    const where: any = {};
+    if (showInWizard !== undefined) where.showInWizard = showInWizard;
+    if (showInStore !== undefined) where.showInStore = showInStore;
 
     return this.prisma.category.findMany({
       where,
@@ -64,6 +66,14 @@ export class CategoriesService {
     return this.prisma.category.update({
       where: { id },
       data: { isActive: false },
+    });
+  }
+
+  async toggleShowInStore(id: string) {
+    const category = await this.findOne(id);
+    return this.prisma.category.update({
+      where: { id },
+      data: { showInStore: !category.showInStore },
     });
   }
 }

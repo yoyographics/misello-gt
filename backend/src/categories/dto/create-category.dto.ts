@@ -40,6 +40,11 @@ export class CreateCategoryDto {
   @IsOptional()
   showInWizard?: boolean;
 
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsBoolean()
+  @IsOptional()
+  showInStore?: boolean;
+
   @ApiPropertyOptional({ example: false, default: false })
   @IsBoolean()
   @IsOptional()
