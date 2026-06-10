@@ -293,13 +293,13 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="py-2">
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)} title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openAdjust(p)}>
+                        <Button variant="ghost" size="icon" onClick={() => openAdjust(p)} title="Ajustar stock">
                           <ArrowUpDown className="h-4 w-4 text-blue-500" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} title="Eliminar">
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>

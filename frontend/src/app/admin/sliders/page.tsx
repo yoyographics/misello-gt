@@ -364,6 +364,7 @@ export default function AdminSlidersPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEdit(s)}
+                          title="Editar"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -371,6 +372,7 @@ export default function AdminSlidersPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(s.id)}
+                          title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>

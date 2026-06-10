@@ -186,10 +186,10 @@ export default function AdminCategoriesPage() {
                     </td>
                     <td className="py-2">
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(cat)}>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(cat)} title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)} title="Eliminar">
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
