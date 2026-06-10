@@ -48,6 +48,7 @@ interface Product {
   isActive: boolean;
   imageUrl?: string;
   imageUrlHover?: string;
+  cardLabel?: string;
 }
 
 const SHAPES = [
@@ -60,6 +61,7 @@ const EMPTY_FORM = {
   sku: '',
   name: '',
   description: '',
+  cardLabel: '',
   categoryId: '',
   shape: '',
   widthMm: '',
@@ -123,6 +125,7 @@ export default function AdminProductsPage() {
       sku: product.sku,
       name: product.name,
       description: product.description || '',
+      cardLabel: product.cardLabel || '',
       categoryId: product.categoryId || (product.category?.id ?? ''),
       shape: product.shape || '',
       widthMm: product.widthMm?.toString() || '',
@@ -143,6 +146,7 @@ export default function AdminProductsPage() {
         sku: form.sku,
         name: form.name,
         description: form.description || undefined,
+        cardLabel: form.cardLabel || undefined,
         categoryId: form.categoryId,
         shape: form.shape || undefined,
         widthMm: form.widthMm ? parseFloat(form.widthMm) : undefined,
@@ -347,6 +351,11 @@ export default function AdminProductsPage() {
             <div>
               <label className="text-xs font-medium block mb-1.5">Descripcion</label>
               <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripcion opcional" />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium block mb-1.5">Etiqueta de card (opcional)</label>
+              <Input value={form.cardLabel} onChange={(e) => setForm({ ...form, cardLabel: e.target.value })} placeholder="Ej: Nuevo, Popular, Oferta..." />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

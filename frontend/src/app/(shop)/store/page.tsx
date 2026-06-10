@@ -22,6 +22,7 @@ interface Product {
   id: string;
   sku: string;
   name: string;
+  description?: string;
   category: { name: string; slug: string };
   shape: string;
   widthMm: number;
@@ -29,6 +30,7 @@ interface Product {
   basePrice: number;
   imageUrl?: string;
   imageUrlHover?: string;
+  cardLabel?: string;
   stock: number;
 }
 
@@ -261,73 +263,87 @@ export default function StorePage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {products.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/store/product?id=${product.id}`}
-                  className="block"
-                >
-                  <Card className="group p-4 border-2 border-blue-100 hover:border-blue-400 rounded-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgba(59,130,246,0.25)]">
-                    <div className="relative aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden">
+                <div key={product.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  {/* Imagen con label */}
+                  <Link href={`/store/product?id=${product.id}`} className="block relative">
+                    {product.cardLabel && (
+                      <span className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
+                        {product.cardLabel}
+                      </span>
+                    )}
+                    <div className="aspect-[4/3] bg-gray-50 overflow-hidden">
                       {product.imageUrl ? (
-                        <>
-                          <img
-                            src={getImageUrl(product.imageUrl)}
-                            alt={product.name}
-                            className="absolute inset-0 w-full h-full object-contain p-2 opacity-100 group-hover:opacity-0 transition-opacity duration-300"
-                          />
-                          {product.imageUrlHover ? (
-                            <img
-                              src={getImageUrl(product.imageUrlHover)}
-                              alt={`${product.name} - hover`}
-                              className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                            />
-                          ) : (
-                            <img
-                              src={getImageUrl(product.imageUrl)}
-                              alt={product.name}
-                              className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-105"
-                            />
-                          )}
-                        </>
+                        <img
+                          src={getImageUrl(product.imageUrl)}
+                          alt={product.name}
+                          className="w-full h-full object-contain p-4"
+                        />
                       ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-4xl">
+                        <span className="w-full h-full flex items-center justify-center text-4xl">
                           📐
                         </span>
                       )}
                     </div>
-                    <Badge variant="secondary" className="mb-2">
-                      {product.category?.name || ''}
-                    </Badge>
-                    <h3 className="font-semibold text-sm">{product.name}</h3>
-                    <p className="text-xs text-gray-500">{product.sku}</p>
-                    <p className="text-xs text-gray-500">
-                      {product.widthMm}mm x {product.heightMm}mm
-                      {product.shape && ` · ${SHAPE_LABELS[product.shape] || product.shape}`}
-                    </p>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="font-bold text-[#1B2A6B]">
+                  </Link>
+
+                  {/* Info */}
+                  <div className="p-4 pt-2">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-bold text-gray-800 text-base leading-tight">
+                        {product.name}
+                      </h3>
+                      <span className="font-bold text-orange-600 whitespace-nowrap">
                         Q{product.basePrice.toFixed(2)}
                       </span>
-                      {product.stock > 0 ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addToCart(product);
-                          }}
-                        >
-                          <ShoppingCart className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Badge variant="destructive">Agotado</Badge>
-                      )}
                     </div>
-                  </Card>
-                </Link>
+
+                    <p className="text-xs text-gray-400 mb-2">
+                      {product.sku}
+                    </p>
+
+                    {product.description && (
+                      <p className="text-sm text-gray-500 line-clamp-2 mb-3">
+                        {product.description}
+                      </p>
+                    )}
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
+                        {product.category?.name}
+                      </span>
+                      {product.shape && (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] rounded-full">
+                          {SHAPE_LABELS[product.shape] || product.shape}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
+                        {product.widthMm}mm x {product.heightMm}mm
+                      </span>
+                    </div>
+
+                    {/* Boton agregar */}
+                    {product.stock > 0 ? (
+                      <Button
+                        className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-md transition-all"
+                        onClick={() => addToCart(product)}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Agregar al carrito
+                      </Button>
+                    ) : (
+                      <Button
+                        disabled
+                        variant="outline"
+                        className="w-full rounded-xl text-gray-400"
+                      >
+                        Agotado
+                      </Button>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )}

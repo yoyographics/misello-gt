@@ -67,6 +67,11 @@ export class CreateProductDto {
   @IsOptional()
   imageUrlHover?: string;
 
+  @ApiPropertyOptional({ example: 'Nuevo' })
+  @IsString()
+  @IsOptional()
+  cardLabel?: string;
+
   @ApiProperty({ example: 125.0 })
   @IsNumber()
   @Min(0)

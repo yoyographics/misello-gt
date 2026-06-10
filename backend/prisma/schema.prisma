@@ -126,6 +126,7 @@ model Product {
   heightPx    Int?
   imageUrl       String?
   imageUrlHover  String?
+  cardLabel      String?       // Etiqueta dinamica visible en la card de la tienda (ej: "Nuevo", "Popular")
   basePrice      Float
   isActive    Boolean       @default(true)
   stock       Int           @default(0)
