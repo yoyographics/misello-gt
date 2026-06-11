@@ -44,7 +44,7 @@ const EMPTY_FORM = {
   title: '',
   subtitle: '',
   imageUrl: '',
-  gradient: '',
+  gradient: 'from-[#1B2A6B] to-[#0f1a4a]',
   useGradient: true,
   gradientOpacity: 0.85,
   animation: 'fade-up',
@@ -183,7 +183,7 @@ export default function AdminSlidersPage() {
       title: slider.title,
       subtitle: slider.subtitle,
       imageUrl: slider.imageUrl || '',
-      gradient: slider.gradient || '',
+      gradient: slider.gradient || 'from-[#1B2A6B] to-[#0f1a4a]',
       useGradient: slider.useGradient !== false,
       gradientOpacity: slider.gradientOpacity ?? 0.85,
       animation: slider.animation || 'fade-up',
@@ -662,7 +662,7 @@ export default function AdminSlidersPage() {
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={saving || !form.title || (!form.imageUrl && !form.gradient)}
+                  disabled={saving || !form.title || (!form.imageUrl && (!form.gradient || !form.useGradient))}
                   className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
                 >
                   {saving ? (

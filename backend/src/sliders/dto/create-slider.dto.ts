@@ -10,7 +10,8 @@ export class CreateSliderDto {
   subtitle?: string;
 
   @IsString()
-  imageUrl: string;
+  @IsOptional()
+  imageUrl?: string;
 
   @IsString()
   @IsOptional()

@@ -26,11 +26,22 @@ export class SlidersService {
   }
 
   create(data: CreateSliderDto) {
-    return this.prisma.sliderImage.create({ data });
+    return this.prisma.sliderImage.create({
+      data: {
+        ...data,
+        imageUrl: data.imageUrl || '',
+      },
+    });
   }
 
   update(id: string, data: UpdateSliderDto) {
-    return this.prisma.sliderImage.update({ where: { id }, data });
+    return this.prisma.sliderImage.update({
+      where: { id },
+      data: {
+        ...data,
+        imageUrl: data.imageUrl !== undefined ? data.imageUrl || '' : undefined,
+      },
+    });
   }
 
   remove(id: string) {
