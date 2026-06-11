@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ShoppingCart, Search, ChevronRight, LayoutGrid, X } from 'lucide-react';
+import { ShoppingCart, Search, ChevronRight, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import StoreSidebarSlider from '@/components/store-sidebar-slider';
 
@@ -161,25 +161,31 @@ export default function StorePage() {
         </div>
         <Button
           variant="outline"
-          className="md:hidden"
+          size="icon"
+          className="md:hidden relative"
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          title="Categorias y filtros"
         >
-          <LayoutGrid className="h-4 w-4 mr-1" />
-          Filtros{activeFiltersCount > 0 && ` (${activeFiltersCount})`}
+          <Menu className="h-5 w-5" />
+          {activeFiltersCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center">
+              {activeFiltersCount}
+            </span>
+          )}
         </Button>
       </div>
 
-      <div className="flex gap-6 lg:gap-8 items-start">
+      <div className="flex gap-6 xl:gap-8 items-start">
         {/* Slider lateral izquierdo (solo desktop grande) */}
         <StoreSidebarSlider sliders={leftSliders} loading={slidersLoading} />
 
         {/* Contenido central: sidebar filtros + productos */}
-        <div className="flex gap-6 lg:gap-8 flex-1 min-w-0">
+        <div className="flex gap-6 xl:gap-8 flex-1 min-w-0">
           {/* Sidebar filters */}
           <aside
             className={`${
               mobileFiltersOpen ? 'block' : 'hidden'
-            } md:block md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto w-full md:w-64 flex-shrink-0 space-y-6`}
+            } md:block md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto w-full md:w-56 lg:w-60 xl:w-64 flex-shrink-0 space-y-6`}
           >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
