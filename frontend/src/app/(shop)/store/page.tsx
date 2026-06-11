@@ -142,7 +142,7 @@ export default function StorePage() {
         <aside
           className={`${
             mobileFiltersOpen ? 'block' : 'hidden'
-          } md:block w-full md:w-64 flex-shrink-0 space-y-6`}
+          } md:block md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto w-full md:w-64 flex-shrink-0 space-y-6`}
         >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
