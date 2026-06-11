@@ -76,12 +76,25 @@ export class ProductsService {
       where.OR = orConditions;
     }
 
+    // Ordenar: en "Todas las categorías" primero por sortOrder de categoría
+    // para que Sellos Automáticos (sortOrder=1) aparezcan siempre primero.
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] = [];
+    if (!query.categoryId) {
+      orderBy.push({ category: { sortOrder: 'asc' } });
+    }
+    if (query.sortBy && ALLOWED_PRODUCT_SORT_FIELDS.includes(query.sortBy as ProductSortField)) {
+      const sortField = query.sortBy as ProductSortField;
+      orderBy.push({ [sortField]: query.sortOrder || 'desc' } as Prisma.ProductOrderByWithRelationInput);
+    } else {
+      orderBy.push({ createdAt: query.sortOrder || 'desc' });
+    }
+
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         skip: query.skip,
         take: query.take,
-        orderBy: buildProductOrderBy(query.sortBy, query.sortOrder),
+        orderBy,
         include: { category: true },
       }),
       this.prisma.product.count({ where }),
