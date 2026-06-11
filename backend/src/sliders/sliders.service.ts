@@ -2,14 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSliderDto } from './dto/create-slider.dto';
 import { UpdateSliderDto } from './dto/update-slider.dto';
+import { SliderPosition } from '@prisma/client';
 
 @Injectable()
 export class SlidersService {
   constructor(private prisma: PrismaService) {}
 
-  findAllPublic() {
+  findAllPublic(position?: SliderPosition) {
+    const where: { isActive: true; position?: SliderPosition } = { isActive: true };
+    if (position) {
+      where.position = position;
+    }
     return this.prisma.sliderImage.findMany({
-      where: { isActive: true },
+      where,
       orderBy: { sortOrder: 'asc' },
     });
   }
@@ -46,6 +51,7 @@ export class SlidersService {
         buttonType: 'URL' as const,
         buttonUrl: '/design',
         sortOrder: 0,
+        position: 'HOME' as const,
         isActive: true,
       },
       {
@@ -59,6 +65,7 @@ export class SlidersService {
         buttonType: 'URL' as const,
         buttonUrl: '/store',
         sortOrder: 1,
+        position: 'HOME' as const,
         isActive: true,
       },
       {
@@ -72,6 +79,7 @@ export class SlidersService {
         buttonType: 'URL' as const,
         buttonUrl: '/store',
         sortOrder: 2,
+        position: 'HOME' as const,
         isActive: true,
       },
       {
@@ -85,6 +93,7 @@ export class SlidersService {
         buttonType: 'URL' as const,
         buttonUrl: '/design',
         sortOrder: 3,
+        position: 'HOME' as const,
         isActive: true,
       },
     ];

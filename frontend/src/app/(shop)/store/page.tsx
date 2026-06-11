@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ShoppingCart, Search, ChevronRight, LayoutGrid, X } from 'lucide-react';
 import Link from 'next/link';
+import StoreSidebarSlider from '@/components/store-sidebar-slider';
 
 interface Category {
   id: string;
@@ -34,6 +35,21 @@ interface Product {
   stock: number;
 }
 
+interface SidebarSlider {
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  gradient?: string;
+  useGradient?: boolean;
+  gradientOpacity?: number;
+  buttonText?: string;
+  buttonType?: 'URL' | 'CATEGORY' | 'PRODUCT';
+  buttonUrl?: string;
+  buttonCategorySlug?: string;
+  buttonProductId?: string;
+}
+
 function getImageUrl(url?: string) {
   if (!url) return '';
   return url.startsWith('http')
@@ -56,6 +72,9 @@ export default function StorePage() {
   const [selectedShape, setSelectedShape] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [leftSliders, setLeftSliders] = useState<SidebarSlider[]>([]);
+  const [rightSliders, setRightSliders] = useState<SidebarSlider[]>([]);
+  const [slidersLoading, setSlidersLoading] = useState(true);
 
   const fetchCategories = useCallback(() => {
     api
@@ -86,6 +105,19 @@ export default function StorePage() {
   useEffect(() => {
     fetchCategories();
     fetchProducts();
+
+    // Cargar sliders laterales de la tienda
+    setSlidersLoading(true);
+    Promise.all([
+      api.get('/sliders?position=STORE_LEFT'),
+      api.get('/sliders?position=STORE_RIGHT'),
+    ])
+      .then(([leftRes, rightRes]) => {
+        setLeftSliders(leftRes.data || []);
+        setRightSliders(rightRes.data || []);
+      })
+      .catch(() => {})
+      .finally(() => setSlidersLoading(false));
   }, [fetchCategories, fetchProducts]);
 
   const addToCart = (product: Product) => {
@@ -137,13 +169,18 @@ export default function StorePage() {
         </Button>
       </div>
 
-      <div className="flex gap-8">
-        {/* Sidebar filters */}
-        <aside
-          className={`${
-            mobileFiltersOpen ? 'block' : 'hidden'
-          } md:block md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto w-full md:w-64 flex-shrink-0 space-y-6`}
-        >
+      <div className="flex gap-6 lg:gap-8 items-start">
+        {/* Slider lateral izquierdo (solo desktop grande) */}
+        <StoreSidebarSlider sliders={leftSliders} loading={slidersLoading} />
+
+        {/* Contenido central: sidebar filtros + productos */}
+        <div className="flex gap-6 lg:gap-8 flex-1 min-w-0">
+          {/* Sidebar filters */}
+          <aside
+            className={`${
+              mobileFiltersOpen ? 'block' : 'hidden'
+            } md:block md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto w-full md:w-64 flex-shrink-0 space-y-6`}
+          >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -349,6 +386,10 @@ export default function StorePage() {
           )}
         </div>
       </div>
+
+      {/* Slider lateral derecho (solo desktop grande) */}
+      <StoreSidebarSlider sliders={rightSliders} loading={slidersLoading} />
     </div>
+  </div>
   );
 }

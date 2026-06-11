@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsInt, IsBoolean, IsEnum, IsNumber, Min, Max } from 'class-validator';
-import { SliderButtonType } from '@prisma/client';
+import { SliderButtonType, SliderPosition } from '@prisma/client';
 
 export class CreateSliderDto {
   @IsString()
@@ -49,6 +49,10 @@ export class CreateSliderDto {
   @IsString()
   @IsOptional()
   buttonProductId?: string;
+
+  @IsEnum(SliderPosition)
+  @IsOptional()
+  position?: SliderPosition = SliderPosition.HOME;
 
   @IsInt()
   @IsOptional()

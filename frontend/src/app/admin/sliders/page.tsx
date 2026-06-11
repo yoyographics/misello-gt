@@ -29,6 +29,7 @@ interface Slider {
   buttonUrl?: string;
   buttonCategorySlug?: string;
   buttonProductId?: string;
+  position: 'HOME' | 'STORE_LEFT' | 'STORE_RIGHT';
   sortOrder: number;
   isActive: boolean;
 }
@@ -52,6 +53,7 @@ const EMPTY_FORM = {
   buttonUrl: '',
   buttonCategorySlug: '',
   buttonProductId: '',
+  position: 'HOME',
   sortOrder: 0,
   isActive: true,
 };
@@ -190,6 +192,7 @@ export default function AdminSlidersPage() {
       buttonUrl: slider.buttonUrl || '',
       buttonCategorySlug: slider.buttonCategorySlug || '',
       buttonProductId: slider.buttonProductId || '',
+      position: slider.position || 'HOME',
       sortOrder: slider.sortOrder,
       isActive: slider.isActive,
     });
@@ -209,6 +212,7 @@ export default function AdminSlidersPage() {
         animation: form.animation,
         buttonText: form.buttonText || undefined,
         buttonType: form.buttonType,
+        position: form.position,
         sortOrder: Number(form.sortOrder) || 0,
         isActive: form.isActive,
       };
@@ -316,6 +320,7 @@ export default function AdminSlidersPage() {
                   <th className="text-left py-2">Imagen</th>
                   <th className="text-left py-2">Titulo</th>
                   <th className="text-left py-2">Subtitulo</th>
+                  <th className="text-left py-2">Posicion</th>
                   <th className="text-left py-2">Orden</th>
                   <th className="text-left py-2">Estado</th>
                   <th className="text-left py-2">Acciones</th>
@@ -340,6 +345,11 @@ export default function AdminSlidersPage() {
                     <td className="py-2 font-medium">{s.title}</td>
                     <td className="py-2 text-gray-600 max-w-xs truncate">
                       {s.subtitle}
+                    </td>
+                    <td className="py-2">
+                      <Badge variant="secondary" className="text-[10px]">
+                        {s.position === 'HOME' ? 'Inicio' : s.position === 'STORE_LEFT' ? 'Tienda izquierda' : 'Tienda derecha'}
+                      </Badge>
                     </td>
                     <td className="py-2">{s.sortOrder}</td>
                     <td className="py-2">
@@ -539,6 +549,18 @@ export default function AdminSlidersPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-0.5">Posicion</label>
+                <select
+                  value={form.position}
+                  onChange={(e) => setForm({ ...form, position: e.target.value as any })}
+                  className="w-full h-9 rounded-md border border-gray-300 bg-white px-3 text-sm"
+                >
+                  <option value="HOME">Pagina de inicio</option>
+                  <option value="STORE_LEFT">Tienda - Lateral izquierdo</option>
+                  <option value="STORE_RIGHT">Tienda - Lateral derecho</option>
+                </select>
+              </div>
               <div>
                 <label className="text-xs font-medium block mb-0.5">Animación de textos</label>
                 <select

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { SlidersService } from './sliders.service';
@@ -6,6 +6,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { JwtAdminGuard } from '../auth/guards/jwt-admin.guard';
 import { CreateSliderDto } from './dto/create-slider.dto';
 import { UpdateSliderDto } from './dto/update-slider.dto';
+import { SliderPosition } from '@prisma/client';
 
 @Controller('sliders')
 export class SlidersController {
@@ -15,8 +16,8 @@ export class SlidersController {
   ) {}
 
   @Get()
-  findAllPublic() {
-    return this.slidersService.findAllPublic();
+  findAllPublic(@Query('position') position?: SliderPosition) {
+    return this.slidersService.findAllPublic(position);
   }
 
   @Get('admin/all')

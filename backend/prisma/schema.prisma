@@ -293,6 +293,12 @@ enum SliderButtonType {
   PRODUCT
 }
 
+enum SliderPosition {
+  HOME
+  STORE_LEFT
+  STORE_RIGHT
+}
+
 model SliderImage {
   id             String           @id @default(uuid())
   title          String
@@ -307,6 +313,7 @@ model SliderImage {
   buttonUrl      String?          // URL libre cuando buttonType = URL
   buttonCategorySlug String?      // Slug de categoría cuando buttonType = CATEGORY
   buttonProductId    String?      // ID de producto cuando buttonType = PRODUCT
+  position       SliderPosition   @default(HOME)      // HOME, STORE_LEFT, STORE_RIGHT
   sortOrder      Int              @default(0)
   isActive       Boolean          @default(true)
   createdAt      DateTime         @default(now())
