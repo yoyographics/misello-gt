@@ -138,6 +138,17 @@ export default function StorePage() {
   const activeFiltersCount =
     (selectedCategory ? 1 : 0) + (selectedShape ? 1 : 0);
 
+  const showLeftSlider = slidersLoading || leftSliders.length > 0;
+  const showRightSlider = slidersLoading || rightSliders.length > 0;
+  const gridCols =
+    showLeftSlider && showRightSlider
+      ? 'xl:grid-cols-[160px_1fr_160px]'
+      : showLeftSlider
+      ? 'xl:grid-cols-[160px_1fr]'
+      : showRightSlider
+      ? 'xl:grid-cols-[1fr_160px]'
+      : '';
+
   return (
     <div className="container mx-auto max-w-7xl py-8 px-4">
       {/* Header */}
@@ -175,17 +186,22 @@ export default function StorePage() {
         </Button>
       </div>
 
-      <div className="flex gap-6 xl:gap-8 items-start">
+      {/* Layout de 3 columnas en xl: slider | contenido | slider */}
+      <div
+        className={`grid grid-cols-1 ${gridCols} gap-5 xl:gap-6 items-start`}
+      >
         {/* Slider lateral izquierdo (solo desktop grande) */}
-        <StoreSidebarSlider sliders={leftSliders} loading={slidersLoading} />
+        {showLeftSlider && (
+          <StoreSidebarSlider sliders={leftSliders} loading={slidersLoading} />
+        )}
 
         {/* Contenido central: sidebar filtros + productos */}
-        <div className="flex gap-6 xl:gap-8 flex-1 min-w-0">
+        <div className="flex gap-5 xl:gap-6 flex-col md:flex-row min-w-0">
           {/* Sidebar filters */}
           <aside
             className={`${
               mobileFiltersOpen ? 'block' : 'hidden'
-            } md:block md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto w-full md:w-56 lg:w-60 xl:w-64 flex-shrink-0 space-y-6`}
+            } md:block md:sticky md:top-20 md:self-start md:max-h-[calc(100vh-7rem)] md:overflow-y-auto w-full md:w-52 lg:w-56 xl:w-60 flex-shrink-0 space-y-6`}
           >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
@@ -394,7 +410,9 @@ export default function StorePage() {
       </div>
 
       {/* Slider lateral derecho (solo desktop grande) */}
-      <StoreSidebarSlider sliders={rightSliders} loading={slidersLoading} />
+      {showRightSlider && (
+        <StoreSidebarSlider sliders={rightSliders} loading={slidersLoading} />
+      )}
     </div>
   </div>
   );
