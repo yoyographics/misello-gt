@@ -5,12 +5,15 @@ import { useCart } from '@/hooks/useCart';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, AlertCircle, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { SvgImage } from '@/components/svg-image';
 
 export default function CartPage() {
   const { items, removeItem, totalItems, totalAmount } = useCart();
+
+  const needsCustomization = (item: typeof items[0]) =>
+    item.categoryIsCustomizable && !item.designJson;
   const [quantities, setQuantities] = useState<Record<number, number>>({});
 
   const getQuantity = (index: number, defaultQty: number) => {
@@ -60,6 +63,18 @@ export default function CartPage() {
               <p className="text-sm text-gray-500">{item.productSku}</p>
               {item.inkName && <p className="text-sm text-gray-500">Tinta: {item.inkName}</p>}
               <p className="font-medium text-[#1B2A6B]">Q{item.unitPrice.toFixed(2)} c/u</p>
+              {needsCustomization(item) && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Falta personalizar este sello</span>
+                  <Link href={`/design?productId=${item.productId}&editIndex=${i}`}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-100 ml-2">
+                      <Pencil className="h-3 w-3 mr-1" />
+                      Personalizar
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2">
               <Button variant="ghost" size="icon" onClick={() => removeItem(i)}>
@@ -86,9 +101,19 @@ export default function CartPage() {
         <span className="text-2xl font-bold text-[#1B2A6B]">Q{totalAmount.toFixed(2)}</span>
       </div>
 
-      <Link href="/checkout">
-        <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg py-6">Proceder al pago</Button>
-      </Link>
+      {items.some(needsCustomization) ? (
+        <div className="space-y-3">
+          <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            Debes personalizar todos los sellos antes de proceder al pago.
+          </p>
+          <Button disabled className="w-full text-lg py-6">Proceder al pago</Button>
+        </div>
+      ) : (
+        <Link href="/checkout">
+          <Button className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg py-6">Proceder al pago</Button>
+        </Link>
+      )}
     </div>
   );
 }

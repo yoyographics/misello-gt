@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import api, { API_BASE_URL } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -200,7 +201,7 @@ function getImageUrl(url?: string) {
 
 export default function DesignPage() {
   const { token } = useAuth();
-  const { addItem } = useCart();
+  const { addItem, updateItem } = useCart();
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState<SubStep>('type');
   const [stampType, setStampType] = useState<StampType | ''>('');
@@ -549,6 +550,12 @@ export default function DesignPage() {
     setStep(1);
     setSubStep('type');
     setStampType('');
+    if (typeof window !== 'undefined' && window.history.replaceState) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('productId');
+      url.searchParams.delete('editIndex');
+      window.history.replaceState({}, '', url.toString());
+    }
     setShape('');
     setSelectedProduct(null);
     setLines([{ text: '', fontSize: '12pt', fontId: '', isBold: false, isItalic: false, alignment: 'center' }]);
@@ -562,7 +569,13 @@ export default function DesignPage() {
 
   const addToCart = () => {
     if (!designResult || !selectedProduct) return;
-    addItem({
+    const params = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search)
+      : null;
+    const editIndexParam = params?.get('editIndex');
+    const editIndex = editIndexParam ? parseInt(editIndexParam, 10) : -1;
+
+    const cartItem = {
       productId: selectedProduct.id,
       productName: selectedProduct.name,
       productSku: selectedProduct.sku,
@@ -573,8 +586,16 @@ export default function DesignPage() {
       productionSvgUrl: designResult.productionSvgUrl,
       inkId: selectedInk,
       inkName: inks.find((i) => i.id === selectedInk)?.color,
-    });
-    alert('Agregado al carrito!');
+      categoryIsCustomizable: true,
+    };
+
+    if (!isNaN(editIndex) && editIndex >= 0) {
+      updateItem(editIndex, cartItem);
+      toast.success('Diseño actualizado en el carrito');
+    } else {
+      addItem(cartItem);
+      toast.success('Agregado al carrito');
+    }
     resetWizard();
   };
 

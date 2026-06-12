@@ -26,7 +26,7 @@ interface Product {
   sku: string;
   name: string;
   description?: string;
-  category: { name: string; slug: string };
+  category: { name: string; slug: string; isCustomizable?: boolean };
   shape: string;
   widthMm: number;
   heightMm: number;
@@ -132,8 +132,13 @@ export default function StorePage() {
       quantity: 1,
       inkId: undefined,
       inkName: undefined,
+      categoryIsCustomizable: product.category?.isCustomizable,
     });
-    toast.success(`${product.name} agregado al carrito`);
+    if (product.category?.isCustomizable) {
+      toast.success(`${product.name} agregado. No olvides personalizarlo antes de pagar.`);
+    } else {
+      toast.success(`${product.name} agregado al carrito`);
+    }
   };
 
   const activeFiltersCount =
@@ -386,13 +391,24 @@ export default function StorePage() {
 
                     {/* Boton agregar */}
                     {product.stock > 0 ? (
-                      <Button
-                        className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-md transition-all"
-                        onClick={() => addToCart(product)}
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Agregar al carrito
-                      </Button>
+                      product.category?.isCustomizable ? (
+                        <Link href={`/design?productId=${product.id}`} className="block">
+                          <Button
+                            className="w-full bg-gradient-to-r from-[#1B2A6B] to-[#0f1a4a] text-white rounded-xl font-semibold hover:shadow-md transition-all"
+                          >
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Personalizar
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button
+                          className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-md transition-all"
+                          onClick={() => addToCart(product)}
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Agregar al carrito
+                        </Button>
+                      )
                     ) : (
                       <Button
                         disabled

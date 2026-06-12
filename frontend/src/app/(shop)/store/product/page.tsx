@@ -16,13 +16,14 @@ import { Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import { useCart } from '@/hooks/useCart';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
   sku: string;
   name: string;
   description?: string;
-  category?: { name: string; slug: string; isCustomizable?: boolean } | string;
+  category?: { id: string; name: string; slug: string; isCustomizable?: boolean } | string;
   shape?: string;
   widthMm?: number;
   heightMm?: number;
@@ -116,8 +117,16 @@ function ProductDetailContent() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const productCategory = typeof product?.category === 'string'
+    ? undefined
+    : product?.category;
+
   const handleAddToCart = () => {
     if (!product) return;
+    if (productCategory?.isCustomizable) {
+      router.push(`/design?productId=${product.id}`);
+      return;
+    }
     setAdding(true);
     addItem({
       productId: product.id,
@@ -125,7 +134,9 @@ function ProductDetailContent() {
       productSku: product.sku,
       unitPrice: product.basePrice,
       quantity: 1,
+      categoryIsCustomizable: false,
     });
+    toast.success(`${product.name} agregado al carrito`);
     setTimeout(() => setAdding(false), 600);
   };
 

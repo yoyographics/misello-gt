@@ -13,11 +13,13 @@ interface CartItem {
   productionSvgUrl?: string;
   inkId?: string;
   inkName?: string;
+  categoryIsCustomizable?: boolean;
 }
 
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
+  updateItem: (index: number, item: CartItem) => void;
   removeItem: (index: number) => void;
   clearCart: () => void;
   totalItems: number;
@@ -50,6 +52,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => [...prev, item]);
   };
 
+  const updateItem = (index: number, item: CartItem) => {
+    setItems((prev) => {
+      const next = [...prev];
+      next[index] = item;
+      return next;
+    });
+  };
+
   const removeItem = (index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
@@ -62,7 +72,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalAmount = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, clearCart, totalItems, totalAmount }}>
+    <CartContext.Provider value={{ items, addItem, updateItem, removeItem, clearCart, totalItems, totalAmount }}>
       {children}
     </CartContext.Provider>
   );
