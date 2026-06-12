@@ -10,7 +10,7 @@ const api = axios.create({
 });
 
 function isAdminUrl(url: string): boolean {
-  return url.includes('/admin/') || url.startsWith('/inventory');
+  return url.includes('/admin') || url.startsWith('/inventory');
 }
 
 /**
