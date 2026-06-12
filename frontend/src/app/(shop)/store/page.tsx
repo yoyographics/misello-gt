@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ShoppingCart, Search, ChevronRight, Menu, X } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import StoreSidebarSlider from '@/components/store-sidebar-slider';
+import { useCart } from '@/hooks/useCart';
 
 interface Category {
   id: string;
@@ -65,6 +67,7 @@ const SHAPE_LABELS: Record<string, string> = {
 };
 
 export default function StorePage() {
+  const { addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
@@ -121,18 +124,16 @@ export default function StorePage() {
   }, [fetchCategories, fetchProducts]);
 
   const addToCart = (product: Product) => {
-    const cartItem = {
+    addItem({
       productId: product.id,
       productName: product.name,
       productSku: product.sku,
       unitPrice: product.basePrice,
       quantity: 1,
-      inkId: null,
-      inkName: null,
-    };
-    const existing = JSON.parse(localStorage.getItem('cart') || '[]');
-    localStorage.setItem('cart', JSON.stringify([...existing, cartItem]));
-    alert('Agregado al carrito!');
+      inkId: undefined,
+      inkName: undefined,
+    });
+    toast.success(`${product.name} agregado al carrito`);
   };
 
   const activeFiltersCount =
