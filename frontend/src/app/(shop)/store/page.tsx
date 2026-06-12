@@ -140,14 +140,14 @@ export default function StorePage() {
 
   const showLeftSlider = slidersLoading || leftSliders.length > 0;
   const showRightSlider = slidersLoading || rightSliders.length > 0;
-  const gridCols =
-    showLeftSlider && showRightSlider
-      ? 'xl:grid-cols-[160px_1fr_160px]'
-      : showLeftSlider
-      ? 'xl:grid-cols-[160px_1fr]'
-      : showRightSlider
-      ? 'xl:grid-cols-[1fr_160px]'
-      : '';
+  const bothSliders = showLeftSlider && showRightSlider;
+  const gridCols = bothSliders
+    ? 'xl:grid-cols-[140px_minmax(0,1fr)_140px]'
+    : showLeftSlider
+    ? 'xl:grid-cols-[140px_minmax(0,1fr)]'
+    : showRightSlider
+    ? 'xl:grid-cols-[minmax(0,1fr)_140px]'
+    : '';
 
   return (
     <div className="container mx-auto max-w-7xl py-8 px-4">
@@ -201,7 +201,7 @@ export default function StorePage() {
           <aside
             className={`${
               mobileFiltersOpen ? 'block' : 'hidden'
-            } md:block md:sticky md:top-20 md:self-start md:max-h-[calc(100vh-7rem)] md:overflow-y-auto w-full md:w-52 lg:w-56 xl:w-60 flex-shrink-0 space-y-6`}
+            } md:block md:sticky md:top-20 md:self-start md:max-h-[calc(100vh-7rem)] md:overflow-y-auto w-full md:w-52 lg:w-56 xl:w-52 flex-shrink-0 space-y-6`}
           >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
@@ -322,7 +322,7 @@ export default function StorePage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${bothSliders ? 'xl:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
               {products.map((product) => (
                 <div key={product.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   {/* Imagen con label */}
