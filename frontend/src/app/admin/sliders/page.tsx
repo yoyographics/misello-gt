@@ -505,9 +505,18 @@ export default function AdminSlidersPage() {
                       }}
                     />
                   </label>
-                  <p className="text-xs text-gray-400 mt-1.5">
-                    Formato recomendado: <strong>1920 x 650 px</strong> (16:9), max 5MB. JPG o PNG.
-                    La imagen se comprime automaticamente a WebP via Cloudinary.
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    {form.position === 'HOME' ? (
+                      <>
+                        Resolución recomendada: <strong>1920 x 650 px</strong> (16:9), max 5MB.
+                        Banner horizontal de ancho completo.
+                      </>
+                    ) : (
+                      <>
+                        Resolución recomendada: <strong>240 x 520 px</strong> (vertical), max 5MB.
+                        El slider ocupa el lateral de la tienda.
+                      </>
+                    )}
                   </p>
                 </>
               )}
