@@ -134,9 +134,17 @@ function ProductDetailContent() {
       productSku: product.sku,
       unitPrice: product.basePrice,
       quantity: 1,
-      categoryIsCustomizable: false,
+      categoryIsCustomizable: productCategory?.isCustomizable,
+      isWood: false,
+      shape: product.shape,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
     });
-    toast.success(`${product.name} agregado al carrito`);
+    if (productCategory?.isCustomizable) {
+      toast.success(`${product.name} agregado. Personalízalo desde el carrito.`);
+    } else {
+      toast.success(`${product.name} agregado al carrito`);
+    }
     setTimeout(() => setAdding(false), 600);
   };
 

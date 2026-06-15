@@ -598,6 +598,9 @@ export default function DesignPage() {
       inkName: inks.find((i) => i.id === selectedInk)?.color,
       categoryIsCustomizable: true,
       isWood,
+      shape: selectedProduct.shape,
+      widthMm: selectedProduct.widthMm,
+      heightMm: selectedProduct.heightMm,
     };
 
     if (!isNaN(editIndex) && editIndex >= 0) {

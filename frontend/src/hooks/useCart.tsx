@@ -15,6 +15,10 @@ interface CartItem {
   inkName?: string;
   categoryIsCustomizable?: boolean;
   isWood?: boolean;
+  woodPrice?: number;
+  shape?: string;
+  widthMm?: number;
+  heightMm?: number;
 }
 
 interface CartContextType {
@@ -22,7 +26,7 @@ interface CartContextType {
   addItem: (item: CartItem) => void;
   updateItem: (index: number, item: CartItem) => void;
   updateQuantity: (index: number, quantity: number) => void;
-  updateIsWood: (index: number, isWood: boolean) => void;
+  updateIsWood: (index: number, isWood: boolean, woodPrice?: number) => void;
   removeItem: (index: number) => void;
   clearCart: () => void;
   totalItems: number;
@@ -71,10 +75,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const updateIsWood = (index: number, isWood: boolean) => {
+  const updateIsWood = (index: number, isWood: boolean, woodPrice?: number) => {
     setItems((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], isWood };
+      next[index] = { ...next[index], isWood, woodPrice };
       return next;
     });
   };

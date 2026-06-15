@@ -68,6 +68,27 @@ export class OrdersService {
 
       let unitPrice = product.basePrice;
 
+      // Si es sello de madera, buscar producto equivalente en categoría sello-madera
+      if (item.isWood) {
+        const woodCategory = await this.prisma.category.findUnique({
+          where: { slug: 'sello-madera' },
+        });
+        if (woodCategory) {
+          const woodProduct = await this.prisma.product.findFirst({
+            where: {
+              categoryId: woodCategory.id,
+              isActive: true,
+              shape: product.shape,
+              widthMm: product.widthMm,
+              heightMm: product.heightMm,
+            },
+          });
+          if (woodProduct) {
+            unitPrice = woodProduct.basePrice;
+          }
+        }
+      }
+
       if (item.inkId) {
         const ink = await this.prisma.ink.findUnique({
           where: { id: item.inkId },

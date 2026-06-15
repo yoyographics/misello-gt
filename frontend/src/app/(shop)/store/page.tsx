@@ -136,6 +136,9 @@ export default function StorePage() {
       inkName: undefined,
       categoryIsCustomizable: product.category?.isCustomizable,
       isWood: false,
+      shape: product.shape,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
     });
     setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
     if (product.category?.isCustomizable) {
@@ -434,7 +437,7 @@ export default function StorePage() {
                           onClick={() => addToCart(product)}
                         >
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          {product.category?.isCustomizable ? 'Agregar y personalizar luego' : 'Agregar al carrito'}
+                          Agregar al carrito
                         </Button>
                       </div>
                     ) : (

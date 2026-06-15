@@ -1,13 +1,25 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useCart } from '@/hooks/useCart';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus, Minus, ShoppingBag, AlertCircle, Pencil, Stamp } from 'lucide-react';
 import Link from 'next/link';
 import { SvgImage } from '@/components/svg-image';
+import api from '@/lib/api';
+
+interface WoodProduct {
+  id: string;
+  sku: string;
+  name: string;
+  shape?: string;
+  widthMm?: number;
+  heightMm?: number;
+  basePrice: number;
+}
 
 export default function CartPage() {
   const {
@@ -18,6 +30,28 @@ export default function CartPage() {
     totalItems,
     totalAmount,
   } = useCart();
+  const [woodProducts, setWoodProducts] = useState<WoodProduct[]>([]);
+
+  useEffect(() => {
+    api.get('/products?categorySlug=sello-madera&take=100')
+      .then((res) => setWoodProducts(res.data?.items || []))
+      .catch(() => setWoodProducts([]));
+  }, []);
+
+  const findWoodPrice = (item: (typeof items)[0]) => {
+    const match = woodProducts.find(
+      (w) =>
+        w.shape === item.shape &&
+        w.widthMm === item.widthMm &&
+        w.heightMm === item.heightMm
+    );
+    return match?.basePrice;
+  };
+
+  const effectiveUnitPrice = (item: (typeof items)[0]) => {
+    if (item.isWood && item.woodPrice !== undefined) return item.woodPrice;
+    return item.unitPrice;
+  };
 
   const needsCustomization = (item: (typeof items)[0]) =>
     item.categoryIsCustomizable && !item.designJson;
@@ -61,10 +95,10 @@ export default function CartPage() {
         </p>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {items.map((item, i) => (
-          <Card key={i} className="p-4 flex gap-4">
-            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <Card key={i} className="p-3 flex gap-3 items-start">
+            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
               {item.previewPngUrl ? (
                 <SvgImage
                   src={item.previewPngUrl}
@@ -72,83 +106,101 @@ export default function CartPage() {
                   className="w-full h-full object-contain rounded-lg"
                 />
               ) : (
-                <span className="text-2xl">📐</span>
+                <span className="text-xl">📐</span>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold">{item.productName}</h3>
-              <p className="text-sm text-gray-500">{item.productSku}</p>
-              {item.inkName && (
-                <p className="text-sm text-gray-500">Tinta: {item.inkName}</p>
-              )}
-              <p className="font-medium text-[#1B2A6B]">
-                Q{item.unitPrice.toFixed(2)} c/u
-              </p>
-
-              {needsCustomization(item) && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>Falta personalizar este sello</span>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-sm">{item.productName}</h3>
+                  <p className="text-xs text-gray-500">{item.productSku}</p>
                 </div>
-              )}
-
-              {item.categoryIsCustomizable && (
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Stamp className="h-4 w-4 text-amber-700" />
-                    <span className="text-sm text-gray-700">Sello de madera</span>
-                  </div>
-                  <Checkbox
-                    checked={item.isWood || false}
-                    onCheckedChange={(checked) => updateIsWood(i, !!checked)}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => removeItem(i)}
-              >
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
-              <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  onClick={() => updateQuantity(i, item.quantity - 1)}
+                  className="h-7 w-7 -mr-2 -mt-2"
+                  onClick={() => removeItem(i)}
                 >
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <span className="w-8 text-center">{item.quantity}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => updateQuantity(i, item.quantity + 1)}
-                >
-                  <Plus className="h-3 w-3" />
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
                 </Button>
               </div>
-              {item.categoryIsCustomizable && (
-                <Link
-                  href={`/design?productId=${item.productId}&editIndex=${i}&returnTo=cart`}
-                >
+
+              {needsCustomization(item) && (
+                <p className="mt-1 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 inline-flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Falta personalizar
+                </p>
+              )}
+
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                {item.categoryIsCustomizable && (
+                  <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+                    <Stamp className="h-3.5 w-3.5 text-amber-700" />
+                    <span>Sello de madera</span>
+                    <Checkbox
+                      checked={item.isWood || false}
+                      onCheckedChange={(checked) => {
+                        const isWood = !!checked;
+                        const woodPrice = isWood ? findWoodPrice(item) : undefined;
+                        updateIsWood(i, isWood, woodPrice);
+                      }}
+                    />
+                  </label>
+                )}
+
+                <div className="flex items-center gap-1">
                   <Button
-                    size="sm"
-                    variant={needsCustomization(item) ? 'default' : 'outline'}
-                    className={
-                      needsCustomization(item)
-                        ? 'h-8 text-xs bg-[#1B2A6B] hover:bg-[#0f1a4a] text-white'
-                        : 'h-8 text-xs'
-                    }
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => updateQuantity(i, item.quantity - 1)}
                   >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    {needsCustomization(item) ? 'Personalizar' : 'Editar diseño'}
+                    <Minus className="h-3 w-3" />
                   </Button>
-                </Link>
+                  <span className="w-6 text-center text-sm">{item.quantity}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => updateQuantity(i, item.quantity + 1)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                <span className="text-sm font-semibold text-[#1B2A6B] ml-auto">
+                  Q{(effectiveUnitPrice(item) * item.quantity).toFixed(2)}
+                </span>
+              </div>
+
+              {item.isWood && item.woodPrice === undefined && (
+                <p className="mt-1 text-xs text-red-600">
+                  No se encontró precio de madera para esta medida.
+                </p>
               )}
             </div>
+
+            {item.categoryIsCustomizable && (
+              <Link
+                href={`/design?productId=${item.productId}&editIndex=${i}&returnTo=cart`}
+                className="self-center"
+              >
+                <Button
+                  size="sm"
+                  variant={needsCustomization(item) ? 'default' : 'outline'}
+                  className={
+                    needsCustomization(item)
+                      ? 'h-8 text-xs bg-[#1B2A6B] hover:bg-[#0f1a4a] text-white'
+                      : 'h-8 text-xs'
+                  }
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  {needsCustomization(item) ? 'Personalizar' : 'Editar'}
+                </Button>
+              </Link>
+            )}
           </Card>
         ))}
       </div>
@@ -158,7 +210,7 @@ export default function CartPage() {
       <div className="flex justify-between items-center mb-6">
         <span className="text-lg">Total</span>
         <span className="text-2xl font-bold text-[#1B2A6B]">
-          Q{totalAmount.toFixed(2)}
+          Q{items.reduce((sum, item) => sum + effectiveUnitPrice(item) * item.quantity, 0).toFixed(2)}
         </span>
       </div>
 
