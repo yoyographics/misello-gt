@@ -25,4 +25,8 @@ export class OrderItemDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiPropertyOptional({ example: true, description: 'Indica si el sello debe fabricarse en madera' })
+  @IsOptional()
+  isWood?: boolean;
 }

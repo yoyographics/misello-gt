@@ -207,6 +207,7 @@ model OrderItem {
   previewPngUrl     String?
   productionSvgUrl  String?
   notes             String?
+  isWood            Boolean @default(false)
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])

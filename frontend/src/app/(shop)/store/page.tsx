@@ -78,6 +78,7 @@ export default function StorePage() {
   const [leftSliders, setLeftSliders] = useState<SidebarSlider[]>([]);
   const [rightSliders, setRightSliders] = useState<SidebarSlider[]>([]);
   const [slidersLoading, setSlidersLoading] = useState(true);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   const fetchCategories = useCallback(() => {
     api
@@ -124,20 +125,23 @@ export default function StorePage() {
   }, [fetchCategories, fetchProducts]);
 
   const addToCart = (product: Product) => {
+    const qty = quantities[product.id] || 1;
     addItem({
       productId: product.id,
       productName: product.name,
       productSku: product.sku,
       unitPrice: product.basePrice,
-      quantity: 1,
+      quantity: qty,
       inkId: undefined,
       inkName: undefined,
       categoryIsCustomizable: product.category?.isCustomizable,
+      isWood: false,
     });
+    setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
     if (product.category?.isCustomizable) {
-      toast.success(`${product.name} agregado. No olvides personalizarlo antes de pagar.`);
+      toast.success(`${product.name} (${qty}) agregado. Personalízalo desde el carrito.`);
     } else {
-      toast.success(`${product.name} agregado al carrito`);
+      toast.success(`${product.name} (${qty}) agregado al carrito`);
     }
   };
 
@@ -389,26 +393,50 @@ export default function StorePage() {
                       </span>
                     </div>
 
-                    {/* Boton agregar */}
+                    {/* Selector de cantidad + boton agregar */}
                     {product.stock > 0 ? (
-                      product.category?.isCustomizable ? (
-                        <Link href={`/design?productId=${product.id}`} className="block">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2">
                           <Button
-                            className="w-full bg-gradient-to-r from-[#1B2A6B] to-[#0f1a4a] text-white rounded-xl font-semibold hover:shadow-md transition-all"
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg"
+                            onClick={() =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: Math.max(1, (prev[product.id] || 1) - 1),
+                              }))
+                            }
                           >
-                            <ShoppingCart className="h-4 w-4 mr-2" />
-                            Personalizar
+                            −
                           </Button>
-                        </Link>
-                      ) : (
+                          <span className="w-8 text-center text-sm font-medium">
+                            {quantities[product.id] || 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg"
+                            onClick={() =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: Math.min(product.stock, (prev[product.id] || 1) + 1),
+                              }))
+                            }
+                          >
+                            +
+                          </Button>
+                        </div>
                         <Button
                           className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-md transition-all"
                           onClick={() => addToCart(product)}
                         >
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          Agregar al carrito
+                          {product.category?.isCustomizable ? 'Agregar y personalizar luego' : 'Agregar al carrito'}
                         </Button>
-                      )
+                      </div>
                     ) : (
                       <Button
                         disabled

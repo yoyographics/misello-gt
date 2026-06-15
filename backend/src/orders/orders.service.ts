@@ -48,6 +48,7 @@ export class OrdersService {
       unitPrice: number;
       designJson?: any;
       notes?: string;
+      isWood?: boolean;
     }[] = [];
 
     for (const item of dto.items) {
@@ -91,6 +92,7 @@ export class OrdersService {
         unitPrice,
         designJson: item.designJson,
         notes: item.notes,
+        isWood: item.isWood,
       });
     }
 
@@ -165,6 +167,7 @@ export class OrdersService {
               ? (item.designJson as Prisma.JsonObject)
               : undefined,
             notes: item.notes,
+            isWood: item.isWood || false,
           },
         });
 

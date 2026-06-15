@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X, Stamp } from 'lucide-react';
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
 
@@ -201,7 +201,7 @@ function getImageUrl(url?: string) {
 
 export default function DesignPage() {
   const { token } = useAuth();
-  const { addItem, updateItem } = useCart();
+  const { addItem, updateItem, items: cartItems } = useCart();
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState<SubStep>('type');
   const [stampType, setStampType] = useState<StampType | ''>('');
@@ -224,6 +224,8 @@ export default function DesignPage() {
   const [apiLoading, setApiLoading] = useState(true);
   const [apiError, setApiError] = useState('');
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
+  const [isWood, setIsWood] = useState(false);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   // selectedFont se deriva de la primera linea que tenga fontId
   const selectedFont = lines.find((l) => l.fontId)?.fontId || '';
@@ -303,10 +305,18 @@ export default function DesignPage() {
   }, []);
 
   useEffect(() => {
-    // Leer productId de la URL para auto-precargar desde detalle de producto
-    const urlProductId = typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('productId')
+    // Leer params de la URL para auto-precargar desde detalle de producto o carrito
+    const params = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search)
       : null;
+    const urlProductId = params?.get('productId') || null;
+    const editIndexParam = params?.get('editIndex');
+    const editIndex = editIndexParam ? parseInt(editIndexParam, 10) : -1;
+    const returnToParam = params?.get('returnTo');
+    if (returnToParam) setReturnTo(returnToParam);
+    if (!isNaN(editIndex) && editIndex >= 0 && cartItems[editIndex]) {
+      setIsWood(cartItems[editIndex].isWood || false);
+    }
 
     Promise.all([
       api.get('/products?take=9999'),
@@ -587,6 +597,7 @@ export default function DesignPage() {
       inkId: selectedInk,
       inkName: inks.find((i) => i.id === selectedInk)?.color,
       categoryIsCustomizable: true,
+      isWood,
     };
 
     if (!isNaN(editIndex) && editIndex >= 0) {
@@ -596,7 +607,12 @@ export default function DesignPage() {
       addItem(cartItem);
       toast.success('Agregado al carrito');
     }
-    resetWizard();
+
+    if (returnTo === 'cart') {
+      window.location.href = '/cart';
+    } else {
+      resetWizard();
+    }
   };
 
   // ── Render helpers ──
@@ -1211,10 +1227,20 @@ export default function DesignPage() {
             >
               Descargar SVG
             </Button>
-            <Button onClick={addToCart} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Agregar al carrito
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50">
+                <Stamp className="h-4 w-4 text-amber-700" />
+                <span className="text-sm text-amber-900">Sello de madera</span>
+                <Checkbox
+                  checked={isWood}
+                  onCheckedChange={(checked) => setIsWood(!!checked)}
+                />
+              </div>
+              <Button onClick={addToCart} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                {returnTo === 'cart' ? 'Guardar y volver al carrito' : 'Agregar al carrito'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

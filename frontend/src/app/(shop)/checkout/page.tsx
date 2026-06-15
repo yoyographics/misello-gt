@@ -28,6 +28,7 @@ interface CartItem {
   quantity: number;
   designJson?: any;
   inkId?: string | null;
+  isWood?: boolean;
 }
 
 export default function CheckoutPage() {
@@ -82,6 +83,7 @@ export default function CheckoutPage() {
           inkId: item.inkId,
           quantity: item.quantity,
           designJson: item.designJson,
+          isWood: item.isWood,
         })),
         shippingAddress: {
           address: form.address,

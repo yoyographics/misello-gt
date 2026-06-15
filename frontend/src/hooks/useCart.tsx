@@ -14,12 +14,15 @@ interface CartItem {
   inkId?: string;
   inkName?: string;
   categoryIsCustomizable?: boolean;
+  isWood?: boolean;
 }
 
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
   updateItem: (index: number, item: CartItem) => void;
+  updateQuantity: (index: number, quantity: number) => void;
+  updateIsWood: (index: number, isWood: boolean) => void;
   removeItem: (index: number) => void;
   clearCart: () => void;
   totalItems: number;
@@ -60,6 +63,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateQuantity = (index: number, quantity: number) => {
+    setItems((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], quantity: Math.max(1, quantity) };
+      return next;
+    });
+  };
+
+  const updateIsWood = (index: number, isWood: boolean) => {
+    setItems((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], isWood };
+      return next;
+    });
+  };
+
   const removeItem = (index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
@@ -72,7 +91,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalAmount = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, updateItem, removeItem, clearCart, totalItems, totalAmount }}>
+    <CartContext.Provider value={{ items, addItem, updateItem, updateQuantity, updateIsWood, removeItem, clearCart, totalItems, totalAmount }}>
       {children}
     </CartContext.Provider>
   );
