@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import AOS from 'aos';
 import api from '@/lib/api';
+
+import 'aos/dist/aos.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +110,7 @@ export default function StorePage() {
   }, [search, selectedCategory, selectedShape]);
 
   useEffect(() => {
+    AOS.init({ duration: 500, once: true, easing: 'ease-out' });
     fetchCategories();
     fetchProducts();
 
@@ -165,7 +169,7 @@ export default function StorePage() {
   return (
     <div className="container mx-auto max-w-screen-2xl px-4 py-6 xl:py-8 xl:h-[calc(100vh-4rem)] xl:flex xl:flex-col xl:overflow-hidden">
       {/* Header */}
-      <div className="mb-6 xl:mb-4 flex-shrink-0">
+      <div className="mb-6 xl:mb-4 flex-shrink-0" data-aos="fade-down">
         <h1 className="text-3xl font-bold text-[#1B2A6B] mb-2">Tienda</h1>
         <p className="text-gray-600">
           Catalogo completo de sellos, tintas y accesorios.
@@ -173,7 +177,7 @@ export default function StorePage() {
       </div>
 
       {/* Search bar + mobile filter toggle */}
-      <div className="flex gap-3 mb-6 xl:mb-4 flex-shrink-0">
+      <div className="flex gap-3 mb-6 xl:mb-4 flex-shrink-0" data-aos="fade-down" data-aos-delay="100">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -205,14 +209,18 @@ export default function StorePage() {
       >
         {/* Slider lateral izquierdo (solo desktop grande) */}
         {showLeftSlider && (
-          <StoreSidebarSlider sliders={leftSliders} loading={slidersLoading} />
+          <div data-aos="fade-right" data-aos-delay="200" className="hidden xl:block h-full">
+            <StoreSidebarSlider sliders={leftSliders} loading={slidersLoading} />
+          </div>
         )}
 
         {/* Contenido central: sidebar filtros + productos */}
         <div className="flex gap-5 xl:gap-6 flex-col md:flex-row min-w-0 xl:h-full xl:overflow-hidden">
           {/* Sidebar filters */}
           <aside
-            className={`${
+            data-aos="fade-right"
+            data-aos-delay="150"
+            className={`
               mobileFiltersOpen ? 'block' : 'hidden'
             } md:block xl:h-full xl:overflow-y-auto no-scrollbar w-full md:w-52 lg:w-56 xl:w-48 2xl:w-52 flex-shrink-0 space-y-6 pb-4`}
           >
@@ -336,8 +344,13 @@ export default function StorePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {products.map((product) => (
-                <div key={product.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              {products.map((product, idx) => (
+                <div
+                  key={product.id}
+                  data-aos="fade-up"
+                  data-aos-delay={Math.min(idx * 80, 400)}
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                >
                   {/* Imagen con label */}
                   <Link href={`/store/product?id=${product.id}`} className="block relative">
                     {product.cardLabel && (
@@ -459,7 +472,9 @@ export default function StorePage() {
 
       {/* Slider lateral derecho (solo desktop grande) */}
       {showRightSlider && (
-        <StoreSidebarSlider sliders={rightSliders} loading={slidersLoading} />
+        <div data-aos="fade-left" data-aos-delay="200" className="hidden xl:block h-full">
+          <StoreSidebarSlider sliders={rightSliders} loading={slidersLoading} />
+        </div>
       )}
     </div>
 
