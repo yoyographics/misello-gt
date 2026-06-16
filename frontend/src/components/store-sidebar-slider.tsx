@@ -50,7 +50,7 @@ function getSliderButtonHref(slider: SidebarSlider): string {
 export default function StoreSidebarSlider({ sliders, loading }: Props) {
   if (loading) {
     return (
-      <div className="hidden xl:block sticky top-20 self-start w-full h-[520px] px-2 2xl:px-3 rounded-2xl bg-gray-100 animate-pulse" />
+      <div className="hidden xl:block sticky top-20 self-start w-full h-[calc(100vh-13rem)] px-2 2xl:px-3 rounded-2xl bg-gray-100 animate-pulse" />
     );
   }
 
@@ -59,7 +59,7 @@ export default function StoreSidebarSlider({ sliders, loading }: Props) {
   }
 
   return (
-    <div className="hidden xl:block sticky top-20 self-start w-full h-[520px] px-2 2xl:px-3">
+    <div className="hidden xl:block sticky top-20 self-start w-full h-[calc(100vh-13rem)] px-2 2xl:px-3">
       <Swiper
         modules={[Autoplay, Pagination]}
         direction="vertical"

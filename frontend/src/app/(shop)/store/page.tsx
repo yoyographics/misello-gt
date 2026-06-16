@@ -201,7 +201,7 @@ export default function StorePage() {
 
       {/* Layout de 3 columnas en xl: slider | contenido | slider */}
       <div
-        className={`grid grid-cols-1 ${gridCols} gap-5 xl:gap-6 items-start`}
+        className={`grid grid-cols-1 ${gridCols} gap-5 xl:gap-6 items-start xl:h-[calc(100vh-11rem)]`}
       >
         {/* Slider lateral izquierdo (solo desktop grande) */}
         {showLeftSlider && (
@@ -209,12 +209,12 @@ export default function StorePage() {
         )}
 
         {/* Contenido central: sidebar filtros + productos */}
-        <div className="flex gap-5 xl:gap-6 flex-col md:flex-row min-w-0">
+        <div className="flex gap-5 xl:gap-6 flex-col md:flex-row min-w-0 xl:h-full xl:overflow-hidden">
           {/* Sidebar filters */}
           <aside
             className={`${
               mobileFiltersOpen ? 'block' : 'hidden'
-            } md:block md:sticky md:top-20 md:self-start md:max-h-[calc(100vh-7rem)] md:overflow-y-auto w-full md:w-52 lg:w-56 xl:w-48 2xl:w-52 flex-shrink-0 space-y-6`}
+            } md:block xl:sticky xl:top-20 xl:self-start xl:h-[calc(100vh-13rem)] xl:overflow-y-auto w-full md:w-52 lg:w-56 xl:w-48 2xl:w-52 flex-shrink-0 space-y-6`}
           >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
@@ -320,7 +320,7 @@ export default function StorePage() {
         </aside>
 
         {/* Products grid */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 xl:h-full xl:overflow-y-auto xl:scroll-smooth smooth-scroll px-1">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full" />
@@ -462,6 +462,25 @@ export default function StorePage() {
         <StoreSidebarSlider sliders={rightSliders} loading={slidersLoading} />
       )}
     </div>
+
+    <style>{`
+      .smooth-scroll {
+        scroll-behavior: smooth;
+      }
+      .smooth-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .smooth-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .smooth-scroll::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 9999px;
+      }
+      .smooth-scroll::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+      }
+    `}</style>
   </div>
   );
 }
