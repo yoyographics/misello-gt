@@ -163,9 +163,9 @@ export default function StorePage() {
     : '';
 
   return (
-    <div className="container mx-auto max-w-screen-2xl py-8 px-4">
+    <div className="container mx-auto max-w-screen-2xl px-4 py-6 xl:py-8 xl:h-[calc(100vh-4rem)] xl:flex xl:flex-col xl:overflow-hidden">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 xl:mb-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-[#1B2A6B] mb-2">Tienda</h1>
         <p className="text-gray-600">
           Catalogo completo de sellos, tintas y accesorios.
@@ -173,7 +173,7 @@ export default function StorePage() {
       </div>
 
       {/* Search bar + mobile filter toggle */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-6 xl:mb-4 flex-shrink-0">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -201,7 +201,7 @@ export default function StorePage() {
 
       {/* Layout de 3 columnas en xl: slider | contenido | slider */}
       <div
-        className={`grid grid-cols-1 ${gridCols} gap-5 xl:gap-6 items-start xl:h-[calc(100vh-11rem)]`}
+        className={`grid grid-cols-1 ${gridCols} gap-5 xl:gap-6 items-start xl:flex-1 xl:min-h-0`}
       >
         {/* Slider lateral izquierdo (solo desktop grande) */}
         {showLeftSlider && (
@@ -214,7 +214,7 @@ export default function StorePage() {
           <aside
             className={`${
               mobileFiltersOpen ? 'block' : 'hidden'
-            } md:block xl:sticky xl:top-20 xl:self-start xl:h-[calc(100vh-13rem)] xl:overflow-y-auto w-full md:w-52 lg:w-56 xl:w-48 2xl:w-52 flex-shrink-0 space-y-6`}
+            } md:block xl:h-full xl:overflow-y-auto no-scrollbar w-full md:w-52 lg:w-56 xl:w-48 2xl:w-52 flex-shrink-0 space-y-6 pb-4`}
           >
           {/* Active filters */}
           {activeFiltersCount > 0 && (
@@ -320,7 +320,7 @@ export default function StorePage() {
         </aside>
 
         {/* Products grid */}
-        <div className="flex-1 min-w-0 xl:h-full xl:overflow-y-auto xl:scroll-smooth smooth-scroll px-1">
+        <div className="flex-1 min-w-0 xl:h-full xl:overflow-y-auto no-scrollbar px-1 pb-4">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full" />
@@ -464,21 +464,12 @@ export default function StorePage() {
     </div>
 
     <style>{`
-      .smooth-scroll {
-        scroll-behavior: smooth;
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
       }
-      .smooth-scroll::-webkit-scrollbar {
-        width: 6px;
-      }
-      .smooth-scroll::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .smooth-scroll::-webkit-scrollbar-thumb {
-        background: #d1d5db;
-        border-radius: 9999px;
-      }
-      .smooth-scroll::-webkit-scrollbar-thumb:hover {
-        background: #9ca3af;
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
     `}</style>
   </div>
