@@ -57,4 +57,11 @@ export class DesignRequestDto {
   @IsBoolean()
   @IsOptional()
   skipClaude?: boolean; // para testing: usar renderer directo sin Claude
+
+  @IsUUID()
+  @IsOptional()
+  templateId?: string;
+
+  @IsOptional()
+  templateData?: Record<string, string>;
 }

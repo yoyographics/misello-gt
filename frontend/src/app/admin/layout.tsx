@@ -15,6 +15,7 @@ import {
   Users,
   Image,
   Tags,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toaster } from 'sonner';
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/admin/inventory/', label: 'Inventario', icon: Package },
   { href: '/admin/categories/', label: 'Categorias', icon: Tags },
   { href: '/admin/fonts/', label: 'Tipografias', icon: Type },
+  { href: '/admin/templates/', label: 'Plantillas', icon: Palette },
   { href: '/admin/sliders/', label: 'Sliders', icon: Image },
   { href: '/admin/orders/', label: 'Pedidos', icon: ShoppingBag },
   { href: '/admin/customers/', label: 'Clientes', icon: Users },

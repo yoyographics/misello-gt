@@ -38,6 +38,27 @@ model Category {
   updatedAt   DateTime  @updatedAt
   
   products    Product[]
+  templates   Template[]
+}
+
+model Template {
+  id            String    @id @default(uuid())
+  name          String
+  categoryId    String
+  productShape  String?   // RECTANGULAR | CIRCULAR | OVAL | SQUARE
+  widthMm       Float?
+  heightMm      Float?
+  svgContent    String    @db.Text
+  editableAreas Json?     // [{ id, label, defaultText, x, y, fontSize, fontFamily, maxLength }]
+  thumbnailUrl  String?
+  isActive      Boolean   @default(true)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  category      Category  @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId, productShape, widthMm, heightMm])
 }
 
 enum ProductShape {

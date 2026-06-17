@@ -71,6 +71,31 @@ interface LineData {
   alignment: 'center' | 'left' | 'right';
 }
 
+interface Template {
+  id: string;
+  name: string;
+  categoryId: string;
+  productShape?: string;
+  widthMm?: number;
+  heightMm?: number;
+  svgContent?: string;
+  editableAreas?: EditableArea[];
+  thumbnailUrl?: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+interface EditableArea {
+  id: string;
+  label: string;
+  defaultText: string;
+  x?: number;
+  y?: number;
+  fontSize?: number;
+  fontFamily?: string;
+  maxLength?: number;
+}
+
 type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR' | 'PORTATIL' | 'EMBOSADORA';
 type SubStep = 'type' | 'shape';
 
@@ -226,6 +251,12 @@ export default function DesignPage() {
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
   const [isWood, setIsWood] = useState(false);
   const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [templateFields, setTemplateFields] = useState<Record<string, string>>({});
+  const [useTemplate, setUseTemplate] = useState(false);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [showTemplateSelection, setShowTemplateSelection] = useState(false);
 
   // selectedFont se deriva de la primera linea que tenga fontId
   const selectedFont = lines.find((l) => l.fontId)?.fontId || '';
@@ -525,8 +556,35 @@ export default function DesignPage() {
   };
 
   const handleGenerateDesign = async () => {
+    if (!selectedProduct) {
+      setError('Selecciona un modelo');
+      return;
+    }
+
+    // Flujo de plantilla
+    if (useTemplate && selectedTemplate) {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await api.post('/design', {
+          productId: selectedProduct.id,
+          templateId: selectedTemplate.id,
+          templateData: templateFields,
+          fontId: fonts[0]?.id || '',
+          inkId: selectedInk || undefined,
+        });
+        setDesignResult(res.data);
+        setStep(4);
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Error generando el diseno desde plantilla');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const primaryFontId = lines.find((l) => l.fontId)?.fontId;
-    if (!selectedProduct || !primaryFontId) {
+    if (!primaryFontId) {
       setError('Selecciona un modelo y fuente');
       return;
     }
@@ -574,7 +632,76 @@ export default function DesignPage() {
     setHasLogoGradient(false);
     setDesignResult(null);
     setTextValidation(null);
+    setTemplates([]);
+    setSelectedTemplate(null);
+    setTemplateFields({});
+    setUseTemplate(false);
+    setShowTemplateSelection(false);
     localStorage.removeItem(STORAGE_KEY);
+  };
+
+  const loadTemplates = async (product: Product) => {
+    setTemplatesLoading(true);
+    try {
+      const res = await api.get('/templates', {
+        params: {
+          categoryId: product.categoryId,
+          shape: product.shape || undefined,
+          widthMm: product.widthMm || undefined,
+          heightMm: product.heightMm || undefined,
+        },
+      });
+      const list = res.data || [];
+      setTemplates(list);
+      if (list.length > 0) {
+        setShowTemplateSelection(true);
+      } else {
+        setShowTemplateSelection(false);
+      }
+    } catch {
+      setTemplates([]);
+      setShowTemplateSelection(false);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const selectProductAndProceed = (product: Product) => {
+    if (product.stock > 0) {
+      setSelectedProduct(product);
+      loadTemplates(product).then(() => {
+        setStep(3);
+      });
+    }
+  };
+
+  const selectTemplate = (template: Template) => {
+    setSelectedTemplate(template);
+    const initialFields: Record<string, string> = {};
+    template.editableAreas?.forEach((area) => {
+      initialFields[area.id] = area.defaultText || '';
+    });
+    setTemplateFields(initialFields);
+    setUseTemplate(true);
+    setShowTemplateSelection(false);
+  };
+
+  const selectNoTemplate = () => {
+    setUseTemplate(false);
+    setShowTemplateSelection(false);
+  };
+
+  const applyTemplateFields = (svgContent: string, fields: Record<string, string>): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+    const texts = doc.querySelectorAll('text[data-editable="true"]');
+    texts.forEach((el) => {
+      const field = el.getAttribute('data-field');
+      if (field && fields[field] !== undefined) {
+        el.textContent = fields[field];
+      }
+    });
+    return new XMLSerializer().serializeToString(doc.documentElement);
   };
 
   const addToCart = () => {
@@ -752,12 +879,7 @@ export default function DesignPage() {
           <Card
             key={product.id}
             className={`group p-3 ${CARD_BASE} ${selectedProduct?.id === product.id ? CARD_SELECTED : ''} ${product.stock <= 0 ? 'opacity-50' : ''}`}
-            onClick={() => {
-              if (product.stock > 0) {
-                setSelectedProduct(product);
-                setStep(3);
-              }
-            }}
+            onClick={() => selectProductAndProceed(product)}
           >
             <div className="relative h-44 bg-gray-50 rounded-lg mb-2 overflow-hidden">
               {product.imageUrl ? (
@@ -804,6 +926,28 @@ export default function DesignPage() {
 
   const renderLivePreview = () => {
     if (!selectedProduct) return null;
+
+    // Preview de plantilla
+    if (useTemplate && selectedTemplate?.svgContent) {
+      const svgWithFields = applyTemplateFields(selectedTemplate.svgContent, templateFields);
+      return (
+        <div className="sticky top-6">
+          <Card className="p-5">
+            <h3 className="font-semibold text-base mb-4 text-[#1B2A6B]">Vista previa</h3>
+            <div
+              className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-inner"
+              dangerouslySetInnerHTML={{ __html: svgWithFields }}
+            />
+            <div className="mt-4 text-center space-y-1">
+              <p className="text-sm font-semibold text-gray-700 tracking-wide">
+                {selectedProduct.widthMm}mm × {selectedProduct.heightMm}mm
+              </p>
+              <p className="text-xs text-gray-500">{selectedTemplate.name}</p>
+            </div>
+          </Card>
+        </div>
+      );
+    }
 
     const w = selectedProduct.widthMm;
     const h = selectedProduct.heightMm;
@@ -895,7 +1039,147 @@ export default function DesignPage() {
     );
   };
 
+  const renderTemplateSelection = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Elige una plantilla</h2>
+      <p className="text-gray-600">
+        Selecciona una plantilla para modificar solo el texto, o diseña desde cero.
+      </p>
+
+      {templatesLoading && (
+        <div className="text-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-500" />
+        </div>
+      )}
+
+      {!templatesLoading && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {templates.map((t) => (
+              <Card
+                key={t.id}
+                className={`p-4 cursor-pointer ${CARD_BASE} ${selectedTemplate?.id === t.id ? CARD_SELECTED : ''}`}
+                onClick={() => selectTemplate(t)}
+              >
+                <div className="h-32 bg-gray-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                  {t.svgContent ? (
+                    <div
+                      className="w-full h-full"
+                      dangerouslySetInnerHTML={{ __html: t.svgContent }}
+                    />
+                  ) : (
+                    <span className="text-gray-300 text-2xl">📄</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-sm truncate">{t.name}</h3>
+                <p className="text-xs text-gray-500">
+                  {t.editableAreas?.length || 0} campo(s) editable(s)
+                </p>
+              </Card>
+            ))}
+          </div>
+
+          <Card
+            className={`p-4 cursor-pointer ${CARD_BASE}`}
+            onClick={selectNoTemplate}
+          >
+            <div className="h-32 flex flex-col items-center justify-center text-gray-400">
+              <Plus className="h-10 w-10 mb-2" />
+              <span className="font-medium">Diseñar desde cero</span>
+            </div>
+          </Card>
+        </>
+      )}
+
+      <div className="flex justify-start">
+        <Button variant="outline" onClick={() => (templates.length > 0 ? setShowTemplateSelection(true) : setStep(2))}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Atras
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderTemplateEditor = () => {
+    if (!selectedTemplate) return null;
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Completa los datos</h2>
+        <p className="text-gray-600">Modifica solo los textos de la plantilla.</p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
+          <div className="space-y-4 min-w-0">
+            <Card className="p-4 space-y-4">
+              {selectedTemplate.editableAreas?.map((area) => (
+                <div key={area.id}>
+                  <label className="text-sm font-medium mb-1 block">{area.label}</label>
+                  <Input
+                    value={templateFields[area.id] || ''}
+                    onChange={(e) =>
+                      setTemplateFields((prev) => ({ ...prev, [area.id]: e.target.value }))
+                    }
+                    placeholder={area.defaultText}
+                    maxLength={area.maxLength}
+                  />
+                </div>
+              ))}
+
+              <Separator />
+
+              <div>
+                <label className="text-sm font-medium mb-3 block">Color de tinta</label>
+                <div className="flex flex-wrap gap-3">
+                  {inks.map((ink) => (
+                    <button
+                      key={ink.id}
+                      onClick={() => setSelectedInk(ink.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                        selectedInk === ink.id
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: ink.hexCode }} />
+                      <span className="text-sm font-medium">{ink.color}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            {error && (
+              <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => setShowTemplateSelection(true)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Elegir otra plantilla
+              </Button>
+              <Button
+                onClick={handleGenerateDesign}
+                disabled={loading || selectedTemplate.editableAreas?.some((a) => !templateFields[a.id]?.trim())}
+                className="bg-gradient-to-r from-orange-500 to-pink-500 text-white"
+              >
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Generar diseno
+              </Button>
+            </div>
+          </div>
+
+          <div className="xl:sticky xl:top-4 xl:self-start">
+            {renderLivePreview()}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderStep3 = () => {
+    if (showTemplateSelection) return renderTemplateSelection();
+    if (useTemplate) return renderTemplateEditor();
+
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-[#1B2A6B]">Paso 3: Personaliza tu diseno</h2>

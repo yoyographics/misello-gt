@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TemplatesService } from '../templates/templates.service';
 import { ClaudeDesignService } from './services/claude-design.service';
 import { SvgRendererService } from './services/svg-renderer.service';
 import { TechValidatorService } from './services/tech-validator.service';
@@ -8,6 +9,8 @@ import { DesignResponseDto } from './dto/design-response.dto';
 import { ValidateTextDto } from './dto/validate-text.dto';
 import * as opentype from 'opentype.js';
 import { readFileSync, existsSync } from 'fs';
+import { randomUUID } from 'crypto';
+import { Resvg } from '@resvg/resvg-js';
 
 /**
  * Servicio principal del modulo de diseno.
@@ -23,6 +26,7 @@ export class DesignService {
     private readonly claude: ClaudeDesignService,
     private readonly renderer: SvgRendererService,
     private readonly validator: TechValidatorService,
+    private readonly templatesService: TemplatesService,
   ) {}
 
   async createDesign(dto: DesignRequestDto): Promise<DesignResponseDto> {
@@ -34,7 +38,12 @@ export class DesignService {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    // 2. Obtener fuente
+    // 2. Renderizado desde plantilla (flujo alternativo)
+    if (dto.templateId) {
+      return this.renderTemplateDesign(dto, product);
+    }
+
+    // 3. Obtener fuente
     const font = await this.prisma.font.findUnique({
       where: { id: dto.fontId },
     });
@@ -42,7 +51,7 @@ export class DesignService {
       throw new NotFoundException('Fuente no encontrada');
     }
 
-    // 3. Obtener tinta (opcional)
+    // 4. Obtener tinta (opcional)
     let inkHex: string | undefined;
     if (dto.inkId) {
       const ink = await this.prisma.ink.findUnique({
@@ -51,7 +60,7 @@ export class DesignService {
       if (ink) inkHex = ink.hexCode;
     }
 
-    // 4. Generar parametros de diseno (Claude o default)
+    // 5. Generar parametros de diseno (Claude o default)
     const designParams = await this.claude.generateDesign(
       dto.category || 'OTRO',
       dto.lines,
@@ -68,7 +77,7 @@ export class DesignService {
       dto.specialRequests,
     );
 
-    // 4.5 Auto-ajustar tamanos de fuente si son muy pequenos (usa minFontSizePt de la fuente)
+    // 5.5 Auto-ajustar tamanos de fuente si son muy pequenos (usa minFontSizePt de la fuente)
     const minFontPt = font.minFontSizePt ?? 10;
     let fontAdjusted = false;
     for (const line of designParams.textLines) {
@@ -79,7 +88,7 @@ export class DesignService {
       }
     }
 
-    // 5. Renderizar SVG y PNG como data URIs base64
+    // 6. Renderizar SVG y PNG como data URIs base64
     const { svgDataUri, previewDataUri, designId } = await this.renderer.render(
       designParams,
       {
@@ -96,7 +105,7 @@ export class DesignService {
       dto.logoUrl,
     );
 
-    // 6. Validacion tecnica
+    // 7. Validacion tecnica
     const validation = this.validator.validate({
       textLines: designParams.textLines.map((tl: any) => ({
         text: tl.text,
@@ -120,6 +129,84 @@ export class DesignService {
       validation,
       logoConvertedToBw: !!dto.logoUrl && !!dto.hasLogoGradient,
       fontAutoAdjusted: fontAdjusted,
+    };
+  }
+
+  /**
+   * Renderiza un diseno a partir de una plantilla SVG.
+   * El cliente envia templateId + templateData (mapa de campos editables).
+   */
+  private async renderTemplateDesign(
+    dto: DesignRequestDto,
+    product: any,
+  ): Promise<DesignResponseDto> {
+    if (!dto.templateId) {
+      throw new BadRequestException('templateId es requerido para renderizar plantilla');
+    }
+
+    const template = await this.templatesService.findOnePublic(dto.templateId);
+
+    // Validar compatibilidad basica
+    if (template.categoryId !== product.categoryId) {
+      throw new BadRequestException('La plantilla no pertenece a la categoria del producto');
+    }
+    if (template.productShape && template.productShape !== product.shape) {
+      throw new BadRequestException('La plantilla no coincide con la forma del producto');
+    }
+
+    const fields = dto.templateData || {};
+
+    // Aplicar textos al SVG
+    const finalSvg = this.templatesService.applyTemplateFields(template.svgContent, fields);
+
+    // Generar PNG preview con resvg
+    const designId = randomUUID();
+    let previewDataUri = '';
+    try {
+      const resvg = new Resvg(finalSvg, {
+        fitTo: { mode: 'original' },
+        font: {
+          // fallback fonts para el renderizado
+          defaultFontFamily: 'Arial, sans-serif',
+          serifFamily: 'Arial',
+          sansSerifFamily: 'Arial',
+        },
+      });
+      const pngData = resvg.render();
+      const pngBuffer = pngData.asPng();
+      previewDataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+    } catch (e: any) {
+      this.logger.error(`Error renderizando preview PNG de plantilla: ${e.message}`);
+      throw new BadRequestException('No se pudo generar el preview de la plantilla');
+    }
+
+    const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(finalSvg, 'utf-8').toString('base64')}`;
+
+    // Validacion tecnica basica
+    const validation = this.validator.validate({
+      textLines: (template.editableAreas as any[] || []).map((area) => ({
+        text: fields[area.id] || area.defaultText || '',
+        fontSizePt: area.fontSize || 12,
+      })),
+      productWidthPx: product.widthPx || 300,
+      productHeightPx: product.heightPx || 150,
+      productWidthMm: product.widthMm || 0,
+      productHeightMm: product.heightMm || 0,
+    });
+
+    return {
+      designId,
+      designJson: {
+        templateId: template.id,
+        templateName: template.name,
+        fields,
+        productId: product.id,
+      },
+      previewPngUrl: previewDataUri,
+      productionSvgUrl: svgDataUri,
+      validation,
+      logoConvertedToBw: false,
+      fontAutoAdjusted: false,
     };
   }
 

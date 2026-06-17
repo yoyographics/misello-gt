@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthJwtModule } from '../auth/auth-jwt.module';
+import { TemplatesModule } from '../templates/templates.module';
 import { DesignController } from './design.controller';
 import { DesignService } from './design.service';
 import { ClaudeDesignService } from './services/claude-design.service';
@@ -12,7 +13,7 @@ import { TechValidatorService } from './services/tech-validator.service';
  * renderer determinista SVG/PNG, y validador tecnico.
  */
 @Module({
-  imports: [AuthJwtModule],
+  imports: [AuthJwtModule, TemplatesModule],
   controllers: [DesignController],
   providers: [DesignService, ClaudeDesignService, SvgRendererService, TechValidatorService],
   exports: [DesignService, SvgRendererService, TechValidatorService],
