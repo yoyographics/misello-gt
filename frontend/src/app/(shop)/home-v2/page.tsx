@@ -17,13 +17,14 @@ import {
   Package,
   Image as ImageIcon,
   ShoppingCart,
-  Building2,
-  HeartPulse,
   Scale,
   PenTool,
   Phone,
   Mail,
   MapPin,
+  Trees,
+  Droplets,
+  GraduationCap,
 } from 'lucide-react';
 
 import 'swiper/css';
@@ -31,6 +32,12 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 import 'aos/dist/aos.css';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface Product {
   id: string;
@@ -89,43 +96,31 @@ function getSliderButtonHref(slider: ApiSlider): string {
   }
 }
 
-const categories = [
-  {
-    name: 'Sellos automáticos',
-    icon: Stamp,
-    color: 'bg-blue-100 text-[#1B2A6B]',
-  },
-  {
-    name: 'Sellos de bolsillo',
-    icon: Award,
-    color: 'bg-orange-100 text-orange-600',
-  },
-  {
-    name: 'Sellos fechadores',
-    icon: Calendar,
-    color: 'bg-pink-100 text-pink-600',
-  },
-  {
-    name: 'Sellos empresariales',
-    icon: Building2,
-    color: 'bg-indigo-100 text-indigo-600',
-  },
-  {
-    name: 'Sellos médicos',
-    icon: HeartPulse,
-    color: 'bg-red-100 text-red-600',
-  },
-  {
-    name: 'Sellos para abogados',
-    icon: Scale,
-    color: 'bg-emerald-100 text-emerald-600',
-  },
-  {
-    name: 'Sellos personalizados',
-    icon: PenTool,
-    color: 'bg-purple-100 text-purple-600',
-  },
+const CATEGORY_META: Record<string, { icon: React.ElementType; color: string }> = {
+  'sello-automatico': { icon: Stamp, color: 'bg-blue-100 text-[#1B2A6B]' },
+  'sello-portatil': { icon: Award, color: 'bg-orange-100 text-orange-600' },
+  'sello-fechador': { icon: Calendar, color: 'bg-pink-100 text-pink-600' },
+  'embosadora': { icon: Package, color: 'bg-indigo-100 text-indigo-600' },
+  'sello-madera': { icon: Trees, color: 'bg-amber-100 text-amber-700' },
+  'almohadillas': { icon: Droplets, color: 'bg-cyan-100 text-cyan-600' },
+  'tintas': { icon: Droplets, color: 'bg-sky-100 text-sky-600' },
+  'sellos-para-abogados': { icon: Scale, color: 'bg-emerald-100 text-emerald-600' },
+  'sellos-colegiado': { icon: GraduationCap, color: 'bg-teal-100 text-teal-600' },
+  'sellos-personalizados': { icon: PenTool, color: 'bg-purple-100 text-purple-600' },
+};
+
+const CATEGORY_ORDER = [
+  'sello-automatico',
+  'sello-portatil',
+  'sello-fechador',
+  'sellos-colegiado',
+  'sellos-para-abogados',
+  'sello-madera',
+  'almohadillas',
+  'tintas',
 ];
+
+const EXCLUDED_CATEGORIES = ['sellos-medicos', 'sellos-empresariales', 'embosadora'];
 
 const steps = [
   {
@@ -234,9 +229,21 @@ export default function HomeV2() {
   const [sliders, setSliders] = useState<ApiSlider[]>([]);
   const [slidersLoading, setSlidersLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     AOS.init({ duration: 600, once: true });
+
+    // Cargar categorías activas de la tienda
+    api
+      .get('/categories?showInStore=true')
+      .then((res) => {
+        const data = res.data || [];
+        setCategories(data);
+      })
+      .catch((err) => {
+        console.error('Error cargando categorías:', err);
+      });
 
     // Cargar sliders dinámicos desde la API
     api
@@ -465,22 +472,36 @@ export default function HomeV2() {
             navigation
             className="pb-10"
           >
-            {categories.map((cat, i) => (
-              <SwiperSlide key={i}>
-                <Link href={`/store/?category=${encodeURIComponent(cat.name)}`}>
-                  <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-lg hover:scale-[1.03] transition-all duration-300 cursor-pointer h-full">
-                    <div
-                      className={`h-32 rounded-lg ${cat.color} flex items-center justify-center mb-3`}
-                    >
-                      <cat.icon className="h-10 w-10" />
-                    </div>
-                    <h3 className="font-semibold text-center text-sm md:text-base">
-                      {cat.name}
-                    </h3>
-                  </div>
-                </Link>
-              </SwiperSlide>
-            ))}
+            {categories
+              .filter((cat) => !EXCLUDED_CATEGORIES.includes(cat.slug))
+              .sort((a, b) => {
+                const idxA = CATEGORY_ORDER.indexOf(a.slug);
+                const idxB = CATEGORY_ORDER.indexOf(b.slug);
+                if (idxA === -1 && idxB === -1) return a.name.localeCompare(b.name);
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+              })
+              .map((cat) => {
+                const meta = CATEGORY_META[cat.slug] || { icon: Stamp, color: 'bg-gray-100 text-gray-600' };
+                const Icon = meta.icon;
+                return (
+                  <SwiperSlide key={cat.id}>
+                    <a href={`/store?category=${cat.slug}`}>
+                      <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-lg hover:scale-[1.03] transition-all duration-300 cursor-pointer h-full">
+                        <div
+                          className={`h-32 rounded-lg ${meta.color} flex items-center justify-center mb-3`}
+                        >
+                          <Icon className="h-10 w-10" />
+                        </div>
+                        <h3 className="font-semibold text-center text-sm md:text-base">
+                          {cat.name}
+                        </h3>
+                      </div>
+                    </a>
+                  </SwiperSlide>
+                );
+              })}
           </Swiper>
         </div>
       </section>
