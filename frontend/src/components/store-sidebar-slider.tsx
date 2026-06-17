@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination } from 'swiper/modules';
 import { Button } from '@/components/ui/button';
@@ -45,6 +44,25 @@ function getSliderButtonHref(slider: SidebarSlider): string {
     default:
       return slider.buttonUrl || '/store';
   }
+}
+
+function SliderLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  const isExternal = href.startsWith('http');
+  return (
+    <a
+      href={href}
+      target={isExternal ? '_blank' : undefined}
+      rel={isExternal ? 'noopener noreferrer' : undefined}
+    >
+      {children}
+    </a>
+  );
 }
 
 export default function StoreSidebarSlider({ sliders, loading }: Props) {
@@ -99,14 +117,14 @@ export default function StoreSidebarSlider({ sliders, loading }: Props) {
                   </p>
                 )}
                 {slide.buttonText && (
-                  <Link href={getSliderButtonHref(slide)}>
+                  <SliderLink href={getSliderButtonHref(slide)}>
                     <Button
                       size="sm"
                       className="bg-white text-[#1B2A6B] hover:bg-gray-100 rounded-full font-semibold text-xs shadow-lg"
                     >
                       {slide.buttonText}
                     </Button>
-                  </Link>
+                  </SliderLink>
                 )}
               </div>
             </SwiperSlide>

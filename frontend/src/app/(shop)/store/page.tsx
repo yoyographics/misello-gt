@@ -80,15 +80,20 @@ export default function StorePage() {
   // Sincronizar categoria seleccionada con query param ?category=slug
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const slug = new URLSearchParams(window.location.search).get('category');
-    if (!slug) {
-      setSelectedCategory('');
-      return;
-    }
-    const matched = categories.find((c) => c.slug === slug);
-    if (matched) {
-      setSelectedCategory(matched.id);
-    }
+    const syncFromUrl = () => {
+      const slug = new URLSearchParams(window.location.search).get('category');
+      if (!slug) {
+        setSelectedCategory('');
+        return;
+      }
+      const matched = categories.find((c) => c.slug === slug);
+      if (matched) {
+        setSelectedCategory(matched.id);
+      }
+    };
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
   }, [categories]);
 
   const selectCategory = (id: string) => {
