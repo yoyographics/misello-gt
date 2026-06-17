@@ -64,19 +64,19 @@ export function DaterStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Cuerpo */}
-      <path d="M18 12h28a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z" />
-      {/* Bandas de fecha */}
-      <path d="M16 26h32" />
-      <path d="M20 26v6" />
-      <path d="M28 26v6" />
-      <path d="M36 26v6" />
-      <path d="M44 26v6" />
-      {/* Base */}
-      <path d="M16 36h32" />
-      <path d="M18 36v8" />
-      <path d="M46 36v8" />
-      <path d="M14 44h36" />
+      {/* Tapa / cuerpo sólido como el automático */}
+      <rect x="18" y="8" width="28" height="24" rx="5" fill="currentColor" />
+      {/* Línea divisoria */}
+      <path d="M18 28h28" />
+      {/* Base del sello */}
+      <rect x="20" y="28" width="24" height="16" rx="3" />
+      {/* Bandas / ruedas de fecha */}
+      <path d="M20 38h24" />
+      <path d="M24 32v12" />
+      <path d="M32 32v12" />
+      <path d="M40 32v12" />
+      {/* Patas */}
+      <path d="M16 44h32" />
     </svg>
   );
 }
@@ -119,13 +119,13 @@ export function InkPadIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Base */}
-      <rect x="10" y="30" width="44" height="18" rx="3" />
+      {/* Cuerpo del estuche, tipo almohadilla / caja de chicles */}
+      <rect x="12" y="22" width="40" height="28" rx="4" />
+      {/* Tapa abierta hacia atrás */}
+      <path d="M12 22L18 8h28l6 14" />
+      <path d="M18 8h28" />
       {/* Almohadilla interior */}
-      <rect x="16" y="34" width="32" height="10" rx="2" />
-      {/* Tapa abierta */}
-      <path d="M10 30L20 10h24l10 20" />
-      <path d="M20 10h24v20" />
+      <rect x="18" y="28" width="28" height="16" rx="2" />
     </svg>
   );
 }
