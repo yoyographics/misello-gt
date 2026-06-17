@@ -64,19 +64,14 @@ export function DaterStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Tapa / cuerpo sólido como el automático */}
+      {/* Igual que el automático */}
       <rect x="18" y="8" width="28" height="24" rx="5" fill="currentColor" />
-      {/* Línea divisoria */}
       <path d="M18 28h28" />
-      {/* Base del sello */}
-      <rect x="20" y="28" width="24" height="16" rx="3" />
-      {/* Bandas / ruedas de fecha */}
-      <path d="M20 38h24" />
-      <path d="M24 32v12" />
-      <path d="M32 32v12" />
-      <path d="M40 32v12" />
-      {/* Patas */}
-      <path d="M16 44h32" />
+      <rect x="20" y="28" width="24" height="22" rx="4" />
+      <path d="M16 50h32" />
+      {/* Ruedas / bandas de fecha */}
+      <path d="M24 36h16" />
+      <path d="M24 42h16" />
     </svg>
   );
 }
