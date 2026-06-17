@@ -39,14 +39,14 @@ export function PocketStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Mango horizontal */}
-      <rect x="8" y="10" width="48" height="14" rx="4" />
-      {/* Cuello / cuerpo */}
-      <path d="M24 24v8" />
-      <path d="M40 24v8" />
-      {/* Base del sello */}
-      <rect x="18" y="32" width="28" height="18" rx="3" />
-      <path d="M14 50h36" />
+      {/* Tapa superior sólida (negra / color de la categoría) */}
+      <rect x="18" y="8" width="28" height="24" rx="5" fill="currentColor" />
+      {/* Línea divisoria */}
+      <path d="M18 28h28" />
+      {/* Cuerpo del sello, solo líneas */}
+      <rect x="20" y="28" width="24" height="24" rx="4" />
+      {/* Base */}
+      <path d="M16 52h32" />
     </svg>
   );
 }
