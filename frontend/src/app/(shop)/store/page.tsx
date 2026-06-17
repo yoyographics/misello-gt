@@ -347,9 +347,8 @@ export default function StorePage() {
               {products.map((product, idx) => (
                 <div
                   key={product.id}
-                  data-aos="fade-up"
-                  data-aos-delay={Math.min(idx * 80, 400)}
-                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300 animate-fade-in"
+                  style={{ animationDelay: `${Math.min(idx * 80, 400)}ms` }}
                 >
                   {/* Imagen con label */}
                   <Link href={`/store/product?id=${product.id}`} className="block relative">
@@ -485,6 +484,19 @@ export default function StorePage() {
       .no-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.5s ease-out both;
       }
     `}</style>
   </div>
