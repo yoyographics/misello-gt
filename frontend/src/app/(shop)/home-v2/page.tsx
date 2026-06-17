@@ -9,23 +9,28 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Stamp,
-  Calendar,
   Award,
   ShieldCheck,
   Truck,
   Package,
   Image as ImageIcon,
   ShoppingCart,
-  Scale,
   PenTool,
   Phone,
   Mail,
   MapPin,
-  Trees,
-  Droplets,
-  GraduationCap,
 } from 'lucide-react';
+import {
+  AutomaticStampIcon,
+  PocketStampIcon,
+  DaterStampIcon,
+  WoodStampIcon,
+  InkPadIcon,
+  InkBottleIcon,
+  LawyerStampIcon,
+  ColegiadoStampIcon,
+  CustomStampIcon,
+} from '@/components/category-icons';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -97,16 +102,16 @@ function getSliderButtonHref(slider: ApiSlider): string {
 }
 
 const CATEGORY_META: Record<string, { icon: React.ElementType; color: string }> = {
-  'sello-automatico': { icon: Stamp, color: 'bg-blue-100 text-[#1B2A6B]' },
-  'sello-portatil': { icon: Award, color: 'bg-orange-100 text-orange-600' },
-  'sello-fechador': { icon: Calendar, color: 'bg-pink-100 text-pink-600' },
+  'sello-automatico': { icon: AutomaticStampIcon, color: 'bg-blue-100 text-[#1B2A6B]' },
+  'sello-portatil': { icon: PocketStampIcon, color: 'bg-orange-100 text-orange-600' },
+  'sello-fechador': { icon: DaterStampIcon, color: 'bg-pink-100 text-pink-600' },
   'embosadora': { icon: Package, color: 'bg-indigo-100 text-indigo-600' },
-  'sello-madera': { icon: Trees, color: 'bg-amber-100 text-amber-700' },
-  'almohadillas': { icon: Droplets, color: 'bg-cyan-100 text-cyan-600' },
-  'tintas': { icon: Droplets, color: 'bg-sky-100 text-sky-600' },
-  'sellos-para-abogados': { icon: Scale, color: 'bg-emerald-100 text-emerald-600' },
-  'sellos-colegiado': { icon: GraduationCap, color: 'bg-teal-100 text-teal-600' },
-  'sellos-personalizados': { icon: PenTool, color: 'bg-purple-100 text-purple-600' },
+  'sello-madera': { icon: WoodStampIcon, color: 'bg-amber-100 text-amber-700' },
+  'almohadillas': { icon: InkPadIcon, color: 'bg-cyan-100 text-cyan-600' },
+  'tintas': { icon: InkBottleIcon, color: 'bg-sky-100 text-sky-600' },
+  'sellos-para-abogados': { icon: LawyerStampIcon, color: 'bg-emerald-100 text-emerald-600' },
+  'sellos-colegiado': { icon: ColegiadoStampIcon, color: 'bg-teal-100 text-teal-600' },
+  'sellos-personalizados': { icon: CustomStampIcon, color: 'bg-purple-100 text-purple-600' },
 };
 
 const CATEGORY_ORDER = [
@@ -483,7 +488,7 @@ export default function HomeV2() {
                 return idxA - idxB;
               })
               .map((cat) => {
-                const meta = CATEGORY_META[cat.slug] || { icon: Stamp, color: 'bg-gray-100 text-gray-600' };
+                const meta = CATEGORY_META[cat.slug] || { icon: CustomStampIcon, color: 'bg-gray-100 text-gray-600' };
                 const Icon = meta.icon;
                 return (
                   <SwiperSlide key={cat.id}>
