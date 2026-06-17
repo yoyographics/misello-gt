@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsString,
   IsOptional,
@@ -20,10 +21,12 @@ export class CreateTemplateDto {
   productShape?: ProductShape;
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' || value === undefined ? undefined : parseFloat(value)))
   @IsNumber()
   widthMm?: number;
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' || value === undefined ? undefined : parseFloat(value)))
   @IsNumber()
   heightMm?: number;
 
@@ -35,10 +38,16 @@ export class CreateTemplateDto {
   thumbnailUrl?: string;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value === 'true' || value === '1';
+    return true;
+  })
   @IsBoolean()
   isActive?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' || value === undefined ? 0 : parseInt(value, 10)))
   @IsNumber()
   sortOrder?: number;
 }
