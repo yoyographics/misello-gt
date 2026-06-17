@@ -15,15 +15,14 @@ export function AutomaticStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Cuerpo redondeado */}
-      <path d="M20 14h24a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H20a6 6 0 0 1-6-6V20a6 6 0 0 1 6-6z" />
-      {/* Base / patas */}
-      <path d="M16 40h32" />
-      <path d="M18 40v8" />
-      <path d="M46 40v8" />
-      <path d="M14 48h36" />
-      {/* Botón lateral */}
-      <circle cx="17" cy="26" r="2" />
+      {/* Cuerpo / tapa superior sólida */}
+      <rect x="18" y="8" width="28" height="24" rx="5" fill="currentColor" />
+      {/* Línea divisoria */}
+      <path d="M18 28h28" />
+      {/* Base del sello, solo líneas */}
+      <rect x="20" y="28" width="24" height="22" rx="4" />
+      {/* Patas */}
+      <path d="M16 50h32" />
     </svg>
   );
 }
@@ -39,14 +38,17 @@ export function PocketStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Tapa superior sólida (negra / color de la categoría) */}
-      <rect x="18" y="8" width="28" height="24" rx="5" fill="currentColor" />
-      {/* Línea divisoria */}
-      <path d="M18 28h28" />
-      {/* Cuerpo del sello, solo líneas */}
-      <rect x="20" y="28" width="24" height="24" rx="4" />
-      {/* Base */}
-      <path d="M16 52h32" />
+      {/* Tapa superior sólida, curva como el Handy Stamp */}
+      <path
+        d="M22 8h20a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6z"
+        fill="currentColor"
+      />
+      {/* Línea divisoria curva */}
+      <path d="M16 26c0 4 4 6 16 6s16-2 16-6" />
+      {/* Cuerpo cilíndrico alargado, solo líneas */}
+      <path d="M20 30v18a6 6 0 0 0 6 6h12a6 6 0 0 0 6-6V30" />
+      <path d="M20 30c0 4 4 6 12 6s12-2 12-6" />
+      <path d="M20 40c0 4 4 6 12 6s12-2 12-6" />
     </svg>
   );
 }
