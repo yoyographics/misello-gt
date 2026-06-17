@@ -88,11 +88,12 @@ export function WoodStampIcon({ className }: IconProps) {
       className={className}
     >
       {/* Base rectangular */}
-      <rect x="14" y="38" width="36" height="16" rx="3" />
-      {/* Mango curvo */}
-      <path d="M18 38V26c0-10 7-16 14-16s14 6 14 16v12" />
+      <rect x="14" y="40" width="36" height="14" rx="2" />
+      {/* Mango: estrecho abajo y ensanchado arriba */}
+      <path d="M22 40V28c0-4 2-8 10-8s10 4 10 8v12" />
+      <path d="M18 20c0-8 6-12 14-12s14 4 14 12v10H18V20z" fill="currentColor" />
       {/* Círculo del agarre */}
-      <circle cx="32" cy="20" r="5" fill="currentColor" />
+      <circle cx="32" cy="18" r="4" />
     </svg>
   );
 }
@@ -130,13 +131,15 @@ export function InkBottleIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Tapa */}
-      <path d="M24 8h16v8H24z" />
-      <path d="M22 8h20" />
+      {/* Tapa cónica con rosca */}
+      <path d="M26 8h12l-2 8H28z" />
+      <path d="M24 8h16" />
       {/* Cuello */}
-      <path d="M26 16h12l-2 8H28z" />
-      {/* Cuerpo del frasco */}
-      <path d="M18 24h28v28a6 6 0 0 1-6 6H24a6 6 0 0 1-6-6V24z" />
+      <path d="M28 16h8v4H28z" />
+      {/* Cuerpo del frasco: base ancha y redondeada */}
+      <path d="M20 20h24l4 8v24a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V28z" />
+      {/* Línea de etiqueta */}
+      <path d="M18 36h28" />
     </svg>
   );
 }
