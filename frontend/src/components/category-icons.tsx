@@ -38,17 +38,17 @@ export function PocketStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Tapa superior sólida, curva como el Handy Stamp */}
+      {/* Cuerpo del Handy Stamp, solo contorno */}
+      <rect x="16" y="6" width="32" height="52" rx="10" />
+      {/* Tapa superior sólida */}
       <path
-        d="M22 8h20a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6z"
+        d="M16 18c0-6 7-10 16-10s16 4 16 10v12c0 6-7 10-16 10s-16-4-16-10V18z"
         fill="currentColor"
       />
-      {/* Línea divisoria curva */}
-      <path d="M16 26c0 4 4 6 16 6s16-2 16-6" />
-      {/* Cuerpo cilíndrico alargado, solo líneas */}
-      <path d="M20 30v18a6 6 0 0 0 6 6h12a6 6 0 0 0 6-6V30" />
-      <path d="M20 30c0 4 4 6 12 6s12-2 12-6" />
-      <path d="M20 40c0 4 4 6 12 6s12-2 12-6" />
+      {/* Línea divisoria */}
+      <path d="M16 28h32" />
+      {/* Orificio inferior */}
+      <path d="M28 52h8" strokeWidth="4" />
     </svg>
   );
 }
