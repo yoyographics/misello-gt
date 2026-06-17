@@ -76,6 +76,35 @@ export default function StorePage() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedShape, setSelectedShape] = useState<string>('');
+
+  // Sincronizar categoria seleccionada con query param ?category=slug
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const slug = new URLSearchParams(window.location.search).get('category');
+    if (!slug) {
+      setSelectedCategory('');
+      return;
+    }
+    const matched = categories.find((c) => c.slug === slug);
+    if (matched) {
+      setSelectedCategory(matched.id);
+    }
+  }, [categories]);
+
+  const selectCategory = (id: string) => {
+    setSelectedCategory(id);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!id) {
+      url.searchParams.delete('category');
+    } else {
+      const cat = categories.find((c) => c.id === id);
+      if (cat) {
+        url.searchParams.set('category', cat.slug);
+      }
+    }
+    window.history.pushState({}, '', url.toString());
+  };
   const [loading, setLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [leftSliders, setLeftSliders] = useState<SidebarSlider[]>([]);
@@ -229,7 +258,7 @@ export default function StorePage() {
             <div className="flex flex-wrap gap-2">
               {selectedCategory && (
                 <button
-                  onClick={() => setSelectedCategory('')}
+                  onClick={() => selectCategory('')}
                   className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-200 hover:bg-orange-100 transition"
                 >
                   {categories.find((c) => c.id === selectedCategory)?.name}
@@ -247,7 +276,7 @@ export default function StorePage() {
               )}
               <button
                 onClick={() => {
-                  setSelectedCategory('');
+                  selectCategory('');
                   setSelectedShape('');
                   setSearch('');
                 }}
@@ -265,7 +294,7 @@ export default function StorePage() {
             </h3>
             <div className="space-y-1">
               <button
-                onClick={() => setSelectedCategory('')}
+                onClick={() => selectCategory('')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${
                   !selectedCategory
                     ? 'bg-orange-50 text-orange-700 font-medium'
@@ -278,7 +307,7 @@ export default function StorePage() {
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => selectCategory(cat.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${
                     selectedCategory === cat.id
                       ? 'bg-orange-50 text-orange-700 font-medium'
