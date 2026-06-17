@@ -87,18 +87,12 @@ export function WoodStampIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Mango de madera */}
-      <path d="M22 12h20a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z" />
-      <circle cx="32" cy="20" r="3" />
-      {/* Cuello */}
-      <path d="M26 30v6" />
-      <path d="M38 30v6" />
       {/* Base rectangular */}
-      <rect x="16" y="36" width="32" height="14" rx="2" />
-      <path d="M14 50h36" />
-      {/* Vetas de madera */}
-      <path d="M24 16h16" />
-      <path d="M26 24h12" />
+      <rect x="14" y="38" width="36" height="16" rx="3" />
+      {/* Mango curvo */}
+      <path d="M18 38V26c0-10 7-16 14-16s14 6 14 16v12" />
+      {/* Círculo del agarre */}
+      <circle cx="32" cy="20" r="5" fill="currentColor" />
     </svg>
   );
 }
@@ -136,13 +130,13 @@ export function InkBottleIcon({ className }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
+      {/* Tapa */}
+      <path d="M24 8h16v8H24z" />
+      <path d="M22 8h20" />
       {/* Cuello */}
-      <path d="M24 12h16l-2 10H26z" />
-      {/* Cuerpo */}
-      <path d="M18 22h28v30a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V22z" />
-      {/* Etiqueta */}
-      <path d="M20 32h24" />
-      <path d="M20 40h24" />
+      <path d="M26 16h12l-2 8H28z" />
+      {/* Cuerpo del frasco */}
+      <path d="M18 24h28v28a6 6 0 0 1-6 6H24a6 6 0 0 1-6-6V24z" />
     </svg>
   );
 }
