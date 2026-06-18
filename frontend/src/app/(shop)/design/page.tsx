@@ -21,7 +21,7 @@ import {
 import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X, Stamp } from 'lucide-react';
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
-import { applyTemplateFields as applyTemplateFieldsCircular } from '@/lib/circular-text';
+import { applyTemplateFields as applyTemplateFieldsCircular, CircularArea } from '@/lib/circular-text';
 import { detectCircularText } from '@/lib/detect-circular-text';
 
 interface Category {

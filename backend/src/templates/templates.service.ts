@@ -6,25 +6,8 @@ import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import {
   applyTemplateFields as applyCircularTemplateFields,
   detectCircularText,
+  CircularArea,
 } from './utils/circular-text.util';
-
-interface EditableArea {
-  id: string;
-  label: string;
-  defaultText: string;
-  x?: number;
-  y?: number;
-  fontSize?: number;
-  fontFamily?: string;
-  maxLength?: number;
-  type?: 'text' | 'circular';
-  radius?: number;
-  centerX?: number;
-  centerY?: number;
-  startAngle?: number;
-  letterSpacing?: number;
-  baseline?: 'top' | 'bottom';
-}
 
 @Injectable()
 export class TemplatesService {
@@ -193,7 +176,7 @@ export class TemplatesService {
   /**
    * Extrae áreas editables de un SVG buscando elementos <text> con data-editable="true".
    */
-  extractEditableAreas(svgContent: string): EditableArea[] {
+  extractEditableAreas(svgContent: string): CircularArea[] {
     try {
       const parser = new XMLParser({
         ignoreAttributes: false,
@@ -203,7 +186,7 @@ export class TemplatesService {
       });
 
       const parsed = parser.parse(svgContent);
-      const areas: EditableArea[] = [];
+      const areas: CircularArea[] = [];
       this.walkAndExtract(parsed, areas);
       return areas;
     } catch (e) {
@@ -218,12 +201,12 @@ export class TemplatesService {
   applyTemplateFields(
     svgContent: string,
     fields: Record<string, string>,
-    areas?: EditableArea[],
+    areas?: CircularArea[],
   ): string {
     return applyCircularTemplateFields(svgContent, fields, areas || []);
   }
 
-  private walkAndExtract(node: any, areas: EditableArea[]) {
+  private walkAndExtract(node: any, areas: CircularArea[]) {
     if (Array.isArray(node)) {
       node.forEach((child) => this.walkAndExtract(child, areas));
       return;

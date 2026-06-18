@@ -13,21 +13,34 @@ export interface CircularArea {
   fontFamily?: string;
   letterSpacing?: number;
   baseline?: 'top' | 'bottom';
+  x?: number;
+  y?: number;
+  maxLength?: number;
 }
 
 const DEFAULT_FONT_SIZE = 9;
-const AVG_CHAR_WIDTH_RATIO = 0.58;
+const WIDTH_MAP: Record<string, number> = {
+  I: 0.28, i: 0.28, l: 0.28, '!': 0.28, '.': 0.28, ',': 0.28, ';': 0.28,
+  ':': 0.28, '|': 0.28, ' ': 0.3,
+  j: 0.32, '(': 0.33, ')': 0.33, '[': 0.33, ']': 0.33,
+  f: 0.36, t: 0.38, r: 0.4,
+  s: 0.42, z: 0.42, c: 0.43, v: 0.43, x: 0.43, y: 0.43,
+  a: 0.48, e: 0.48, g: 0.48, o: 0.48, p: 0.48, q: 0.48, b: 0.5, d: 0.5, h: 0.5, n: 0.5, u: 0.5,
+  k: 0.52,
+  R: 0.58, E: 0.58, S: 0.58, Z: 0.58, C: 0.6, G: 0.6, O: 0.6, Q: 0.62, A: 0.62, V: 0.62, Y: 0.62,
+  X: 0.62, K: 0.62, T: 0.6, F: 0.58, P: 0.58, B: 0.62, D: 0.64, H: 0.66, N: 0.66, U: 0.66,
+  L: 0.54, J: 0.48, M: 0.74, W: 0.74,
+  '0': 0.52, '1': 0.34, '2': 0.5, '3': 0.5, '4': 0.5, '5': 0.5, '6': 0.52, '7': 0.5, '8': 0.52, '9': 0.52,
+  '-': 0.36, '/': 0.34, '\\': 0.34,
+};
 
 function degToRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 
 function estimateCharWidth(char: string, fontSize: number): number {
-  const narrow = 'I.,;:!|i1l '.includes(char);
-  const wide = 'MWm w'.includes(char);
-  if (narrow) return fontSize * AVG_CHAR_WIDTH_RATIO * 0.45;
-  if (wide) return fontSize * AVG_CHAR_WIDTH_RATIO * 1.25;
-  return fontSize * AVG_CHAR_WIDTH_RATIO;
+  const width = WIDTH_MAP[char] ?? 0.5;
+  return fontSize * width;
 }
 
 export function renderCircularText(
@@ -40,7 +53,7 @@ export function renderCircularText(
   const centerY = area.centerY ?? 45.355;
   const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? 0.3;
+  const letterSpacing = area.letterSpacing ?? 0.2;
   const baseline = area.baseline || 'top';
   const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
 
@@ -62,8 +75,6 @@ export function renderCircularText(
   });
 
   const parsed = parser.parse(svgContent);
-
-  // Buscar y reemplazar grupo circular previo
   removeCircularGroup(parsed, area.id);
 
   const groupNode: any = {
@@ -194,7 +205,7 @@ function parseTransform(transform: string): { x: number; y: number } | null {
   return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
 }
 
-function getCircleCenter(node: any): { x: number; y: number } | null {
+function getCircleCenter(node: any): { x: number; y: number; radius: number } | null {
   const circles = collectNodes(node, 'circle');
   if (circles.length === 0) return null;
 
@@ -211,6 +222,7 @@ function getCircleCenter(node: any): { x: number; y: number } | null {
   return {
     x: parseFloat(best[':@']?.cx || '0'),
     y: parseFloat(best[':@']?.cy || '0'),
+    radius: bestR,
   };
 }
 
@@ -246,8 +258,10 @@ export function detectCircularText(
   });
 
   const parsed = parser.parse(svgContent);
-  const center = getCircleCenter(parsed);
-  if (!center) return { svgContent, areas: [] };
+  const centerInfo = getCircleCenter(parsed);
+  if (!centerInfo) return { svgContent, areas: [] };
+
+  const { x: centerX, y: centerY, radius } = centerInfo;
 
   const textNodes = collectNodes(parsed, 'text');
   const detected: DetectedText[] = [];
@@ -258,11 +272,12 @@ export function detectCircularText(
     const pos = parseTransform(transform);
     if (!pos) return;
 
-    const char = getTextContent(node).trim();
-    if (!char) return;
+    let char = getTextContent(node);
+    char = char.replace(/\s+/g, ' ');
+    if (!char || char === ' ') return;
 
-    const dx = pos.x - center.x;
-    const dy = pos.y - center.y;
+    const dx = pos.x - centerX;
+    const dy = pos.y - centerY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     let angle = Math.atan2(dy, dx);
     if (angle < 0) angle += Math.PI * 2;
@@ -272,8 +287,21 @@ export function detectCircularText(
 
   if (detected.length < 3) return { svgContent, areas: [] };
 
-  const groups: DetectedText[][] = [];
+  const circularTexts: DetectedText[] = [];
+  const centralTexts: DetectedText[] = [];
+
   detected.forEach((item) => {
+    if (item.distance > radius * 0.55) {
+      circularTexts.push(item);
+    } else {
+      centralTexts.push(item);
+    }
+  });
+
+  const areas: CircularArea[] = [];
+
+  const groups: DetectedText[][] = [];
+  circularTexts.forEach((item) => {
     let added = false;
     for (const group of groups) {
       const avgDist = group.reduce((s, i) => s + i.distance, 0) / group.length;
@@ -287,9 +315,6 @@ export function detectCircularText(
   });
 
   const validGroups = groups.filter((g) => g.length >= 3);
-  if (validGroups.length === 0) return { svgContent, areas: [] };
-
-  const areas: CircularArea[] = [];
 
   validGroups.forEach((group, idx) => {
     group.sort((a, b) => a.angle - b.angle);
@@ -297,7 +322,7 @@ export function detectCircularText(
     const text = group.map((g) => g.char).join('');
     const avgDist = group.reduce((s, g) => s + g.distance, 0) / group.length;
     const avgY = group.reduce((s, g) => s + g.y, 0) / group.length;
-    const baseline: 'top' | 'bottom' = avgY < center.y ? 'top' : 'bottom';
+    const baseline: 'top' | 'bottom' = avgY < centerY ? 'top' : 'bottom';
     const startAngle = baseline === 'top' ? -90 : 90;
 
     const fontSize = parseFloat(group[0].attr['font-size']) || 9;
@@ -308,8 +333,8 @@ export function detectCircularText(
       defaultText: text,
       type: 'circular',
       radius: avgDist,
-      centerX: center.x,
-      centerY: center.y,
+      centerX,
+      centerY,
       startAngle,
       fontSize,
       baseline,
@@ -319,6 +344,47 @@ export function detectCircularText(
       g.node.__delete = true;
     });
   });
+
+  if (centralTexts.length > 0) {
+    centralTexts.sort((a, b) => a.y - b.y || a.x - b.x);
+
+    const centralGroups: DetectedText[][] = [];
+    centralTexts.forEach((item) => {
+      let added = false;
+      for (const group of centralGroups) {
+        const avgY = group.reduce((s, i) => s + i.y, 0) / group.length;
+        if (Math.abs(item.y - avgY) <= (parseFloat(item.attr['font-size']) || 9) * 0.8) {
+          group.push(item);
+          added = true;
+          break;
+        }
+      }
+      if (!added) centralGroups.push([item]);
+    });
+
+    centralGroups.forEach((group, idx) => {
+      group.sort((a, b) => a.x - b.x);
+      const text = group.map((g) => g.char).join('').trim();
+      if (!text) return;
+
+      const fontSize = parseFloat(group[0].attr['font-size']) || 9;
+
+      areas.push({
+        id: `line${idx + 1}`,
+        label: 'Texto central',
+        defaultText: text,
+        type: 'text',
+        x: group[0].x,
+        y: group[0].y,
+        fontSize,
+        fontFamily: group[0].attr['font-family'],
+      });
+
+      group.forEach((g) => {
+        g.node.__delete = true;
+      });
+    });
+  }
 
   const cleaned = removeMarkedNodes(parsed);
 
@@ -392,12 +458,36 @@ export function applyTemplateFields(
   });
 
   const parsed = parser.parse(result);
+
   walk(parsed, (node) => {
     const attr = node[':@'];
     if (!attr || attr['data-editable'] !== 'true') return;
     const field = attr['data-field'];
     if (field && fields[field] !== undefined) {
       setTextContent(node, fields[field]);
+    }
+  });
+
+  areas.forEach((area) => {
+    if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
+      const value = fields[area.id] ?? area.defaultText ?? '';
+      removeCentralField(parsed, area.id);
+
+      const textNode: any = {
+        ':@': {
+          'data-central-field': area.id,
+          x: String(area.x),
+          y: String(area.y),
+          'font-size': String(area.fontSize || DEFAULT_FONT_SIZE),
+          'text-anchor': 'middle',
+          'dominant-baseline': 'central',
+        },
+        '#text': value,
+      };
+      if (area.fontFamily) {
+        textNode[':@']['font-family'] = area.fontFamily;
+      }
+      appendToSvg(parsed, textNode);
     }
   });
 
@@ -409,6 +499,41 @@ export function applyTemplateFields(
   });
 
   return builder.build(parsed);
+}
+
+function removeCentralField(node: any, fieldId: string): void {
+  if (Array.isArray(node)) {
+    for (let i = node.length - 1; i >= 0; i--) {
+      if (isCentralField(node[i], fieldId)) {
+        node.splice(i, 1);
+      } else {
+        removeCentralField(node[i], fieldId);
+      }
+    }
+    return;
+  }
+
+  if (typeof node !== 'object' || node === null) return;
+
+  for (const key of Object.keys(node)) {
+    if (key === ':@') continue;
+    const child = node[key];
+    if (Array.isArray(child)) {
+      for (let i = child.length - 1; i >= 0; i--) {
+        if (isCentralField(child[i], fieldId)) {
+          child.splice(i, 1);
+        } else {
+          removeCentralField(child[i], fieldId);
+        }
+      }
+    }
+  }
+}
+
+function isCentralField(node: any, fieldId: string): boolean {
+  if (typeof node !== 'object' || node === null) return false;
+  if (Array.isArray(node)) return false;
+  return node[':@'] && node[':@']['data-central-field'] === fieldId;
 }
 
 function setTextContent(node: any, value: string): void {

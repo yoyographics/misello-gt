@@ -6,27 +6,41 @@ export interface CircularArea {
   radius?: number;
   centerX?: number;
   centerY?: number;
-  startAngle?: number; // grados, 0 = derecha, -90 = arriba, 90 = abajo
+  startAngle?: number;
   fontSize?: number;
   fontFamily?: string;
-  letterSpacing?: number; // extra espacio entre letras en unidades SVG
-  baseline?: 'top' | 'bottom'; // top = texto en parte superior del circulo, bottom = inferior
+  letterSpacing?: number;
+  baseline?: 'top' | 'bottom';
+  x?: number;
+  y?: number;
+  maxLength?: number;
 }
 
 const DEFAULT_FONT_SIZE = 9;
-const AVG_CHAR_WIDTH_RATIO = 0.58; // aproximacion para Arial/similares
 
 function degToRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 
+// Mapa de anchos aproximados para Arial (relativos al fontSize)
+const WIDTH_MAP: Record<string, number> = {
+  I: 0.28, i: 0.28, l: 0.28, '!': 0.28, '.': 0.28, ',': 0.28, ';': 0.28,
+  ':': 0.28, '|': 0.28, ' ': 0.3,
+  j: 0.32, '(': 0.33, ')': 0.33, '[': 0.33, ']': 0.33,
+  f: 0.36, t: 0.38, r: 0.4,
+  s: 0.42, z: 0.42, c: 0.43, v: 0.43, x: 0.43, y: 0.43,
+  a: 0.48, e: 0.48, g: 0.48, o: 0.48, p: 0.48, q: 0.48, b: 0.5, d: 0.5, h: 0.5, n: 0.5, u: 0.5,
+  k: 0.52,
+  R: 0.58, E: 0.58, S: 0.58, Z: 0.58, C: 0.6, G: 0.6, O: 0.6, Q: 0.62, A: 0.62, V: 0.62, Y: 0.62,
+  X: 0.62, K: 0.62, T: 0.6, F: 0.58, P: 0.58, B: 0.62, D: 0.64, H: 0.66, N: 0.66, U: 0.66,
+  L: 0.54, J: 0.48, M: 0.74, W: 0.74,
+  '0': 0.52, '1': 0.34, '2': 0.5, '3': 0.5, '4': 0.5, '5': 0.5, '6': 0.52, '7': 0.5, '8': 0.52, '9': 0.52,
+  '-': 0.36, '/': 0.34, '\\': 0.34,
+};
+
 function estimateCharWidth(char: string, fontSize: number): number {
-  // Estimacion simple: M y W son mas anchas, I y . mas angostas
-  const narrow = 'I.,;:!|i1l '.includes(char);
-  const wide = 'MWm w'.includes(char);
-  if (narrow) return fontSize * AVG_CHAR_WIDTH_RATIO * 0.45;
-  if (wide) return fontSize * AVG_CHAR_WIDTH_RATIO * 1.25;
-  return fontSize * AVG_CHAR_WIDTH_RATIO;
+  const width = WIDTH_MAP[char] ?? 0.5;
+  return fontSize * width;
 }
 
 export function renderCircularText(
@@ -39,26 +53,23 @@ export function renderCircularText(
   const centerY = area.centerY ?? 45.355;
   const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? 0.3;
+  const letterSpacing = area.letterSpacing ?? 0.2;
   const baseline = area.baseline || 'top';
   const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
 
   if (!text) text = area.defaultText || '';
 
-  // Calcular ancho total aproximado y angulo total ocupado
   const chars = text.split('');
   const charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
   const totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
   const totalAngleRad = totalWidth / radius;
   const startAngleRad = degToRad(startAngle);
 
-  // Distribuir desde el centro del arco
   let currentAngle = startAngleRad - totalAngleRad / 2;
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, 'image/svg+xml');
 
-  // Remover grupo circular previo del mismo campo
   const existing = doc.querySelector(`g[data-circular-field="${area.id}"]`);
   if (existing) existing.remove();
 
@@ -73,7 +84,6 @@ export function renderCircularText(
     const x = centerX + Math.cos(angle) * radius;
     const y = centerY + Math.sin(angle) * radius;
 
-    // Rotacion para que la letra quede tangente al circulo
     let rotation = (angle * 180) / Math.PI;
     if (baseline === 'top') {
       rotation += 90;
@@ -115,14 +125,36 @@ export function applyTemplateFields(
     }
   });
 
-  // Textos normales data-editable
+  // Textos normales data-editable o centrales detectados
   const parser = new DOMParser();
   const doc = parser.parseFromString(result, 'image/svg+xml');
+
+  // Primero reemplazar data-editable normales
   const texts = doc.querySelectorAll('text[data-editable="true"]');
   texts.forEach((el) => {
     const field = el.getAttribute('data-field');
     if (field && fields[field] !== undefined) {
       el.textContent = fields[field];
+    }
+  });
+
+  // Luego textos centrales detectados (que fueron eliminados del SVG base)
+  areas.forEach((area) => {
+    if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
+      const value = fields[area.id] ?? area.defaultText ?? '';
+      const existing = doc.querySelector(`text[data-central-field="${area.id}"]`);
+      if (existing) existing.remove();
+
+      const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+      textEl.setAttribute('data-central-field', area.id);
+      textEl.setAttribute('x', String(area.x));
+      textEl.setAttribute('y', String(area.y));
+      if (area.fontSize) textEl.setAttribute('font-size', String(area.fontSize));
+      if (area.fontFamily) textEl.setAttribute('font-family', area.fontFamily);
+      textEl.setAttribute('text-anchor', 'middle');
+      textEl.setAttribute('dominant-baseline', 'central');
+      textEl.textContent = value;
+      doc.documentElement.appendChild(textEl);
     }
   });
 
