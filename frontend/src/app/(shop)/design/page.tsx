@@ -1121,6 +1121,13 @@ export default function DesignPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
           <div className="space-y-4 min-w-0">
             <Card className="p-4 space-y-4">
+              {(selectedTemplate.editableAreas || []).length === 0 && (
+                <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-sm">
+                  Esta plantilla no tiene textos editables configurados. El administrador debe
+                  subir un SVG con los textos marcados como{' '}
+                  <code>data-editable=&quot;true&quot;</code>.
+                </div>
+              )}
               {selectedTemplate.editableAreas?.map((area) => (
                 <div key={area.id}>
                   <label className="text-sm font-medium mb-1 block">{area.label}</label>
