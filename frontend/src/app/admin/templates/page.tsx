@@ -13,6 +13,16 @@ interface Category {
   name: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  categoryId: string;
+  shape: string;
+  widthMm: number;
+  heightMm: number;
+}
+
 interface EditableArea {
   id: string;
   label: string;
@@ -24,25 +34,28 @@ interface EditableArea {
   maxLength?: number;
 }
 
+interface TemplateProduct {
+  productId: string;
+  product?: Product;
+}
+
 interface Template {
   id: string;
   name: string;
   categoryId: string;
-  productShape?: string;
-  widthMm?: number;
-  heightMm?: number;
-  editableAreas?: EditableArea[];
+  svgContent?: string;
+  editableAreas?: EditableArea[] | null;
   thumbnailUrl?: string;
   isActive: boolean;
   sortOrder: number;
   category?: Category;
+  products?: TemplateProduct[];
 }
-
-const SHAPES = ['RECTANGULAR', 'CIRCULAR', 'OVAL', 'SQUARE'];
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -53,20 +66,25 @@ export default function AdminTemplatesPage() {
   const [form, setForm] = useState({
     name: '',
     categoryId: '',
-    productShape: '',
-    widthMm: '',
-    heightMm: '',
     isActive: true,
     sortOrder: '0',
   });
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [formError, setFormError] = useState('');
 
   const fetchData = useCallback(() => {
     setLoading(true);
-    Promise.all([api.get('/templates/admin/all'), api.get('/categories')])
-      .then(([tRes, cRes]) => {
+    Promise.all([
+      api.get('/templates/admin/all'),
+      api.get('/categories'),
+      api.get('/products?take=9999'),
+    ])
+      .then(([tRes, cRes, pRes]) => {
         setTemplates(tRes.data || []);
         setCategories(cRes.data || []);
+        const productList = pRes.data?.items || pRes.data || [];
+        setProducts(Array.isArray(productList) ? productList : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -80,39 +98,47 @@ export default function AdminTemplatesPage() {
     setForm({
       name: '',
       categoryId: '',
-      productShape: '',
-      widthMm: '',
-      heightMm: '',
       isActive: true,
       sortOrder: '0',
     });
+    setSelectedProductIds([]);
     setFile(null);
     setSvgPreview('');
     setEditableAreas([]);
     setEditing(null);
+    setFormError('');
+  };
+
+  const normalizeAreas = (areas: unknown): EditableArea[] => {
+    if (Array.isArray(areas)) return areas as EditableArea[];
+    return [];
   };
 
   const extractEditableAreas = (svgContent: string): EditableArea[] => {
-    const areas: EditableArea[] = [];
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-    const texts = doc.querySelectorAll('text[data-editable="true"]');
-    texts.forEach((el, idx) => {
-      const field = el.getAttribute('data-field') || `field${idx + 1}`;
-      const label = el.getAttribute('data-label') || `Texto ${idx + 1}`;
-      const maxLength = el.getAttribute('data-maxlength');
-      areas.push({
-        id: field,
-        label,
-        defaultText: el.textContent || '',
-        x: parseFloat(el.getAttribute('x') || '0') || undefined,
-        y: parseFloat(el.getAttribute('y') || '0') || undefined,
-        fontSize: parseFloat(el.getAttribute('font-size') || '0') || undefined,
-        fontFamily: el.getAttribute('font-family') || undefined,
-        maxLength: maxLength ? parseInt(maxLength) : undefined,
+    try {
+      const areas: EditableArea[] = [];
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const texts = doc.querySelectorAll('text[data-editable="true"]');
+      texts.forEach((el, idx) => {
+        const field = el.getAttribute('data-field') || `field${idx + 1}`;
+        const label = el.getAttribute('data-label') || `Texto ${idx + 1}`;
+        const maxLength = el.getAttribute('data-maxlength');
+        areas.push({
+          id: field,
+          label,
+          defaultText: el.textContent || '',
+          x: parseFloat(el.getAttribute('x') || '0') || undefined,
+          y: parseFloat(el.getAttribute('y') || '0') || undefined,
+          fontSize: parseFloat(el.getAttribute('font-size') || '0') || undefined,
+          fontFamily: el.getAttribute('font-family') || undefined,
+          maxLength: maxLength ? parseInt(maxLength) : undefined,
+        });
       });
-    });
-    return areas;
+      return areas;
+    } catch {
+      return [];
+    }
   };
 
   const handleFileChange = (selectedFile: File | null) => {
@@ -128,12 +154,17 @@ export default function AdminTemplatesPage() {
   };
 
   const handleSubmit = async () => {
+    setFormError('');
     if (!form.name || !form.categoryId) {
-      alert('Nombre y categoría son obligatorios');
+      setFormError('Nombre y categoría son obligatorios');
       return;
     }
     if (!editing && !file) {
-      alert('El archivo SVG es obligatorio');
+      setFormError('El archivo SVG es obligatorio');
+      return;
+    }
+    if (selectedProductIds.length === 0) {
+      setFormError('Seleccioná al menos un modelo de sello');
       return;
     }
 
@@ -141,12 +172,10 @@ export default function AdminTemplatesPage() {
     const data = new FormData();
     data.append('name', form.name);
     data.append('categoryId', form.categoryId);
-    if (form.productShape) data.append('productShape', form.productShape);
-    if (form.widthMm) data.append('widthMm', form.widthMm);
-    if (form.heightMm) data.append('heightMm', form.heightMm);
     data.append('isActive', String(form.isActive));
     data.append('sortOrder', form.sortOrder);
     data.append('editableAreas', JSON.stringify(editableAreas));
+    selectedProductIds.forEach((id) => data.append('productIds', id));
     if (file) data.append('file', file);
 
     try {
@@ -163,7 +192,7 @@ export default function AdminTemplatesPage() {
       setShowForm(false);
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error guardando plantilla');
+      setFormError(err.response?.data?.message || 'Error guardando plantilla');
     } finally {
       setSaving(false);
     }
@@ -174,14 +203,16 @@ export default function AdminTemplatesPage() {
     setForm({
       name: t.name,
       categoryId: t.categoryId,
-      productShape: t.productShape || '',
-      widthMm: t.widthMm?.toString() || '',
-      heightMm: t.heightMm?.toString() || '',
       isActive: t.isActive,
       sortOrder: t.sortOrder.toString(),
     });
-    setEditableAreas(t.editableAreas || []);
-    setSvgPreview('');
+    setEditableAreas(normalizeAreas(t.editableAreas));
+    setSelectedProductIds((t.products || []).map((p) => p.productId));
+    setSvgPreview(
+      typeof t.svgContent === 'string' && t.svgContent.trim().startsWith('<svg')
+        ? t.svgContent
+        : ''
+    );
     setShowForm(true);
   };
 
@@ -200,6 +231,16 @@ export default function AdminTemplatesPage() {
       prev.map((area, i) => (i === index ? { ...area, ...updates } : area))
     );
   };
+
+  const toggleProduct = (productId: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const filteredProducts = form.categoryId
+    ? products.filter((p) => p.categoryId === form.categoryId)
+    : products;
 
   if (loading) {
     return (
@@ -236,6 +277,12 @@ export default function AdminTemplatesPage() {
               </Button>
             </div>
 
+            {formError && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                {formError}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Nombre</label>
@@ -250,7 +297,10 @@ export default function AdminTemplatesPage() {
                 <select
                   className="w-full h-10 px-3 rounded-md border border-input bg-background"
                   value={form.categoryId}
-                  onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, categoryId: e.target.value });
+                    setSelectedProductIds([]);
+                  }}
                 >
                   <option value="">Seleccionar...</option>
                   {categories.map((c) => (
@@ -260,39 +310,37 @@ export default function AdminTemplatesPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-sm font-medium">Forma</label>
-                <select
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                  value={form.productShape}
-                  onChange={(e) => setForm({ ...form, productShape: e.target.value })}
-                >
-                  <option value="">Cualquiera</option>
-                  {SHAPES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-2">
+                Modelos de sello asignados
+              </label>
+              {filteredProducts.length === 0 ? (
+                <p className="text-sm text-gray-500">No hay modelos en esta categoría.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-lg p-3">
+                  {filteredProducts.map((p) => (
+                    <label
+                      key={p.id}
+                      className="flex items-start gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.includes(p.id)}
+                        onChange={() => toggleProduct(p.id)}
+                        className="mt-1"
+                      />
+                      <div className="text-sm">
+                        <div className="font-medium">{p.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {p.widthMm}mm × {p.heightMm}mm · {p.shape}
+                        </div>
+                      </div>
+                    </label>
                   ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-sm font-medium">Ancho (mm)</label>
-                  <Input
-                    type="number"
-                    value={form.widthMm}
-                    onChange={(e) => setForm({ ...form, widthMm: e.target.value })}
-                  />
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Alto (mm)</label>
-                  <Input
-                    type="number"
-                    value={form.heightMm}
-                    onChange={(e) => setForm({ ...form, heightMm: e.target.value })}
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
             <div>
@@ -381,19 +429,24 @@ export default function AdminTemplatesPage() {
           <Card key={t.id} className="overflow-hidden">
             <CardContent className="p-4">
               <div className="h-32 bg-gray-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                {t.thumbnailUrl ? (
-                  <img src={t.thumbnailUrl} alt={t.name} className="max-h-full" />
+                {t.svgContent ? (
+                  <div
+                    className="w-full h-full"
+                    dangerouslySetInnerHTML={{ __html: t.svgContent }}
+                  />
                 ) : (
                   <Eye className="h-8 w-8 text-gray-300" />
                 )}
               </div>
               <h3 className="font-semibold truncate">{t.name}</h3>
               <p className="text-sm text-gray-500">{t.category?.name}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {(t.products || []).length} modelo(s) asignado(s)
+              </p>
               <div className="flex items-center gap-2 mt-2">
                 <Badge className={t.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
                   {t.isActive ? 'Activa' : 'Inactiva'}
                 </Badge>
-                {t.productShape && <Badge variant="outline">{t.productShape}</Badge>}
               </div>
               <div className="flex items-center justify-end gap-2 mt-4">
                 <Button variant="ghost" size="sm" onClick={() => handleEdit(t)}>

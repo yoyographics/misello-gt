@@ -146,15 +146,13 @@ export class DesignService {
 
     const template = await this.templatesService.findOnePublic(dto.templateId);
 
-    // Validar compatibilidad basica
-    if (template.categoryId !== product.categoryId) {
-      throw new BadRequestException('La plantilla no pertenece a la categoria del producto');
-    }
-    if (template.productShape && template.productShape !== product.shape) {
-      throw new BadRequestException('La plantilla no coincide con la forma del producto');
+    // Validar compatibilidad: el producto debe estar asignado a la plantilla
+    const productIds = (template.products || []).map((p: any) => p.productId || p);
+    if (!productIds.includes(product.id)) {
+      throw new BadRequestException('La plantilla no esta asignada a este modelo de sello');
     }
 
-    const fields = dto.templateData || {};
+    const fields: Record<string, string> = dto.templateData || {};
 
     // Aplicar textos al SVG
     const finalSvg = this.templatesService.applyTemplateFields(template.svgContent, fields);
@@ -184,7 +182,7 @@ export class DesignService {
 
     // Validacion tecnica basica
     const validation = this.validator.validate({
-      textLines: (template.editableAreas as any[] || []).map((area) => ({
+      textLines: ((template.editableAreas || []) as { id: string; defaultText?: string; fontSize?: number }[]).map((area) => ({
         text: fields[area.id] || area.defaultText || '',
         fontSizePt: area.fontSize || 12,
       })),

@@ -32,16 +32,9 @@ export class TemplatesController {
   @Get()
   findAllPublic(
     @Query('categoryId') categoryId?: string,
-    @Query('shape') shape?: string,
-    @Query('widthMm') widthMm?: string,
-    @Query('heightMm') heightMm?: string,
+    @Query('productId') productId?: string,
   ) {
-    return this.templatesService.findAllPublic(
-      categoryId,
-      shape,
-      widthMm ? parseFloat(widthMm) : undefined,
-      heightMm ? parseFloat(heightMm) : undefined,
-    );
+    return this.templatesService.findAllPublic(categoryId, productId);
   }
 
   @Get(':id')

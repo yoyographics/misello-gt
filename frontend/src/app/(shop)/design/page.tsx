@@ -75,14 +75,12 @@ interface Template {
   id: string;
   name: string;
   categoryId: string;
-  productShape?: string;
-  widthMm?: number;
-  heightMm?: number;
   svgContent?: string;
   editableAreas?: EditableArea[];
   thumbnailUrl?: string;
   isActive: boolean;
   sortOrder: number;
+  products?: { productId: string; product?: { id: string; name: string } }[];
 }
 
 interface EditableArea {
@@ -645,10 +643,7 @@ export default function DesignPage() {
     try {
       const res = await api.get('/templates', {
         params: {
-          categoryId: product.categoryId,
-          shape: product.shape || undefined,
-          widthMm: product.widthMm || undefined,
-          heightMm: product.heightMm || undefined,
+          productId: product.id,
         },
       });
       const list = res.data || [];

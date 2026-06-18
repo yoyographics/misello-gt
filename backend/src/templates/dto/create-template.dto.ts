@@ -5,9 +5,9 @@ import {
   IsUUID,
   IsBoolean,
   IsNumber,
-  IsEnum,
+  IsArray,
+  ArrayMinSize,
 } from 'class-validator';
-import { ProductShape } from '@prisma/client';
 
 export class CreateTemplateDto {
   @IsString()
@@ -17,21 +17,12 @@ export class CreateTemplateDto {
   categoryId: string;
 
   @IsOptional()
-  @IsEnum(ProductShape)
-  productShape?: ProductShape;
-
-  @IsOptional()
-  @Transform(({ value }) => (value === '' || value === undefined ? undefined : parseFloat(value)))
-  @IsNumber()
-  widthMm?: number;
-
-  @IsOptional()
-  @Transform(({ value }) => (value === '' || value === undefined ? undefined : parseFloat(value)))
-  @IsNumber()
-  heightMm?: number;
-
-  @IsOptional()
   editableAreas?: any;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  productIds?: string[];
 
   @IsOptional()
   @IsString()

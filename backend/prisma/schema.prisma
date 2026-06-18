@@ -42,23 +42,34 @@ model Category {
 }
 
 model Template {
-  id            String    @id @default(uuid())
+  id            String            @id @default(uuid())
   name          String
   categoryId    String
-  productShape  String?   // RECTANGULAR | CIRCULAR | OVAL | SQUARE
-  widthMm       Float?
-  heightMm      Float?
-  svgContent    String    @db.Text
-  editableAreas Json?     // [{ id, label, defaultText, x, y, fontSize, fontFamily, maxLength }]
+  svgContent    String            @db.Text
+  editableAreas Json?             // [{ id, label, defaultText, x, y, fontSize, fontFamily, maxLength }]
   thumbnailUrl  String?
-  isActive      Boolean   @default(true)
-  sortOrder     Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  category      Category  @relation(fields: [categoryId], references: [id])
+  category      Category          @relation(fields: [categoryId], references: [id])
+  products      TemplateProduct[]
 
-  @@index([categoryId, productShape, widthMm, heightMm])
+  @@index([categoryId])
+}
+
+model TemplateProduct {
+  id          String   @id @default(uuid())
+  templateId  String
+  productId   String
+  createdAt   DateTime @default(now())
+
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, productId])
+  @@index([productId])
 }
 
 enum ProductShape {
@@ -159,6 +170,7 @@ model Product {
   inventoryLogs  InventoryLog[]
   waitlist       WaitlistEntry[]
   discounts      Discount[]
+  templates      TemplateProduct[]
 }
 
 model Ink {

@@ -1,0 +1,35 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Builds y logs
+frontend/build.log
+*.log
+dist/
+build/
+
+# Archivos de productos/imagenes locales (no comitear)
+Productos/
+
+# Backups y zips locales
+design-backend.zip
+*.zip
+*.tar.gz
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Variables de entorno locales (ya manejadas por Railway)
+.env.local
+.env.*.local
+
+# Coverage y tests
+coverage/

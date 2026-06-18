@@ -19,26 +19,24 @@ interface EditableArea {
 export class TemplatesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAllPublic(categoryId?: string, shape?: string, widthMm?: number, heightMm?: number) {
+  async findAllPublic(categoryId?: string, productId?: string) {
     return this.prisma.template.findMany({
       where: {
         isActive: true,
         ...(categoryId && { categoryId }),
-        ...(shape && { productShape: shape }),
-        ...(widthMm !== undefined && { widthMm }),
-        ...(heightMm !== undefined && { heightMm }),
+        ...(productId && { products: { some: { productId } } }),
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
       select: {
         id: true,
         name: true,
         categoryId: true,
-        productShape: true,
-        widthMm: true,
-        heightMm: true,
         editableAreas: true,
         thumbnailUrl: true,
         sortOrder: true,
+        products: {
+          select: { productId: true },
+        },
       },
     });
   }
@@ -46,6 +44,9 @@ export class TemplatesService {
   async findOnePublic(id: string) {
     const template = await this.prisma.template.findFirst({
       where: { id, isActive: true },
+      include: {
+        products: { select: { productId: true } },
+      },
     });
     if (!template) throw new NotFoundException('Plantilla no encontrada');
     return template;
@@ -54,14 +55,30 @@ export class TemplatesService {
   async findAllAdmin() {
     return this.prisma.template.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-      include: { category: { select: { id: true, name: true, slug: true } } },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        products: {
+          select: {
+            productId: true,
+            product: { select: { id: true, name: true, sku: true } },
+          },
+        },
+      },
     });
   }
 
   async findOneAdmin(id: string) {
     const template = await this.prisma.template.findUnique({
       where: { id },
-      include: { category: { select: { id: true, name: true, slug: true } } },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        products: {
+          select: {
+            productId: true,
+            product: { select: { id: true, name: true, sku: true } },
+          },
+        },
+      },
     });
     if (!template) throw new NotFoundException('Plantilla no encontrada');
     return template;
@@ -72,21 +89,41 @@ export class TemplatesService {
       throw new BadRequestException('El contenido SVG es inválido o está vacío');
     }
 
-    const editableAreas = dto.editableAreas ?? this.extractEditableAreas(svgContent);
+    const parsedEditableAreas =
+      typeof dto.editableAreas === 'string'
+        ? JSON.parse(dto.editableAreas)
+        : dto.editableAreas;
+
+    const editableAreas = parsedEditableAreas ?? this.extractEditableAreas(svgContent);
 
     return this.prisma.template.create({
       data: {
-        ...dto,
+        name: dto.name,
+        categoryId: dto.categoryId,
         svgContent,
         editableAreas: editableAreas as any,
+        thumbnailUrl: dto.thumbnailUrl,
+        isActive: dto.isActive ?? true,
+        sortOrder: dto.sortOrder ?? 0,
+        products: dto.productIds?.length
+          ? { create: dto.productIds.map((productId) => ({ productId })) }
+          : undefined,
       },
+      include: { products: { select: { productId: true } } },
     });
   }
 
   async update(id: string, dto: UpdateTemplateDto, svgContent?: string) {
     const existing = await this.findOneAdmin(id);
 
-    const data: any = { ...dto };
+    const data: any = {
+      name: dto.name,
+      categoryId: dto.categoryId,
+      thumbnailUrl: dto.thumbnailUrl,
+      isActive: dto.isActive,
+      sortOrder: dto.sortOrder,
+    };
+
     if (svgContent !== undefined) {
       if (svgContent.trim().length < 50) {
         throw new BadRequestException('El contenido SVG es inválido o está vacío');
@@ -97,9 +134,25 @@ export class TemplatesService {
       }
     }
 
+    if (dto.editableAreas !== undefined) {
+      data.editableAreas =
+        typeof dto.editableAreas === 'string'
+          ? JSON.parse(dto.editableAreas)
+          : dto.editableAreas;
+    }
+
+    // Reconectar productos si vienen en el DTO
+    if (dto.productIds !== undefined) {
+      data.products = {
+        deleteMany: {},
+        create: dto.productIds.map((productId) => ({ productId })),
+      };
+    }
+
     return this.prisma.template.update({
       where: { id },
       data,
+      include: { products: { select: { productId: true } } },
     });
   }
 
@@ -219,21 +272,18 @@ export class TemplatesService {
   }
 
   private setTextContent(node: any, value: string) {
-    // fast-xml-parser con preserveOrder guarda el contenido como array mezclada.
-    // Simplificación: reemplazamos todas las entradas de texto plano por el valor.
     if (Array.isArray(node['#text'])) {
       node['#text'] = [value];
     } else if (node['#text'] !== undefined) {
       node['#text'] = value;
     } else {
-      // Si el nodo tiene hijos, intentamos dejar atributos y reemplazar contenido
       const keys = Object.keys(node).filter((k) => k !== ':@');
       for (const key of keys) {
         if (typeof node[key] === 'string') {
           node[key] = value;
           return;
         }
-        if (Array.isArray(node[key]) && node[key].every((i) => typeof i === 'string')) {
+        if (Array.isArray(node[key]) && node[key].every((i: any) => typeof i === 'string')) {
           node[key] = [value];
           return;
         }
