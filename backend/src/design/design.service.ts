@@ -155,7 +155,11 @@ export class DesignService {
     const fields: Record<string, string> = dto.templateData || {};
 
     // Aplicar textos al SVG
-    const finalSvg = this.templatesService.applyTemplateFields(template.svgContent, fields);
+    const finalSvg = this.templatesService.applyTemplateFields(
+      template.svgContent,
+      fields,
+      template.editableAreas as any,
+    );
 
     // Generar PNG preview con resvg
     const designId = randomUUID();

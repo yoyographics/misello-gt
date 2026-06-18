@@ -3,6 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import {
+  applyTemplateFields as applyCircularTemplateFields,
+  detectCircularText,
+} from './utils/circular-text.util';
 
 interface EditableArea {
   id: string;
@@ -13,6 +17,13 @@ interface EditableArea {
   fontSize?: number;
   fontFamily?: string;
   maxLength?: number;
+  type?: 'text' | 'circular';
+  radius?: number;
+  centerX?: number;
+  centerY?: number;
+  startAngle?: number;
+  letterSpacing?: number;
+  baseline?: 'top' | 'bottom';
 }
 
 @Injectable()
@@ -94,7 +105,16 @@ export class TemplatesService {
         ? JSON.parse(dto.editableAreas)
         : dto.editableAreas;
 
-    const editableAreas = parsedEditableAreas ?? this.extractEditableAreas(svgContent);
+    let editableAreas = parsedEditableAreas ?? this.extractEditableAreas(svgContent);
+
+    // Si no hay textos data-editable, intentar detectar texto circular
+    if (!editableAreas || editableAreas.length === 0) {
+      const detected = detectCircularText(svgContent);
+      if (detected.areas.length > 0) {
+        editableAreas = detected.areas as any;
+        svgContent = detected.svgContent;
+      }
+    }
 
     return this.prisma.template.create({
       data: {
@@ -130,7 +150,15 @@ export class TemplatesService {
       }
       data.svgContent = svgContent;
       if (dto.editableAreas === undefined) {
-        data.editableAreas = this.extractEditableAreas(svgContent);
+        let detectedAreas = this.extractEditableAreas(svgContent);
+        if (!detectedAreas || detectedAreas.length === 0) {
+          const detected = detectCircularText(svgContent);
+          if (detected.areas.length > 0) {
+            detectedAreas = detected.areas as any;
+            data.svgContent = detected.svgContent;
+          }
+        }
+        data.editableAreas = detectedAreas;
       }
     }
 
@@ -184,26 +212,14 @@ export class TemplatesService {
 
   /**
    * Reemplaza los textos editables en el SVG por los valores enviados por el cliente.
+   * Soporta textos normales (data-editable) y textos circulares detectados.
    */
-  applyTemplateFields(svgContent: string, fields: Record<string, string>): string {
-    const parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: '',
-      parseAttributeValue: false,
-      preserveOrder: true,
-    });
-
-    const parsed = parser.parse(svgContent);
-    this.walkAndReplace(parsed, fields);
-
-    const builder = new XMLBuilder({
-      ignoreAttributes: false,
-      attributeNamePrefix: '',
-      preserveOrder: true,
-      format: false,
-    });
-
-    return builder.build(parsed);
+  applyTemplateFields(
+    svgContent: string,
+    fields: Record<string, string>,
+    areas?: EditableArea[],
+  ): string {
+    return applyCircularTemplateFields(svgContent, fields, areas || []);
   }
 
   private walkAndExtract(node: any, areas: EditableArea[]) {

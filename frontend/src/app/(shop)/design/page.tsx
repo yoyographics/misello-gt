@@ -21,6 +21,8 @@ import {
 import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X, Stamp } from 'lucide-react';
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
+import { applyTemplateFields as applyTemplateFieldsCircular } from '@/lib/circular-text';
+import { detectCircularText } from '@/lib/detect-circular-text';
 
 interface Category {
   id: string;
@@ -92,6 +94,13 @@ interface EditableArea {
   fontSize?: number;
   fontFamily?: string;
   maxLength?: number;
+  type?: 'text' | 'circular';
+  radius?: number;
+  centerX?: number;
+  centerY?: number;
+  startAngle?: number;
+  letterSpacing?: number;
+  baseline?: 'top' | 'bottom';
 }
 
 type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR' | 'PORTATIL' | 'EMBOSADORA';
@@ -659,10 +668,14 @@ export default function DesignPage() {
           productId: product.id,
         },
       });
-      const list = (res.data || []).map((t: Template) => ({
-        ...t,
-        editableAreas: normalizeEditableAreas(t.editableAreas),
-      }));
+      const list = (res.data || []).map((t: Template) => {
+        const normalized = normalizeEditableAreas(t.editableAreas);
+        if (normalized.length === 0 && t.svgContent) {
+          const detected = detectCircularText(t.svgContent);
+          return { ...t, svgContent: detected.svgContent, editableAreas: detected.areas };
+        }
+        return { ...t, editableAreas: normalized };
+      });
       setTemplates(list);
       if (list.length > 0) {
         setShowTemplateSelection(true);
@@ -704,16 +717,7 @@ export default function DesignPage() {
   };
 
   const applyTemplateFields = (svgContent: string, fields: Record<string, string>): string => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-    const texts = doc.querySelectorAll('text[data-editable="true"]');
-    texts.forEach((el) => {
-      const field = el.getAttribute('data-field');
-      if (field && fields[field] !== undefined) {
-        el.textContent = fields[field];
-      }
-    });
-    return new XMLSerializer().serializeToString(doc.documentElement);
+    return applyTemplateFieldsCircular(svgContent, fields, selectedTemplate?.editableAreas || []);
   };
 
   const addToCart = () => {
