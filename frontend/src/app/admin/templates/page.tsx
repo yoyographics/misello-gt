@@ -111,6 +111,14 @@ export default function AdminTemplatesPage() {
 
   const normalizeAreas = (areas: unknown): EditableArea[] => {
     if (Array.isArray(areas)) return areas as EditableArea[];
+    if (typeof areas === 'string') {
+      try {
+        const parsed = JSON.parse(areas);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
     return [];
   };
 

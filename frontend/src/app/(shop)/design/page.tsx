@@ -638,6 +638,19 @@ export default function DesignPage() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  const normalizeEditableAreas = (areas: unknown): EditableArea[] => {
+    if (Array.isArray(areas)) return areas as EditableArea[];
+    if (typeof areas === 'string') {
+      try {
+        const parsed = JSON.parse(areas);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
   const loadTemplates = async (product: Product) => {
     setTemplatesLoading(true);
     try {
@@ -646,7 +659,10 @@ export default function DesignPage() {
           productId: product.id,
         },
       });
-      const list = res.data || [];
+      const list = (res.data || []).map((t: Template) => ({
+        ...t,
+        editableAreas: normalizeEditableAreas(t.editableAreas),
+      }));
       setTemplates(list);
       if (list.length > 0) {
         setShowTemplateSelection(true);
@@ -671,9 +687,10 @@ export default function DesignPage() {
   };
 
   const selectTemplate = (template: Template) => {
-    setSelectedTemplate(template);
+    const areas = normalizeEditableAreas(template.editableAreas);
+    setSelectedTemplate({ ...template, editableAreas: areas });
     const initialFields: Record<string, string> = {};
-    template.editableAreas?.forEach((area) => {
+    areas.forEach((area) => {
       initialFields[area.id] = area.defaultText || '';
     });
     setTemplateFields(initialFields);
