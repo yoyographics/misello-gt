@@ -42,6 +42,7 @@ export class TemplatesService {
         id: true,
         name: true,
         categoryId: true,
+        svgContent: true,
         editableAreas: true,
         thumbnailUrl: true,
         sortOrder: true,
