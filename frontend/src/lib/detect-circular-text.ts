@@ -82,7 +82,8 @@ export function detectCircularText(
   const { x: centerX, y: centerY, radius } = centerInfo;
   const areas: CircularArea[] = [];
 
-  // 1. Detectar textPath circular
+  // 1. Detectar textPath circular y convertirlo a area generada letra por letra
+  // (mas robusto que depender de startOffset extranos de Illustrator)
   const textPathElements = Array.from(doc.querySelectorAll('textPath'));
   textPathElements.forEach((tp, idx) => {
     const textEl = tp.closest('text');
@@ -96,25 +97,24 @@ export function detectCircularText(
     const href = tp.getAttribute('xlink:href') || tp.getAttribute('href') || '';
     const pathEl = doc.querySelector(href) as SVGPathElement | null;
     let baseline: 'top' | 'bottom' = 'top';
+    let pathRadius = radius;
     if (pathEl) {
       const bbox = getPathApproxCenter(pathEl);
       baseline = bbox.y < centerY ? 'top' : 'bottom';
+      pathRadius = Math.sqrt((bbox.x - centerX) ** 2 + (bbox.y - centerY) ** 2);
     }
 
     const fontSize = parseFloat(textEl.getAttribute('font-size') || '0') ||
       parseFloatFromClass(textEl.getAttribute('class') || '', doc) || 9;
 
     const fieldId = `circular${idx + 1}`;
-    textEl.setAttribute('data-editable', 'true');
-    textEl.setAttribute('data-field', fieldId);
-    textEl.setAttribute('data-label', baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior');
 
     areas.push({
       id: fieldId,
       label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
       defaultText: text,
       type: 'circular',
-      radius,
+      radius: pathRadius,
       centerX,
       centerY,
       startAngle: baseline === 'top' ? -90 : 90,
@@ -122,6 +122,9 @@ export function detectCircularText(
       fontFamily: textEl.getAttribute('font-family') || undefined,
       baseline,
     });
+
+    // Eliminar el textPath original para que no interfiera con la generacion
+    textEl.remove();
   });
 
   // 2. Detectar letras individuales circulares (Illustrator viejo)

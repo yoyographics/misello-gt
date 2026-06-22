@@ -345,7 +345,7 @@ export function detectCircularText(
   const { x: centerX, y: centerY, radius } = centerInfo;
   const areas: CircularArea[] = [];
 
-  // 1. Detectar textPath circular
+  // 1. Detectar textPath circular y convertirlo a area generada letra por letra
   const textPathNodes = findNodes(parsed, 'textPath');
   textPathNodes.forEach((tp, idx) => {
     const textNode = findParentText(parsed, tp);
@@ -357,6 +357,7 @@ export function detectCircularText(
 
     const href = tp[':@']?.['xlink:href'] || tp[':@']?.href || '';
     let baseline: 'top' | 'bottom' = 'top';
+    let pathRadius = radius;
     const pathId = href.replace('#', '');
     const pathNodes = findNodes(parsed, 'path');
     const pathNode = pathNodes.find((p) => p[':@']?.id === pathId);
@@ -364,22 +365,18 @@ export function detectCircularText(
       const d = pathNode[':@']?.d || '';
       const bbox = getPathApproxCenter(d);
       baseline = bbox.y < centerY ? 'top' : 'bottom';
+      pathRadius = Math.sqrt((bbox.x - centerX) ** 2 + (bbox.y - centerY) ** 2);
     }
 
     const fontSize = parseFontSizeFromStyle(textNode[':@']?.class || '', parsed);
     const fieldId = `circular${idx + 1}`;
-
-    if (!textNode[':@']) textNode[':@'] = {};
-    textNode[':@']['data-editable'] = 'true';
-    textNode[':@']['data-field'] = fieldId;
-    textNode[':@']['data-label'] = baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior';
 
     areas.push({
       id: fieldId,
       label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
       defaultText: text,
       type: 'circular',
-      radius,
+      radius: pathRadius,
       centerX,
       centerY,
       startAngle: baseline === 'top' ? -90 : 90,
@@ -387,6 +384,9 @@ export function detectCircularText(
       fontFamily: textNode[':@']?.['font-family'],
       baseline,
     });
+
+    // Eliminar el nodo text padre para evitar duplicados
+    textNode.__delete = true;
   });
 
   // 2. Detectar letras individuales circulares
