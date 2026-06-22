@@ -724,7 +724,10 @@ export default function DesignPage() {
 
   const applyTemplateFields = (svgContent: string, fields: Record<string, string>): string => {
     const font = fonts.find((f) => f.id === templateFontId);
-    const fontFamily = font?.name || selectedTemplate?.editableAreas?.[0]?.fontFamily || 'Arial, sans-serif';
+    // Usar la fuente cargada por @font-face para la preview; fallback al nombre legible
+    const fontFamily = loadedFonts.has(templateFontId)
+      ? `font-${templateFontId}`
+      : font?.name || selectedTemplate?.editableAreas?.[0]?.fontFamily || 'Arial, sans-serif';
     const areas = (selectedTemplate?.editableAreas || []).map((area) => ({
       ...area,
       fontFamily,

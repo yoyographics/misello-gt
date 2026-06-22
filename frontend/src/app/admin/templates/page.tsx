@@ -70,6 +70,7 @@ export default function AdminTemplatesPage() {
   const [editableAreas, setEditableAreas] = useState<EditableArea[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
   const [selectedTextIndex, setSelectedTextIndex] = useState<number | null>(null);
+  const [selectedTextManual, setSelectedTextManual] = useState(false);
   const [selectedTextType, setSelectedTextType] = useState<'text' | 'circular'>('text');
   const [selectedTextForm, setSelectedTextForm] = useState({
     id: '',
@@ -83,6 +84,8 @@ export default function AdminTemplatesPage() {
     baseline: 'top' as 'top' | 'bottom',
     fontSize: '',
     fontFamily: '',
+    x: '',
+    y: '',
   });
 
   const [form, setForm] = useState({
@@ -166,6 +169,17 @@ export default function AdminTemplatesPage() {
     const height = parseFloat(svg.getAttribute('height') || '0');
     if (width && height) return { x: width / 2, y: height / 2, radius: 0 };
     return null;
+  }
+
+  function getSvgCoordinates(svg: SVGSVGElement, container: HTMLElement, clientX: number, clientY: number): { x: number; y: number } {
+    const rect = svg.getBoundingClientRect();
+    const viewBox = svg.viewBox.baseVal;
+    const scaleX = viewBox.width / rect.width;
+    const scaleY = viewBox.height / rect.height;
+    return {
+      x: viewBox.x + (clientX - rect.left) * scaleX,
+      y: viewBox.y + (clientY - rect.top) * scaleY,
+    };
   }
 
   function getTextPosition(textEl: Element): { x: string | null; y: string | null } {
@@ -327,55 +341,89 @@ export default function AdminTemplatesPage() {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const textEl = target.closest('text');
-      if (!textEl) return;
-      const indexAttr = textEl.getAttribute('data-misello-index');
-      if (indexAttr === null) return;
-      const index = parseInt(indexAttr, 10);
-      if (isNaN(index)) return;
 
-      const hasTextPath = !!textEl.querySelector('textPath');
-      const fontSize = textEl.getAttribute('font-size') || '';
-      const fontFamily = textEl.getAttribute('font-family') || '';
-      const defaultText = textEl.textContent || '';
+      if (textEl) {
+        const indexAttr = textEl.getAttribute('data-misello-index');
+        if (indexAttr === null) return;
+        const index = parseInt(indexAttr, 10);
+        if (isNaN(index)) return;
 
-      let type: 'text' | 'circular' = 'text';
-      let radius = '';
-      let centerX = '';
-      let centerY = '';
-      let startAngle = '';
-      let baseline: 'top' | 'bottom' = 'top';
+        const hasTextPath = !!textEl.querySelector('textPath');
+        const fontSize = textEl.getAttribute('font-size') || '';
+        const fontFamily = textEl.getAttribute('font-family') || '';
+        const defaultText = textEl.textContent || '';
 
-      if (hasTextPath) {
-        type = 'circular';
-        const doc = new DOMParser().parseFromString(svgPreview, 'image/svg+xml');
-        const circle = getCircleCenter(doc);
-        const tp = textEl.querySelector('textPath');
-        const href = tp?.getAttribute('xlink:href') || tp?.getAttribute('href') || '';
-        const pathEl = doc.querySelector(href) as SVGPathElement | null;
-        if (circle && pathEl) {
-          const bbox = getPathApproxCenter(pathEl);
-          centerX = String(circle.x);
-          centerY = String(circle.y);
-          radius = String(Math.sqrt((bbox.x - circle.x) ** 2 + (bbox.y - circle.y) ** 2));
-          baseline = bbox.y < circle.y ? 'top' : 'bottom';
-          startAngle = baseline === 'top' ? '-90' : '90';
+        let type: 'text' | 'circular' = 'text';
+        let radius = '';
+        let centerX = '';
+        let centerY = '';
+        let startAngle = '';
+        let baseline: 'top' | 'bottom' = 'top';
+
+        if (hasTextPath) {
+          type = 'circular';
+          const doc = new DOMParser().parseFromString(svgPreview, 'image/svg+xml');
+          const circle = getCircleCenter(doc);
+          const tp = textEl.querySelector('textPath');
+          const href = tp?.getAttribute('xlink:href') || tp?.getAttribute('href') || '';
+          const pathEl = doc.querySelector(href) as SVGPathElement | null;
+          if (circle && pathEl) {
+            const bbox = getPathApproxCenter(pathEl);
+            centerX = String(circle.x);
+            centerY = String(circle.y);
+            radius = String(Math.sqrt((bbox.x - circle.x) ** 2 + (bbox.y - circle.y) ** 2));
+            baseline = bbox.y < circle.y ? 'top' : 'bottom';
+            startAngle = baseline === 'top' ? '-90' : '90';
+          }
         }
+
+        setSelectedTextIndex(index);
+        setSelectedTextManual(false);
+        setSelectedTextType(type);
+        setSelectedTextForm({
+          id: `field${editableAreas.length + 1}`,
+          label: hasTextPath ? 'Texto circular' : 'Texto editable',
+          defaultText,
+          maxLength: '',
+          radius,
+          centerX,
+          centerY,
+          startAngle,
+          baseline,
+          fontSize,
+          fontFamily,
+          x: textEl.getAttribute('x') || '',
+          y: textEl.getAttribute('y') || '',
+        });
+        e.preventDefault();
+        e.stopPropagation();
+        return;
       }
 
-      setSelectedTextIndex(index);
-      setSelectedTextType(type);
+      // Click sobre path u otro elemento: crear área de texto manual en esa posición
+      const svg = container.querySelector('svg') as SVGSVGElement | null;
+      if (!svg) return;
+      const coords = getSvgCoordinates(svg, container, e.clientX, e.clientY);
+      const doc = svg.ownerDocument;
+      const circle = getCircleCenter(doc) || getSvgViewBoxCenter(doc);
+
+      setSelectedTextIndex(null);
+      setSelectedTextManual(true);
+      setSelectedTextType('text');
       setSelectedTextForm({
         id: `field${editableAreas.length + 1}`,
-        label: hasTextPath ? 'Texto circular' : 'Texto editable',
-        defaultText,
+        label: 'Texto central manual',
+        defaultText: '',
         maxLength: '',
-        radius,
-        centerX,
-        centerY,
-        startAngle,
-        baseline,
-        fontSize,
-        fontFamily,
+        radius: '',
+        centerX: circle ? String(circle.x) : '',
+        centerY: circle ? String(circle.y) : '',
+        startAngle: '',
+        baseline: 'top',
+        fontSize: '',
+        fontFamily: '',
+        x: String(coords.x.toFixed(2)),
+        y: String(coords.y.toFixed(2)),
       });
       e.preventDefault();
       e.stopPropagation();
@@ -614,8 +662,7 @@ export default function AdminTemplatesPage() {
   };
 
   const addAreaFromSelection = () => {
-    if (selectedTextIndex === null) return;
-    const { id, label, defaultText, maxLength, radius, centerX, centerY, startAngle, baseline, fontSize, fontFamily } = selectedTextForm;
+    const { id, label, defaultText, maxLength, radius, centerX, centerY, startAngle, baseline, fontSize, fontFamily, x, y } = selectedTextForm;
     if (!id.trim() || !label.trim()) {
       setFormError('ID y etiqueta son obligatorios');
       return;
@@ -623,46 +670,74 @@ export default function AdminTemplatesPage() {
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgPreview, 'image/svg+xml');
-    const textEls = Array.from(doc.querySelectorAll('text'));
-    const textEl = textEls[selectedTextIndex];
+
+    let textEl: Element | null = null;
+    if (!selectedTextManual && selectedTextIndex !== null) {
+      const textEls = Array.from(doc.querySelectorAll('text'));
+      textEl = textEls[selectedTextIndex] || null;
+    }
+
+    if (!textEl && selectedTextType === 'text' && x && y) {
+      // Crear un <text> nuevo en el SVG para áreas manuales (p. ej. sobre paths)
+      textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+      textEl.setAttribute('x', x);
+      textEl.setAttribute('y', y);
+      textEl.setAttribute('text-anchor', 'middle');
+      textEl.setAttribute('dominant-baseline', 'central');
+      textEl.textContent = defaultText || label;
+      doc.documentElement.appendChild(textEl);
+    }
+
     if (!textEl) return;
 
     textEl.setAttribute('data-editable', 'true');
     textEl.setAttribute('data-field', id.trim());
     textEl.setAttribute('data-label', label.trim());
+    textEl.setAttribute('data-type', selectedTextType);
     if (maxLength) textEl.setAttribute('data-maxlength', maxLength);
+    if (fontSize) textEl.setAttribute('data-font-size', fontSize);
+    if (fontFamily) textEl.setAttribute('data-font-family', fontFamily);
 
     const newArea: EditableArea = {
       id: id.trim(),
       label: label.trim(),
       defaultText: defaultText || textEl.textContent || '',
+      type: selectedTextType,
       maxLength: maxLength ? parseInt(maxLength, 10) : undefined,
       fontSize: fontSize ? parseFloat(fontSize) : undefined,
       fontFamily: fontFamily || undefined,
     };
 
     if (selectedTextType === 'circular') {
-      (newArea as any).type = 'circular';
-      (newArea as any).radius = radius ? parseFloat(radius) : undefined;
-      (newArea as any).centerX = centerX ? parseFloat(centerX) : undefined;
-      (newArea as any).centerY = centerY ? parseFloat(centerY) : undefined;
-      (newArea as any).startAngle = startAngle ? parseFloat(startAngle) : undefined;
-      (newArea as any).baseline = baseline;
+      newArea.radius = radius ? parseFloat(radius) : undefined;
+      newArea.centerX = centerX ? parseFloat(centerX) : undefined;
+      newArea.centerY = centerY ? parseFloat(centerY) : undefined;
+      newArea.startAngle = startAngle ? parseFloat(startAngle) : undefined;
+      newArea.baseline = baseline;
+      if (radius) textEl.setAttribute('data-radius', radius);
+      if (centerX) textEl.setAttribute('data-center-x', centerX);
+      if (centerY) textEl.setAttribute('data-center-y', centerY);
+      if (startAngle) textEl.setAttribute('data-start-angle', startAngle);
+      textEl.setAttribute('data-baseline', baseline);
     } else {
-      const xAttr = textEl.getAttribute('x');
-      const yAttr = textEl.getAttribute('y');
-      if (xAttr) newArea.x = parseFloat(xAttr);
-      if (yAttr) newArea.y = parseFloat(yAttr);
+      const xAttr = x || textEl.getAttribute('x') || '0';
+      const yAttr = y || textEl.getAttribute('y') || '0';
+      newArea.x = parseFloat(xAttr);
+      newArea.y = parseFloat(yAttr);
+      textEl.setAttribute('data-x', xAttr);
+      textEl.setAttribute('data-y', yAttr);
     }
 
     setSvgPreview(new XMLSerializer().serializeToString(doc.documentElement));
     setEditableAreas((prev) => [...prev.filter((a) => a.id !== newArea.id), newArea]);
     setSelectedTextIndex(null);
+    setSelectedTextManual(false);
     setFormError('');
   };
 
   const cancelSelection = () => {
     setSelectedTextIndex(null);
+    setSelectedTextManual(false);
     setFormError('');
   };
 
@@ -830,7 +905,7 @@ export default function AdminTemplatesPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {selectedTextIndex !== null && (
+                  {(selectedTextIndex !== null || selectedTextManual) && (
                     <div className="border rounded-lg p-4 bg-blue-50 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">Marcar texto editable</h4>
@@ -900,6 +975,21 @@ export default function AdminTemplatesPage() {
                     Texto circular
                   </label>
                 </div>
+
+                {selectedTextType === 'text' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Posición X"
+                      value={selectedTextForm.x}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, x: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Posición Y"
+                      value={selectedTextForm.y}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, y: e.target.value })}
+                    />
+                  </div>
+                )}
 
                 {selectedTextType === 'circular' && (
                   <div className="grid grid-cols-2 gap-2">
@@ -975,9 +1065,9 @@ export default function AdminTemplatesPage() {
               </div>
             )}
 
-            {editableAreas.length === 0 && selectedTextIndex === null && (
+            {editableAreas.length === 0 && selectedTextIndex === null && !selectedTextManual && (
               <p className="text-sm text-gray-500">
-                No se detectaron textos editables. Hacé clic en un texto del preview para marcarlo.
+                No se detectaron textos editables. Hacé clic en un texto del preview para marcarlo, o en cualquier parte del sello para crear un texto manual.
               </p>
             )}
                 </div>
