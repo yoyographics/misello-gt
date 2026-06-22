@@ -27,8 +27,14 @@ interface EditableArea {
   id: string;
   label: string;
   defaultText: string;
+  type?: 'text' | 'circular';
   x?: number;
   y?: number;
+  radius?: number;
+  centerX?: number;
+  centerY?: number;
+  startAngle?: number;
+  baseline?: 'top' | 'bottom';
   fontSize?: number;
   fontFamily?: string;
   maxLength?: number;
@@ -146,6 +152,152 @@ export default function AdminTemplatesPage() {
     return null;
   }
 
+  function getSvgViewBoxCenter(doc: Document): { x: number; y: number; radius: number } | null {
+    const svg = doc.querySelector('svg');
+    if (!svg) return null;
+    const viewBox = svg.getAttribute('viewBox');
+    if (viewBox) {
+      const parts = viewBox.split(/[\s,]+/).map(parseFloat);
+      if (parts.length >= 4) {
+        return { x: parts[0] + parts[2] / 2, y: parts[1] + parts[3] / 2, radius: 0 };
+      }
+    }
+    const width = parseFloat(svg.getAttribute('width') || '0');
+    const height = parseFloat(svg.getAttribute('height') || '0');
+    if (width && height) return { x: width / 2, y: height / 2, radius: 0 };
+    return null;
+  }
+
+  function getTextPosition(textEl: Element): { x: string | null; y: string | null } {
+    let x = textEl.getAttribute('x');
+    let y = textEl.getAttribute('y');
+    if (!x || !y) {
+      const tspan = textEl.querySelector('tspan');
+      if (tspan) {
+        x = x || tspan.getAttribute('x');
+        y = y || tspan.getAttribute('y');
+      }
+    }
+    return { x, y };
+  }
+
+  function detectEditableAreas(svgContent: string): { svgContent: string; areas: EditableArea[] } {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const areas: EditableArea[] = [];
+      const circle = getCircleCenter(doc) || getSvgViewBoxCenter(doc);
+
+      // 1. Detectar textPath circular
+      doc.querySelectorAll('textPath').forEach((tp, idx) => {
+        const textEl = tp.closest('text');
+        if (!textEl) return;
+
+        const text = (tp.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!text) return;
+
+        const href = tp.getAttribute('xlink:href') || tp.getAttribute('href') || '';
+        const pathEl = doc.querySelector(href) as SVGPathElement | null;
+        let baseline: 'top' | 'bottom' = 'top';
+        let radius = 40;
+        if (circle && pathEl) {
+          const bbox = getPathApproxCenter(pathEl);
+          baseline = bbox.y < circle.y ? 'top' : 'bottom';
+          radius = Math.sqrt((bbox.x - circle.x) ** 2 + (bbox.y - circle.y) ** 2);
+        } else if (circle) {
+          const textY = parseFloat(textEl.getAttribute('y') || '0') || circle.y;
+          baseline = textY < circle.y ? 'top' : 'bottom';
+          radius = Math.abs(textY - circle.y);
+        }
+
+        const fontSize = parseFloat(textEl.getAttribute('font-size') || '0') || undefined;
+        const fontFamily = textEl.getAttribute('font-family') || undefined;
+        const fieldId = `circular${idx + 1}`;
+
+        textEl.setAttribute('data-editable', 'true');
+        textEl.setAttribute('data-field', fieldId);
+        textEl.setAttribute('data-label', baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior');
+        textEl.setAttribute('data-type', 'circular');
+        textEl.setAttribute('data-radius', String(radius));
+        if (circle) {
+          textEl.setAttribute('data-center-x', String(circle.x));
+          textEl.setAttribute('data-center-y', String(circle.y));
+        }
+        textEl.setAttribute('data-start-angle', baseline === 'top' ? '-90' : '90');
+        textEl.setAttribute('data-baseline', baseline);
+        if (fontSize) textEl.setAttribute('data-font-size', String(fontSize));
+        if (fontFamily) textEl.setAttribute('data-font-family', fontFamily);
+
+        areas.push({
+          id: fieldId,
+          label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
+          defaultText: text,
+          type: 'circular',
+          radius,
+          centerX: circle?.x,
+          centerY: circle?.y,
+          startAngle: baseline === 'top' ? -90 : 90,
+          baseline,
+          fontSize,
+          fontFamily,
+        });
+      });
+
+      // 2. Detectar textos centrales normales
+      let centralIdx = 0;
+      doc.querySelectorAll('text').forEach((textEl) => {
+        if (textEl.querySelector('textPath')) return;
+        if (textEl.getAttribute('data-editable') === 'true') return;
+
+        const text = (textEl.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!text) return;
+
+        // Ignorar textos que parecen ser letras individuales circulares (rotadas alrededor del centro)
+        const transform = textEl.getAttribute('transform') || '';
+        const hasRotate = /rotate\s*\(/.test(transform);
+        if (hasRotate && circle) {
+          const translateMatch = transform.match(/translate\(\s*([\d.]+)[,\s]+([\d.]+)\s*\)/);
+          if (translateMatch) {
+            const tx = parseFloat(translateMatch[1]);
+            const ty = parseFloat(translateMatch[2]);
+            const dist = Math.sqrt((tx - circle.x) ** 2 + (ty - circle.y) ** 2);
+            if (dist > (circle.radius || 0) * 0.3) return; // probablemente letra circular
+          }
+        }
+
+        centralIdx++;
+        const fieldId = `line${centralIdx}`;
+        const pos = getTextPosition(textEl);
+        const fontSize = parseFloat(textEl.getAttribute('font-size') || '0') || undefined;
+        const fontFamily = textEl.getAttribute('font-family') || undefined;
+
+        textEl.setAttribute('data-editable', 'true');
+        textEl.setAttribute('data-field', fieldId);
+        textEl.setAttribute('data-label', centralIdx === 1 ? 'Texto central' : `Texto central ${centralIdx}`);
+        textEl.setAttribute('data-type', 'text');
+        if (pos.x) textEl.setAttribute('data-x', pos.x);
+        if (pos.y) textEl.setAttribute('data-y', pos.y);
+        if (fontSize) textEl.setAttribute('data-font-size', String(fontSize));
+        if (fontFamily) textEl.setAttribute('data-font-family', fontFamily);
+
+        areas.push({
+          id: fieldId,
+          label: centralIdx === 1 ? 'Texto central' : `Texto central ${centralIdx}`,
+          defaultText: text,
+          type: 'text',
+          x: pos.x ? parseFloat(pos.x) : undefined,
+          y: pos.y ? parseFloat(pos.y) : undefined,
+          fontSize,
+          fontFamily,
+        });
+      });
+
+      return { svgContent: new XMLSerializer().serializeToString(doc.documentElement), areas };
+    } catch {
+      return { svgContent, areas: [] };
+    }
+  }
+
   function getPathApproxCenter(pathEl: SVGPathElement): { x: number; y: number } {
     try {
       const len = pathEl.getTotalLength();
@@ -244,20 +396,43 @@ export default function AdminTemplatesPage() {
       const parser = new DOMParser();
       const doc = parser.parseFromString(svgContent, 'image/svg+xml');
       const texts = doc.querySelectorAll('text[data-editable="true"]');
-      texts.forEach((el, idx) => {
-        const field = el.getAttribute('data-field') || `field${idx + 1}`;
-        const label = el.getAttribute('data-label') || `Texto ${idx + 1}`;
+      texts.forEach((el) => {
+        const field = el.getAttribute('data-field') || 'field1';
+        const label = el.getAttribute('data-label') || 'Texto editable';
+        const type = (el.getAttribute('data-type') as 'text' | 'circular') || 'text';
         const maxLength = el.getAttribute('data-maxlength');
-        areas.push({
+        const radius = el.getAttribute('data-radius');
+        const centerX = el.getAttribute('data-center-x');
+        const centerY = el.getAttribute('data-center-y');
+        const startAngle = el.getAttribute('data-start-angle');
+        const baseline = el.getAttribute('data-baseline') as 'top' | 'bottom' | null;
+        const fontSize = el.getAttribute('data-font-size') || el.getAttribute('font-size');
+        const fontFamily = el.getAttribute('data-font-family') || el.getAttribute('font-family');
+        const x = el.getAttribute('data-x') || el.getAttribute('x');
+        const y = el.getAttribute('data-y') || el.getAttribute('y');
+
+        const area: EditableArea = {
           id: field,
           label,
           defaultText: el.textContent || '',
-          x: parseFloat(el.getAttribute('x') || '0') || undefined,
-          y: parseFloat(el.getAttribute('y') || '0') || undefined,
-          fontSize: parseFloat(el.getAttribute('font-size') || '0') || undefined,
-          fontFamily: el.getAttribute('font-family') || undefined,
-          maxLength: maxLength ? parseInt(maxLength) : undefined,
-        });
+          type,
+          fontSize: fontSize ? parseFloat(fontSize) : undefined,
+          fontFamily: fontFamily || undefined,
+          maxLength: maxLength ? parseInt(maxLength, 10) : undefined,
+        };
+
+        if (type === 'circular') {
+          if (radius) area.radius = parseFloat(radius);
+          if (centerX) area.centerX = parseFloat(centerX);
+          if (centerY) area.centerY = parseFloat(centerY);
+          if (startAngle) area.startAngle = parseFloat(startAngle);
+          if (baseline) area.baseline = baseline;
+        } else {
+          if (x) area.x = parseFloat(x);
+          if (y) area.y = parseFloat(y);
+        }
+
+        areas.push(area);
       });
       return areas;
     } catch {
@@ -269,6 +444,22 @@ export default function AdminTemplatesPage() {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const svg = doc.querySelector('svg');
+      if (svg) {
+        const style = svg.getAttribute('style') || '';
+        if (!style.includes('max-width')) {
+          svg.setAttribute('style', `${style}; max-width:100%; height:auto; display:block;`.replace(/^;\s*/, ''));
+        }
+        let styleEl = svg.querySelector('style') as SVGStyleElement | null;
+        if (!styleEl) {
+          styleEl = doc.createElementNS('http://www.w3.org/2000/svg', 'style') as SVGStyleElement;
+          svg.insertBefore(styleEl, svg.firstChild);
+        }
+        const hoverCss = `text[data-misello-index] { cursor: pointer; } text[data-misello-index]:hover { outline: 2px dashed #f97316; }`;
+        if (!(styleEl.textContent || '').includes('data-misello-index')) {
+          styleEl.textContent = (styleEl.textContent || '') + hoverCss;
+        }
+      }
       doc.querySelectorAll('text').forEach((el, i) => {
         el.setAttribute('data-misello-index', String(i));
       });
@@ -284,9 +475,10 @@ export default function AdminTemplatesPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const content = reader.result as string;
-      const indexed = indexSvgTexts(content);
+      const detected = detectEditableAreas(content);
+      const indexed = indexSvgTexts(detected.svgContent);
       setSvgPreview(indexed);
-      setEditableAreas(extractEditableAreas(indexed));
+      setEditableAreas(detected.areas.length > 0 ? detected.areas : extractEditableAreas(indexed));
     };
     reader.readAsText(selectedFile);
   };
@@ -341,6 +533,57 @@ export default function AdminTemplatesPage() {
     }
   };
 
+  const applyAreasToSvg = (svgContent: string, areas: EditableArea[]): string => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      areas.forEach((area) => {
+        // Buscar por data-field existente o por posición aproximada
+        let textEl: Element | null = doc.querySelector(`text[data-field="${area.id}"]`);
+        if (!textEl) {
+          // Buscar un text no marcado que coincida con el texto por defecto
+          const texts = Array.from(doc.querySelectorAll('text')).filter(
+            (el) => el.getAttribute('data-editable') !== 'true',
+          );
+          textEl =
+            texts.find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === area.defaultText) || null;
+          if (!textEl && area.type === 'text' && area.x !== undefined && area.y !== undefined) {
+            const ax = area.x;
+            const ay = area.y;
+            textEl =
+              texts.find((el) => {
+                const pos = getTextPosition(el);
+                const ex = parseFloat(pos.x || '0');
+                const ey = parseFloat(pos.y || '0');
+                return Math.abs(ex - ax) < 1 && Math.abs(ey - ay) < 1;
+              }) || null;
+          }
+        }
+        if (!textEl) return;
+        textEl.setAttribute('data-editable', 'true');
+        textEl.setAttribute('data-field', area.id);
+        textEl.setAttribute('data-label', area.label);
+        textEl.setAttribute('data-type', area.type || 'text');
+        if (area.maxLength) textEl.setAttribute('data-maxlength', String(area.maxLength));
+        if (area.fontSize) textEl.setAttribute('data-font-size', String(area.fontSize));
+        if (area.fontFamily) textEl.setAttribute('data-font-family', area.fontFamily);
+        if (area.type === 'circular') {
+          if (area.radius !== undefined) textEl.setAttribute('data-radius', String(area.radius));
+          if (area.centerX !== undefined) textEl.setAttribute('data-center-x', String(area.centerX));
+          if (area.centerY !== undefined) textEl.setAttribute('data-center-y', String(area.centerY));
+          if (area.startAngle !== undefined) textEl.setAttribute('data-start-angle', String(area.startAngle));
+          if (area.baseline) textEl.setAttribute('data-baseline', area.baseline);
+        } else {
+          if (area.x !== undefined) textEl.setAttribute('data-x', String(area.x));
+          if (area.y !== undefined) textEl.setAttribute('data-y', String(area.y));
+        }
+      });
+      return new XMLSerializer().serializeToString(doc.documentElement);
+    } catch {
+      return svgContent;
+    }
+  };
+
   const handleEdit = (t: Template) => {
     setEditing(t);
     setForm({
@@ -351,11 +594,12 @@ export default function AdminTemplatesPage() {
     });
     setEditableAreas(normalizeAreas(t.editableAreas));
     setSelectedProductIds((t.products || []).map((p) => p.productId));
-    setSvgPreview(
+    const areas = normalizeAreas(t.editableAreas);
+    const svgWithAreas =
       typeof t.svgContent === 'string' && t.svgContent.trim().startsWith('<svg')
-        ? indexSvgTexts(t.svgContent)
-        : ''
-    );
+        ? applyAreasToSvg(t.svgContent, areas)
+        : '';
+    setSvgPreview(svgWithAreas ? indexSvgTexts(svgWithAreas) : '');
     setShowForm(true);
   };
 
@@ -568,20 +812,26 @@ export default function AdminTemplatesPage() {
             </div>
 
             {svgPreview && (
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <label className="text-sm font-medium block mb-2">
-                  Vista previa SVG — hacé clic en un texto para marcarlo editable
-                </label>
-                <div
-                  ref={previewRef}
-                  className="max-h-64 overflow-auto bg-white border rounded"
-                  dangerouslySetInnerHTML={{ __html: svgPreview }}
-                />
-              </div>
-            )}
+              <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 items-start">
+                <div className="border rounded-lg p-3 bg-gray-50 flex flex-col items-center">
+                  <label className="text-sm font-medium block mb-2 text-center">
+                    Vista previa — clic en un texto
+                  </label>
+                  <div className="w-full max-w-[220px] bg-white border rounded p-2">
+                    <div
+                      ref={previewRef}
+                      className="w-full flex items-center justify-center"
+                      dangerouslySetInnerHTML={{ __html: svgPreview }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Si no se detecta un texto, hacé clic sobre él.
+                  </p>
+                </div>
 
-            {selectedTextIndex !== null && (
-              <div className="border rounded-lg p-4 bg-blue-50 space-y-3">
+                <div className="space-y-4">
+                  {selectedTextIndex !== null && (
+                    <div className="border rounded-lg p-4 bg-blue-50 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">Marcar texto editable</h4>
                   <button
@@ -721,6 +971,15 @@ export default function AdminTemplatesPage() {
                       </Button>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {editableAreas.length === 0 && selectedTextIndex === null && (
+              <p className="text-sm text-gray-500">
+                No se detectaron textos editables. Hacé clic en un texto del preview para marcarlo.
+              </p>
+            )}
                 </div>
               </div>
             )}

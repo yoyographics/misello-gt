@@ -1177,7 +1177,9 @@ export default function DesignPage() {
                     }}
                   >
                     <SelectTrigger className="w-full h-10">
-                      <SelectValue placeholder="Selecciona una fuente" />
+                      <SelectValue placeholder="Selecciona una fuente">
+                        {fonts.find((f) => f.id === templateFontId)?.name}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="max-h-[360px]">
                       {fonts.map((font) => (
