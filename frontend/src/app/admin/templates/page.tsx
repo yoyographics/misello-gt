@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +62,22 @@ export default function AdminTemplatesPage() {
   const [editing, setEditing] = useState<Template | null>(null);
   const [svgPreview, setSvgPreview] = useState('');
   const [editableAreas, setEditableAreas] = useState<EditableArea[]>([]);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [selectedTextIndex, setSelectedTextIndex] = useState<number | null>(null);
+  const [selectedTextType, setSelectedTextType] = useState<'text' | 'circular'>('text');
+  const [selectedTextForm, setSelectedTextForm] = useState({
+    id: '',
+    label: '',
+    defaultText: '',
+    maxLength: '',
+    radius: '',
+    centerX: '',
+    centerY: '',
+    startAngle: '',
+    baseline: 'top' as 'top' | 'bottom',
+    fontSize: '',
+    fontFamily: '',
+  });
 
   const [form, setForm] = useState({
     name: '',
@@ -109,6 +125,37 @@ export default function AdminTemplatesPage() {
     setFormError('');
   };
 
+  function getCircleCenter(doc: Document): { x: number; y: number; radius: number } | null {
+    const circles = Array.from(doc.querySelectorAll('circle'));
+    if (circles.length > 0) {
+      let best = circles[0];
+      let bestR = parseFloat(best.getAttribute('r') || '0');
+      circles.forEach((c) => {
+        const r = parseFloat(c.getAttribute('r') || '0');
+        if (r > bestR) {
+          best = c;
+          bestR = r;
+        }
+      });
+      return {
+        x: parseFloat(best.getAttribute('cx') || '0'),
+        y: parseFloat(best.getAttribute('cy') || '0'),
+        radius: bestR,
+      };
+    }
+    return null;
+  }
+
+  function getPathApproxCenter(pathEl: SVGPathElement): { x: number; y: number } {
+    try {
+      const len = pathEl.getTotalLength();
+      const p = pathEl.getPointAtLength(len / 2);
+      return { x: p.x, y: p.y };
+    } catch {
+      return { x: 0, y: 0 };
+    }
+  }
+
   const normalizeAreas = (areas: unknown): EditableArea[] => {
     if (Array.isArray(areas)) return areas as EditableArea[];
     if (typeof areas === 'string') {
@@ -121,6 +168,75 @@ export default function AdminTemplatesPage() {
     }
     return [];
   };
+
+  useEffect(() => {
+    if (!previewRef.current || !svgPreview) return;
+    const container = previewRef.current;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const textEl = target.closest('text');
+      if (!textEl) return;
+      const indexAttr = textEl.getAttribute('data-misello-index');
+      if (indexAttr === null) return;
+      const index = parseInt(indexAttr, 10);
+      if (isNaN(index)) return;
+
+      const hasTextPath = !!textEl.querySelector('textPath');
+      const fontSize = textEl.getAttribute('font-size') || '';
+      const fontFamily = textEl.getAttribute('font-family') || '';
+      const defaultText = textEl.textContent || '';
+
+      let type: 'text' | 'circular' = 'text';
+      let radius = '';
+      let centerX = '';
+      let centerY = '';
+      let startAngle = '';
+      let baseline: 'top' | 'bottom' = 'top';
+
+      if (hasTextPath) {
+        type = 'circular';
+        const doc = new DOMParser().parseFromString(svgPreview, 'image/svg+xml');
+        const circle = getCircleCenter(doc);
+        const tp = textEl.querySelector('textPath');
+        const href = tp?.getAttribute('xlink:href') || tp?.getAttribute('href') || '';
+        const pathEl = doc.querySelector(href) as SVGPathElement | null;
+        if (circle && pathEl) {
+          const bbox = getPathApproxCenter(pathEl);
+          centerX = String(circle.x);
+          centerY = String(circle.y);
+          radius = String(Math.sqrt((bbox.x - circle.x) ** 2 + (bbox.y - circle.y) ** 2));
+          baseline = bbox.y < circle.y ? 'top' : 'bottom';
+          startAngle = baseline === 'top' ? '-90' : '90';
+        }
+      }
+
+      setSelectedTextIndex(index);
+      setSelectedTextType(type);
+      setSelectedTextForm({
+        id: `field${editableAreas.length + 1}`,
+        label: hasTextPath ? 'Texto circular' : 'Texto editable',
+        defaultText,
+        maxLength: '',
+        radius,
+        centerX,
+        centerY,
+        startAngle,
+        baseline,
+        fontSize,
+        fontFamily,
+      });
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    container.querySelectorAll('text').forEach((el) => {
+      el.style.cursor = 'pointer';
+    });
+    container.addEventListener('click', handleClick);
+    return () => {
+      container.removeEventListener('click', handleClick);
+    };
+  }, [svgPreview, editableAreas.length]);
 
   const extractEditableAreas = (svgContent: string): EditableArea[] => {
     try {
@@ -149,14 +265,28 @@ export default function AdminTemplatesPage() {
     }
   };
 
+  const indexSvgTexts = (svgContent: string): string => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      doc.querySelectorAll('text').forEach((el, i) => {
+        el.setAttribute('data-misello-index', String(i));
+      });
+      return new XMLSerializer().serializeToString(doc.documentElement);
+    } catch {
+      return svgContent;
+    }
+  };
+
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
     setFile(selectedFile);
     const reader = new FileReader();
     reader.onload = () => {
       const content = reader.result as string;
-      setSvgPreview(content);
-      setEditableAreas(extractEditableAreas(content));
+      const indexed = indexSvgTexts(content);
+      setSvgPreview(indexed);
+      setEditableAreas(extractEditableAreas(indexed));
     };
     reader.readAsText(selectedFile);
   };
@@ -184,7 +314,12 @@ export default function AdminTemplatesPage() {
     data.append('sortOrder', form.sortOrder);
     data.append('editableAreas', JSON.stringify(editableAreas));
     selectedProductIds.forEach((id) => data.append('productIds', id));
-    if (file) data.append('file', file);
+    if (file) {
+      data.append('file', file);
+    } else if (editing && svgPreview) {
+      const svgFile = new File([svgPreview], 'template.svg', { type: 'image/svg+xml' });
+      data.append('file', svgFile);
+    }
 
     try {
       if (editing) {
@@ -218,7 +353,7 @@ export default function AdminTemplatesPage() {
     setSelectedProductIds((t.products || []).map((p) => p.productId));
     setSvgPreview(
       typeof t.svgContent === 'string' && t.svgContent.trim().startsWith('<svg')
-        ? t.svgContent
+        ? indexSvgTexts(t.svgContent)
         : ''
     );
     setShowForm(true);
@@ -232,6 +367,75 @@ export default function AdminTemplatesPage() {
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error eliminando plantilla');
     }
+  };
+
+  const addAreaFromSelection = () => {
+    if (selectedTextIndex === null) return;
+    const { id, label, defaultText, maxLength, radius, centerX, centerY, startAngle, baseline, fontSize, fontFamily } = selectedTextForm;
+    if (!id.trim() || !label.trim()) {
+      setFormError('ID y etiqueta son obligatorios');
+      return;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgPreview, 'image/svg+xml');
+    const textEls = Array.from(doc.querySelectorAll('text'));
+    const textEl = textEls[selectedTextIndex];
+    if (!textEl) return;
+
+    textEl.setAttribute('data-editable', 'true');
+    textEl.setAttribute('data-field', id.trim());
+    textEl.setAttribute('data-label', label.trim());
+    if (maxLength) textEl.setAttribute('data-maxlength', maxLength);
+
+    const newArea: EditableArea = {
+      id: id.trim(),
+      label: label.trim(),
+      defaultText: defaultText || textEl.textContent || '',
+      maxLength: maxLength ? parseInt(maxLength, 10) : undefined,
+      fontSize: fontSize ? parseFloat(fontSize) : undefined,
+      fontFamily: fontFamily || undefined,
+    };
+
+    if (selectedTextType === 'circular') {
+      (newArea as any).type = 'circular';
+      (newArea as any).radius = radius ? parseFloat(radius) : undefined;
+      (newArea as any).centerX = centerX ? parseFloat(centerX) : undefined;
+      (newArea as any).centerY = centerY ? parseFloat(centerY) : undefined;
+      (newArea as any).startAngle = startAngle ? parseFloat(startAngle) : undefined;
+      (newArea as any).baseline = baseline;
+    } else {
+      const xAttr = textEl.getAttribute('x');
+      const yAttr = textEl.getAttribute('y');
+      if (xAttr) newArea.x = parseFloat(xAttr);
+      if (yAttr) newArea.y = parseFloat(yAttr);
+    }
+
+    setSvgPreview(new XMLSerializer().serializeToString(doc.documentElement));
+    setEditableAreas((prev) => [...prev.filter((a) => a.id !== newArea.id), newArea]);
+    setSelectedTextIndex(null);
+    setFormError('');
+  };
+
+  const cancelSelection = () => {
+    setSelectedTextIndex(null);
+    setFormError('');
+  };
+
+  const removeArea = (areaId: string) => {
+    setEditableAreas((prev) => prev.filter((a) => a.id !== areaId));
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgPreview, 'image/svg+xml');
+      const textEl = doc.querySelector(`text[data-field="${areaId}"]`);
+      if (textEl) {
+        textEl.removeAttribute('data-editable');
+        textEl.removeAttribute('data-field');
+        textEl.removeAttribute('data-label');
+        textEl.removeAttribute('data-maxlength');
+        setSvgPreview(new XMLSerializer().serializeToString(doc.documentElement));
+      }
+    } catch {}
   };
 
   const updateArea = (index: number, updates: Partial<EditableArea>) => {
@@ -365,11 +569,129 @@ export default function AdminTemplatesPage() {
 
             {svgPreview && (
               <div className="border rounded-lg p-4 bg-gray-50">
-                <label className="text-sm font-medium block mb-2">Vista previa SVG</label>
+                <label className="text-sm font-medium block mb-2">
+                  Vista previa SVG — hacé clic en un texto para marcarlo editable
+                </label>
                 <div
+                  ref={previewRef}
                   className="max-h-64 overflow-auto bg-white border rounded"
                   dangerouslySetInnerHTML={{ __html: svgPreview }}
                 />
+              </div>
+            )}
+
+            {selectedTextIndex !== null && (
+              <div className="border rounded-lg p-4 bg-blue-50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Marcar texto editable</h4>
+                  <button
+                    onClick={cancelSelection}
+                    className="text-gray-500 hover:text-gray-700"
+                    aria-label="Cancelar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="ID del campo"
+                    value={selectedTextForm.id}
+                    onChange={(e) => setSelectedTextForm({ ...selectedTextForm, id: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Etiqueta visible"
+                    value={selectedTextForm.label}
+                    onChange={(e) => setSelectedTextForm({ ...selectedTextForm, label: e.target.value })}
+                  />
+                </div>
+
+                <Input
+                  placeholder="Texto por defecto"
+                  value={selectedTextForm.defaultText}
+                  onChange={(e) => setSelectedTextForm({ ...selectedTextForm, defaultText: e.target.value })}
+                />
+
+                <div className="grid grid-cols-3 gap-2">
+                  <Input
+                    placeholder="Tamaño fuente"
+                    value={selectedTextForm.fontSize}
+                    onChange={(e) => setSelectedTextForm({ ...selectedTextForm, fontSize: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Fuente"
+                    value={selectedTextForm.fontFamily}
+                    onChange={(e) => setSelectedTextForm({ ...selectedTextForm, fontFamily: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Max caracteres"
+                    value={selectedTextForm.maxLength}
+                    onChange={(e) => setSelectedTextForm({ ...selectedTextForm, maxLength: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="areaType"
+                      checked={selectedTextType === 'text'}
+                      onChange={() => setSelectedTextType('text')}
+                    />
+                    Texto normal
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="areaType"
+                      checked={selectedTextType === 'circular'}
+                      onChange={() => setSelectedTextType('circular')}
+                    />
+                    Texto circular
+                  </label>
+                </div>
+
+                {selectedTextType === 'circular' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Radio"
+                      value={selectedTextForm.radius}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, radius: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Centro X"
+                      value={selectedTextForm.centerX}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, centerX: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Centro Y"
+                      value={selectedTextForm.centerY}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, centerY: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Ángulo inicial"
+                      value={selectedTextForm.startAngle}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, startAngle: e.target.value })}
+                    />
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                      value={selectedTextForm.baseline}
+                      onChange={(e) => setSelectedTextForm({ ...selectedTextForm, baseline: e.target.value as 'top' | 'bottom' })}
+                    >
+                      <option value="top">Arriba</option>
+                      <option value="bottom">Abajo</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={cancelSelection}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" className="bg-[#1B2A6B] hover:bg-[#141f4d] text-white" onClick={addAreaFromSelection}>
+                    Agregar campo
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -378,7 +700,7 @@ export default function AdminTemplatesPage() {
                 <label className="text-sm font-medium block mb-2">Campos editables detectados</label>
                 <div className="space-y-2">
                   {editableAreas.map((area, idx) => (
-                    <div key={idx} className="grid grid-cols-3 gap-2">
+                    <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
                       <Input
                         placeholder="ID"
                         value={area.id}
@@ -394,6 +716,9 @@ export default function AdminTemplatesPage() {
                         value={area.defaultText}
                         onChange={(e) => updateArea(idx, { defaultText: e.target.value })}
                       />
+                      <Button variant="ghost" size="sm" onClick={() => removeArea(area.id)} className="text-red-500">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>

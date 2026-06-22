@@ -43,6 +43,10 @@ export class DesignService {
       return this.renderTemplateDesign(dto, product);
     }
 
+    if (!dto.lines || dto.lines.length === 0) {
+      throw new BadRequestException('Se requiere al menos una linea de texto');
+    }
+
     // 3. Obtener fuente
     const font = await this.prisma.font.findUnique({
       where: { id: dto.fontId },
@@ -154,11 +158,39 @@ export class DesignService {
 
     const fields: Record<string, string> = dto.templateData || {};
 
+    // Cargar fuente seleccionada o fuente por defecto de la plantilla
+    const fontId = dto.fontId || template.defaultFontId;
+    let selectedFont: { id: string; name: string; minFontSizePt: number | null } | null = null;
+    if (fontId) {
+      const font = await this.prisma.font.findUnique({ where: { id: fontId } });
+      if (font) {
+        selectedFont = {
+          id: font.id,
+          name: font.name,
+          minFontSizePt: font.minFontSizePt ?? null,
+        };
+      }
+    }
+
+    // Aplicar fuente y validar tamaños minimos
+    const areas = (template.editableAreas || []) as any[];
+    const requestedFontSizePt = dto.templateFontSize;
+    const processedAreas = areas.map((area) => {
+      const baseFontSize = requestedFontSizePt ?? area.fontSize ?? 12;
+      const minPt = selectedFont?.minFontSizePt ?? 0;
+      const finalSize = minPt > 0 && baseFontSize < minPt ? minPt : baseFontSize;
+      return {
+        ...area,
+        fontSize: finalSize,
+        fontFamily: selectedFont?.name || area.fontFamily || 'Arial, sans-serif',
+      };
+    });
+
     // Aplicar textos al SVG
     const finalSvg = this.templatesService.applyTemplateFields(
       template.svgContent,
       fields,
-      template.editableAreas as any,
+      processedAreas,
     );
 
     // Generar PNG preview con resvg

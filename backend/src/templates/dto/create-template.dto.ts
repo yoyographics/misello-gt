@@ -25,6 +25,10 @@ export class CreateTemplateDto {
   productIds?: string[];
 
   @IsOptional()
+  @IsUUID()
+  defaultFontId?: string;
+
+  @IsOptional()
   @IsString()
   thumbnailUrl?: string;
 

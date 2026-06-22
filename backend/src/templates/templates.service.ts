@@ -32,6 +32,9 @@ export class TemplatesService {
         products: {
           select: { productId: true },
         },
+        defaultFont: {
+          select: { id: true, name: true, minFontSizePt: true },
+        },
       },
     });
   }
@@ -41,6 +44,7 @@ export class TemplatesService {
       where: { id, isActive: true },
       include: {
         products: { select: { productId: true } },
+        defaultFont: { select: { id: true, name: true, minFontSizePt: true } },
       },
     });
     if (!template) throw new NotFoundException('Plantilla no encontrada');
@@ -109,6 +113,7 @@ export class TemplatesService {
         thumbnailUrl: dto.thumbnailUrl,
         isActive: dto.isActive ?? true,
         sortOrder: dto.sortOrder ?? 0,
+        defaultFontId: dto.defaultFontId || undefined,
         products: dto.productIds?.length
           ? { create: dto.productIds.map((productId) => ({ productId })) }
           : undefined,
@@ -126,6 +131,7 @@ export class TemplatesService {
       thumbnailUrl: dto.thumbnailUrl,
       isActive: dto.isActive,
       sortOrder: dto.sortOrder,
+      defaultFontId: dto.defaultFontId || undefined,
     };
 
     if (svgContent !== undefined) {

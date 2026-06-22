@@ -163,6 +163,9 @@ export function applyTemplateFields(
   const texts = doc.querySelectorAll('text[data-editable="true"]');
   texts.forEach((el) => {
     const field = el.getAttribute('data-field');
+    const area = field ? areas.find((a) => a.id === field) : undefined;
+    if (area?.fontFamily) el.setAttribute('font-family', area.fontFamily);
+    if (area?.fontSize) el.setAttribute('font-size', String(area.fontSize));
     if (field && fields[field] !== undefined) {
       // Si tiene textPath, reemplazar ahi
       const tp = el.querySelector('textPath');

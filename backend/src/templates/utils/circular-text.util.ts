@@ -588,10 +588,19 @@ export function applyTemplateFields(
   });
   const parsed = parser.parse(result);
 
+  const areaById = new Map(areas.map((a) => [a.id, a]));
+
   walk(parsed, (node) => {
     const attr = node[':@'];
     if (!attr || attr['data-editable'] !== 'true') return;
     const field = attr['data-field'];
+    const area = field ? areaById.get(field) : undefined;
+    if (area?.fontFamily) {
+      attr['font-family'] = area.fontFamily;
+    }
+    if (area?.fontSize) {
+      attr['font-size'] = String(area.fontSize);
+    }
     if (field && fields[field] !== undefined) {
       if (node.textPath) {
         const tp = Array.isArray(node.textPath) ? node.textPath[0] : node.textPath;

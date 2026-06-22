@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, IsBoolean, IsUUID, ArrayMinSize, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsBoolean, IsUUID, ArrayMinSize, MaxLength, IsNumber } from 'class-validator';
 
 export class DesignLineDto {
   @IsString()
@@ -32,10 +32,16 @@ export class DesignRequestDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  lines: DesignLineDto[];
+  @IsOptional()
+  lines?: DesignLineDto[];
 
   @IsUUID()
-  fontId: string;
+  @IsOptional()
+  fontId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  templateFontSize?: number; // pt
 
   @IsUUID()
   @IsOptional()
