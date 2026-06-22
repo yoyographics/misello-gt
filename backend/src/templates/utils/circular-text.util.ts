@@ -43,7 +43,159 @@ function estimateCharWidth(char: string, fontSize: number): number {
   return fontSize * width;
 }
 
+function walk(node: any, cb: (n: any) => void): void {
+  if (Array.isArray(node)) {
+    node.forEach((child) => walk(child, cb));
+    return;
+  }
+  if (typeof node !== 'object' || node === null) return;
+  cb(node);
+  for (const key of Object.keys(node)) {
+    if (key === ':@') continue;
+    walk(node[key], cb);
+  }
+}
+
+function getTextContent(node: any): string {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map((n) => getTextContent(n)).join('');
+  if (typeof node !== 'object') return '';
+
+  let text = '';
+  for (const key of Object.keys(node)) {
+    if (key === ':@') continue;
+    text += getTextContent(node[key]);
+  }
+  return text;
+}
+
+function setTextContent(node: any, value: string): void {
+  if (Array.isArray(node['#text'])) {
+    node['#text'] = [value];
+  } else if (node['#text'] !== undefined) {
+    node['#text'] = value;
+  } else {
+    const keys = Object.keys(node).filter((k) => k !== ':@');
+    for (const key of keys) {
+      if (typeof node[key] === 'string') {
+        node[key] = value;
+        return;
+      }
+      if (Array.isArray(node[key]) && node[key].every((i: any) => typeof i === 'string')) {
+        node[key] = [value];
+        return;
+      }
+    }
+  }
+}
+
+function findNodes(node: any, tagName: string): any[] {
+  const result: any[] = [];
+  walk(node, (n) => {
+    if (n && n[tagName]) result.push(n);
+  });
+  return result;
+}
+
+function getCircleCenter(node: any): { x: number; y: number; radius: number } | null {
+  const circles = findNodes(node, 'circle');
+  if (circles.length > 0) {
+    let best = circles[0];
+    let bestR = parseFloat(best[':@']?.r || '0');
+    circles.forEach((c) => {
+      const r = parseFloat(c[':@']?.r || '0');
+      if (r > bestR) {
+        best = c;
+        bestR = r;
+      }
+    });
+    return {
+      x: parseFloat(best[':@']?.cx || '0'),
+      y: parseFloat(best[':@']?.cy || '0'),
+      radius: bestR,
+    };
+  }
+  return null;
+}
+
+function parseTransform(transform: string): { x: number; y: number } | null {
+  const match = transform.match(/translate\(\s*([^,\s]+)[,\s]+([^,\s]+)\s*\)/);
+  if (!match) return null;
+  return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+}
+
+function parseFontSizeFromStyle(className: string, node: any): number {
+  if (!className) return 9;
+  const classes = className.split(/\s+/);
+
+  // Buscar en style del documento
+  const styles = findNodes(node, 'style');
+  for (const styleNode of styles) {
+    const css = getTextContent(styleNode);
+    for (const cls of classes) {
+      const regex = new RegExp(`\\.${cls}\\b[^{]*\\{[^}]*font-size:\\s*([\\d.]+)px`, 'i');
+      const match = css.match(regex);
+      if (match) return parseFloat(match[1]);
+    }
+  }
+  return 9;
+}
+
 export function renderCircularText(
+  svgContent: string,
+  text: string,
+  area: CircularArea,
+): string {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    parseAttributeValue: false,
+    preserveOrder: true,
+  });
+  const parsed = parser.parse(svgContent);
+
+  // Buscar text[data-field=area.id] con textPath
+  let textPathFound = false;
+  walk(parsed, (node) => {
+    if (node[':@'] && node[':@']['data-field'] === area.id && node.textPath) {
+      textPathFound = true;
+      const tp = Array.isArray(node.textPath) ? node.textPath[0] : node.textPath;
+      // Reemplazar texto manteniendo estructura
+      const deepest = findDeepestTextNode(tp);
+      if (deepest) {
+        setTextContent(deepest, text);
+      } else {
+        tp['#text'] = text;
+      }
+    }
+  });
+
+  if (textPathFound) {
+    const builder = new XMLBuilder({
+      ignoreAttributes: false,
+      attributeNamePrefix: '',
+      preserveOrder: true,
+      format: false,
+    });
+    return builder.build(parsed);
+  }
+
+  return renderCircularTextAsLetters(svgContent, text, area);
+}
+
+function findDeepestTextNode(node: any): any {
+  if (!node || typeof node !== 'object') return null;
+  if (node['#text'] !== undefined || typeof node === 'string') return node;
+
+  const keys = Object.keys(node).filter((k) => k !== ':@');
+  for (const key of keys) {
+    const found = findDeepestTextNode(node[key]);
+    if (found) return found;
+  }
+  return null;
+}
+
+function renderCircularTextAsLetters(
   svgContent: string,
   text: string,
   area: CircularArea,
@@ -73,7 +225,6 @@ export function renderCircularText(
     parseAttributeValue: false,
     preserveOrder: true,
   });
-
   const parsed = parser.parse(svgContent);
   removeCircularGroup(parsed, area.id);
 
@@ -139,13 +290,7 @@ function removeCircularGroup(node: any, fieldId: string): void {
     }
     return;
   }
-
   if (typeof node !== 'object' || node === null) return;
-
-  if (node[':@'] && node[':@']['data-circular-field'] === fieldId) {
-    return;
-  }
-
   for (const key of Object.keys(node)) {
     if (key === ':@') continue;
     const child = node[key];
@@ -162,88 +307,24 @@ function removeCircularGroup(node: any, fieldId: string): void {
 }
 
 function isCircularGroup(node: any, fieldId: string): boolean {
-  if (typeof node !== 'object' || node === null) return false;
-  if (Array.isArray(node)) return false;
+  if (typeof node !== 'object' || node === null || Array.isArray(node)) return false;
   return node[':@'] && node[':@']['data-circular-field'] === fieldId;
 }
 
 function appendToSvg(node: any, child: any): void {
   if (Array.isArray(node)) {
     const svg = node.find((n) => n && n.svg);
-    if (svg) {
-      svg.svg.push(child);
-    }
+    if (svg) svg.svg.push(child);
     return;
   }
-
   if (typeof node !== 'object' || node === null) return;
-
   if (node.svg) {
     node.svg.push(child);
     return;
   }
-
   for (const key of Object.keys(node)) {
     if (key === ':@') continue;
     appendToSvg(node[key], child);
-  }
-}
-
-interface DetectedText {
-  node: any;
-  attr: any;
-  x: number;
-  y: number;
-  char: string;
-  distance: number;
-  angle: number;
-}
-
-function parseTransform(transform: string): { x: number; y: number } | null {
-  const match = transform.match(/translate\(\s*([^,\s]+)[,\s]+([^,\s]+)\s*\)/);
-  if (!match) return null;
-  return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
-}
-
-function getCircleCenter(node: any): { x: number; y: number; radius: number } | null {
-  const circles = collectNodes(node, 'circle');
-  if (circles.length === 0) return null;
-
-  let best = circles[0];
-  let bestR = parseFloat(best[':@']?.r || '0');
-  circles.forEach((c) => {
-    const r = parseFloat(c[':@']?.r || '0');
-    if (r > bestR) {
-      best = c;
-      bestR = r;
-    }
-  });
-
-  return {
-    x: parseFloat(best[':@']?.cx || '0'),
-    y: parseFloat(best[':@']?.cy || '0'),
-    radius: bestR,
-  };
-}
-
-function collectNodes(node: any, tagName: string): any[] {
-  const result: any[] = [];
-  walk(node, (n) => {
-    if (n && n[tagName]) result.push(n);
-  });
-  return result;
-}
-
-function walk(node: any, cb: (n: any) => void): void {
-  if (Array.isArray(node)) {
-    node.forEach((child) => walk(child, cb));
-    return;
-  }
-  if (typeof node !== 'object' || node === null) return;
-  cb(node);
-  for (const key of Object.keys(node)) {
-    if (key === ':@') continue;
-    walk(node[key], cb);
   }
 }
 
@@ -262,11 +343,58 @@ export function detectCircularText(
   if (!centerInfo) return { svgContent, areas: [] };
 
   const { x: centerX, y: centerY, radius } = centerInfo;
+  const areas: CircularArea[] = [];
 
-  const textNodes = collectNodes(parsed, 'text');
-  const detected: DetectedText[] = [];
+  // 1. Detectar textPath circular
+  const textPathNodes = findNodes(parsed, 'textPath');
+  textPathNodes.forEach((tp, idx) => {
+    const textNode = findParentText(parsed, tp);
+    if (!textNode) return;
+
+    let text = getTextContent(tp);
+    text = text.replace(/\s+/g, ' ').trim();
+    if (!text) return;
+
+    const href = tp[':@']?.['xlink:href'] || tp[':@']?.href || '';
+    let baseline: 'top' | 'bottom' = 'top';
+    const pathId = href.replace('#', '');
+    const pathNodes = findNodes(parsed, 'path');
+    const pathNode = pathNodes.find((p) => p[':@']?.id === pathId);
+    if (pathNode) {
+      const d = pathNode[':@']?.d || '';
+      const bbox = getPathApproxCenter(d);
+      baseline = bbox.y < centerY ? 'top' : 'bottom';
+    }
+
+    const fontSize = parseFontSizeFromStyle(textNode[':@']?.class || '', parsed);
+    const fieldId = `circular${idx + 1}`;
+
+    if (!textNode[':@']) textNode[':@'] = {};
+    textNode[':@']['data-editable'] = 'true';
+    textNode[':@']['data-field'] = fieldId;
+    textNode[':@']['data-label'] = baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior';
+
+    areas.push({
+      id: fieldId,
+      label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
+      defaultText: text,
+      type: 'circular',
+      radius,
+      centerX,
+      centerY,
+      startAngle: baseline === 'top' ? -90 : 90,
+      fontSize,
+      fontFamily: textNode[':@']?.['font-family'],
+      baseline,
+    });
+  });
+
+  // 2. Detectar letras individuales circulares
+  const textNodes = findNodes(parsed, 'text');
+  const detected: any[] = [];
 
   textNodes.forEach((node) => {
+    if (node.textPath) return;
     const attr = node[':@'] || {};
     const transform = attr.transform || '';
     const pos = parseTransform(transform);
@@ -285,105 +413,99 @@ export function detectCircularText(
     detected.push({ node, attr, x: pos.x, y: pos.y, char, distance, angle });
   });
 
-  if (detected.length < 3) return { svgContent, areas: [] };
+  if (detected.length >= 3) {
+    const circularTexts: any[] = [];
+    const centralTexts: any[] = [];
 
-  const circularTexts: DetectedText[] = [];
-  const centralTexts: DetectedText[] = [];
-
-  detected.forEach((item) => {
-    if (item.distance > radius * 0.55) {
-      circularTexts.push(item);
-    } else {
-      centralTexts.push(item);
-    }
-  });
-
-  const areas: CircularArea[] = [];
-
-  const groups: DetectedText[][] = [];
-  circularTexts.forEach((item) => {
-    let added = false;
-    for (const group of groups) {
-      const avgDist = group.reduce((s, i) => s + i.distance, 0) / group.length;
-      if (Math.abs(item.distance - avgDist) <= 4) {
-        group.push(item);
-        added = true;
-        break;
+    detected.forEach((item) => {
+      if (item.distance > radius * 0.55) {
+        circularTexts.push(item);
+      } else {
+        centralTexts.push(item);
       }
-    }
-    if (!added) groups.push([item]);
-  });
-
-  const validGroups = groups.filter((g) => g.length >= 3);
-
-  validGroups.forEach((group, idx) => {
-    group.sort((a, b) => a.angle - b.angle);
-
-    const text = group.map((g) => g.char).join('');
-    const avgDist = group.reduce((s, g) => s + g.distance, 0) / group.length;
-    const avgY = group.reduce((s, g) => s + g.y, 0) / group.length;
-    const baseline: 'top' | 'bottom' = avgY < centerY ? 'top' : 'bottom';
-    const startAngle = baseline === 'top' ? -90 : 90;
-
-    const fontSize = parseFloat(group[0].attr['font-size']) || 9;
-
-    areas.push({
-      id: `circular${idx + 1}`,
-      label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
-      defaultText: text,
-      type: 'circular',
-      radius: avgDist,
-      centerX,
-      centerY,
-      startAngle,
-      fontSize,
-      baseline,
     });
 
-    group.forEach((g) => {
-      g.node.__delete = true;
-    });
-  });
-
-  if (centralTexts.length > 0) {
-    centralTexts.sort((a, b) => a.y - b.y || a.x - b.x);
-
-    const centralGroups: DetectedText[][] = [];
-    centralTexts.forEach((item) => {
+    const groups: any[][] = [];
+    circularTexts.forEach((item) => {
       let added = false;
-      for (const group of centralGroups) {
-        const avgY = group.reduce((s, i) => s + i.y, 0) / group.length;
-        if (Math.abs(item.y - avgY) <= (parseFloat(item.attr['font-size']) || 9) * 0.8) {
+      for (const group of groups) {
+        const avgDist = group.reduce((s, i) => s + i.distance, 0) / group.length;
+        if (Math.abs(item.distance - avgDist) <= 4) {
           group.push(item);
           added = true;
           break;
         }
       }
-      if (!added) centralGroups.push([item]);
+      if (!added) groups.push([item]);
     });
 
-    centralGroups.forEach((group, idx) => {
-      group.sort((a, b) => a.x - b.x);
-      const text = group.map((g) => g.char).join('').trim();
-      if (!text) return;
+    const validGroups = groups.filter((g) => g.length >= 3);
 
-      const fontSize = parseFloat(group[0].attr['font-size']) || 9;
+    validGroups.forEach((group, idx) => {
+      group.sort((a, b) => a.angle - b.angle);
+      const text = group.map((g) => g.char).join('');
+      const avgDist = group.reduce((s, g) => s + g.distance, 0) / group.length;
+      const avgY = group.reduce((s, g) => s + g.y, 0) / group.length;
+      const baseline: 'top' | 'bottom' = avgY < centerY ? 'top' : 'bottom';
+      const fontSize = parseFontSizeFromStyle(group[0].attr.class || '', parsed);
 
+      const fieldId = `circular${areas.length + idx + 1}`;
       areas.push({
-        id: `line${idx + 1}`,
-        label: 'Texto central',
+        id: fieldId,
+        label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
         defaultText: text,
-        type: 'text',
-        x: group[0].x,
-        y: group[0].y,
+        type: 'circular',
+        radius: avgDist,
+        centerX,
+        centerY,
+        startAngle: baseline === 'top' ? -90 : 90,
         fontSize,
-        fontFamily: group[0].attr['font-family'],
+        baseline,
       });
 
       group.forEach((g) => {
         g.node.__delete = true;
       });
     });
+
+    if (centralTexts.length > 0) {
+      centralTexts.sort((a, b) => a.y - b.y || a.x - b.x);
+      const centralGroups: any[][] = [];
+      centralTexts.forEach((item) => {
+        let added = false;
+        for (const group of centralGroups) {
+          const avgY = group.reduce((s, i) => s + i.y, 0) / group.length;
+          if (Math.abs(item.y - avgY) <= (parseFloat(item.attr['font-size']) || 9) * 0.8) {
+            group.push(item);
+            added = true;
+            break;
+          }
+        }
+        if (!added) centralGroups.push([item]);
+      });
+
+      centralGroups.forEach((group, idx) => {
+        group.sort((a, b) => a.x - b.x);
+        const text = group.map((g) => g.char).join('').trim();
+        if (!text) return;
+
+        const fontSize = parseFontSizeFromStyle(group[0].attr.class || '', parsed);
+        areas.push({
+          id: `line${idx + 1}`,
+          label: 'Texto central',
+          defaultText: text,
+          type: 'text',
+          x: group[0].x,
+          y: group[0].y,
+          fontSize,
+          fontFamily: group[0].attr['font-family'],
+        });
+
+        group.forEach((g) => {
+          g.node.__delete = true;
+        });
+      });
+    }
   }
 
   const cleaned = removeMarkedNodes(parsed);
@@ -398,17 +520,26 @@ export function detectCircularText(
   return { svgContent: builder.build(cleaned), areas };
 }
 
-function getTextContent(node: any): string {
-  if (typeof node === 'string') return node;
-  if (Array.isArray(node)) return node.map((n) => getTextContent(n)).join('');
-  if (typeof node !== 'object') return '';
+function findParentText(root: any, target: any): any | null {
+  let found: any = null;
+  walk(root, (node) => {
+    if (node.text && (Array.isArray(node.text) ? node.text.includes(target) : node.text === target)) {
+      found = node;
+    }
+  });
+  return found;
+}
 
-  let text = '';
-  for (const key of Object.keys(node)) {
-    if (key === ':@') continue;
-    text += getTextContent(node[key]);
-  }
-  return text;
+function getPathApproxCenter(d: string): { x: number; y: number } {
+  // Heuristica simple: extraer numeros y promediar
+  const numbers = d.match(/-?\d+(?:\.\d+)?/g)?.map(parseFloat) || [];
+  if (numbers.length < 2) return { x: 0, y: 0 };
+  const xs = numbers.filter((_, i) => i % 2 === 0);
+  const ys = numbers.filter((_, i) => i % 2 === 1);
+  return {
+    x: xs.reduce((a, b) => a + b, 0) / xs.length,
+    y: ys.reduce((a, b) => a + b, 0) / ys.length,
+  };
 }
 
 function removeMarkedNodes(node: any): any {
@@ -417,7 +548,6 @@ function removeMarkedNodes(node: any): any {
       .filter((n) => !n?.__delete)
       .map((n) => removeMarkedNodes(n));
   }
-
   if (typeof node !== 'object' || node === null) return node;
 
   const result: any = {};
@@ -456,7 +586,6 @@ export function applyTemplateFields(
     parseAttributeValue: false,
     preserveOrder: true,
   });
-
   const parsed = parser.parse(result);
 
   walk(parsed, (node) => {
@@ -464,7 +593,17 @@ export function applyTemplateFields(
     if (!attr || attr['data-editable'] !== 'true') return;
     const field = attr['data-field'];
     if (field && fields[field] !== undefined) {
-      setTextContent(node, fields[field]);
+      if (node.textPath) {
+        const tp = Array.isArray(node.textPath) ? node.textPath[0] : node.textPath;
+        const deepest = findDeepestTextNode(tp);
+        if (deepest) {
+          setTextContent(deepest, fields[field]);
+        } else {
+          tp['#text'] = fields[field];
+        }
+      } else {
+        setTextContent(node, fields[field]);
+      }
     }
   });
 
@@ -512,9 +651,7 @@ function removeCentralField(node: any, fieldId: string): void {
     }
     return;
   }
-
   if (typeof node !== 'object' || node === null) return;
-
   for (const key of Object.keys(node)) {
     if (key === ':@') continue;
     const child = node[key];
@@ -531,27 +668,6 @@ function removeCentralField(node: any, fieldId: string): void {
 }
 
 function isCentralField(node: any, fieldId: string): boolean {
-  if (typeof node !== 'object' || node === null) return false;
-  if (Array.isArray(node)) return false;
+  if (typeof node !== 'object' || node === null || Array.isArray(node)) return false;
   return node[':@'] && node[':@']['data-central-field'] === fieldId;
-}
-
-function setTextContent(node: any, value: string): void {
-  if (Array.isArray(node['#text'])) {
-    node['#text'] = [value];
-  } else if (node['#text'] !== undefined) {
-    node['#text'] = value;
-  } else {
-    const keys = Object.keys(node).filter((k) => k !== ':@');
-    for (const key of keys) {
-      if (typeof node[key] === 'string') {
-        node[key] = value;
-        return;
-      }
-      if (Array.isArray(node[key]) && node[key].every((i: any) => typeof i === 'string')) {
-        node[key] = [value];
-        return;
-      }
-    }
-  }
 }

@@ -17,12 +17,6 @@ export interface CircularArea {
 }
 
 const DEFAULT_FONT_SIZE = 9;
-
-function degToRad(deg: number): number {
-  return (deg * Math.PI) / 180;
-}
-
-// Mapa de anchos aproximados para Arial (relativos al fontSize)
 const WIDTH_MAP: Record<string, number> = {
   I: 0.28, i: 0.28, l: 0.28, '!': 0.28, '.': 0.28, ',': 0.28, ';': 0.28,
   ':': 0.28, '|': 0.28, ' ': 0.3,
@@ -38,12 +32,50 @@ const WIDTH_MAP: Record<string, number> = {
   '-': 0.36, '/': 0.34, '\\': 0.34,
 };
 
+function degToRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
 function estimateCharWidth(char: string, fontSize: number): number {
   const width = WIDTH_MAP[char] ?? 0.5;
   return fontSize * width;
 }
 
 export function renderCircularText(
+  svgContent: string,
+  text: string,
+  area: CircularArea,
+): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+
+  // Buscar si ya existe un textPath para este campo
+  const textEl = doc.querySelector(`text[data-field="${area.id}"]`);
+  if (textEl && textEl.querySelector('textPath')) {
+    const tp = textEl.querySelector('textPath');
+    if (tp) {
+      // Reemplazar el texto manteniendo la estructura
+      const innerTspan = tp.querySelector('tspan');
+      if (innerTspan) {
+        const deepest = getDeepestTspan(innerTspan);
+        deepest.textContent = text;
+      } else {
+        tp.textContent = text;
+      }
+      return new XMLSerializer().serializeToString(doc.documentElement);
+    }
+  }
+
+  // Fallback: generar letras individuales
+  return renderCircularTextAsLetters(svgContent, text, area);
+}
+
+function getDeepestTspan(el: Element): Element {
+  const child = el.querySelector('tspan');
+  return child ? getDeepestTspan(child) : el;
+}
+
+function renderCircularTextAsLetters(
   svgContent: string,
   text: string,
   area: CircularArea,
@@ -59,6 +91,12 @@ export function renderCircularText(
 
   if (!text) text = area.defaultText || '';
 
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+
+  const existing = doc.querySelector(`g[data-circular-field="${area.id}"]`);
+  if (existing) existing.remove();
+
   const chars = text.split('');
   const charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
   const totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
@@ -66,12 +104,6 @@ export function renderCircularText(
   const startAngleRad = degToRad(startAngle);
 
   let currentAngle = startAngleRad - totalAngleRad / 2;
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-
-  const existing = doc.querySelector(`g[data-circular-field="${area.id}"]`);
-  if (existing) existing.remove();
 
   const group = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
   group.setAttribute('data-circular-field', area.id);
@@ -105,10 +137,9 @@ export function renderCircularText(
     currentAngle = angle + (charWidth / 2 + letterSpacing / 2) / radius;
   });
 
-  const svgRoot = doc.documentElement;
-  svgRoot.appendChild(group);
+  doc.documentElement.appendChild(group);
 
-  return new XMLSerializer().serializeToString(svgRoot);
+  return new XMLSerializer().serializeToString(doc.documentElement);
 }
 
 export function applyTemplateFields(
@@ -125,20 +156,26 @@ export function applyTemplateFields(
     }
   });
 
-  // Textos normales data-editable o centrales detectados
   const parser = new DOMParser();
   const doc = parser.parseFromString(result, 'image/svg+xml');
 
-  // Primero reemplazar data-editable normales
+  // Textos normales data-editable
   const texts = doc.querySelectorAll('text[data-editable="true"]');
   texts.forEach((el) => {
     const field = el.getAttribute('data-field');
     if (field && fields[field] !== undefined) {
-      el.textContent = fields[field];
+      // Si tiene textPath, reemplazar ahi
+      const tp = el.querySelector('textPath');
+      if (tp) {
+        const deepest = getDeepestTspan(tp);
+        deepest.textContent = fields[field];
+      } else {
+        el.textContent = fields[field];
+      }
     }
   });
 
-  // Luego textos centrales detectados (que fueron eliminados del SVG base)
+  // Textos centrales detectados
   areas.forEach((area) => {
     if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
       const value = fields[area.id] ?? area.defaultText ?? '';
