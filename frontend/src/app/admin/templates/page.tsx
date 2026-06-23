@@ -4,6 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Trash2, Plus, X, Eye } from 'lucide-react';
@@ -38,6 +45,9 @@ interface EditableArea {
   fontSize?: number;
   fontFamily?: string;
   maxLength?: number;
+  multiLine?: boolean;
+  maxLines?: number;
+  lineHeight?: number;
 }
 
 interface TemplateProduct {
@@ -69,6 +79,7 @@ export default function AdminTemplatesPage() {
   const [svgPreview, setSvgPreview] = useState('');
   const [editableAreas, setEditableAreas] = useState<EditableArea[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
+  const manualTargetRef = useRef<Element | null>(null);
   const [selectedTextIndex, setSelectedTextIndex] = useState<number | null>(null);
   const [selectedTextManual, setSelectedTextManual] = useState(false);
   const [selectedTextType, setSelectedTextType] = useState<'text' | 'circular'>('text');
@@ -88,6 +99,14 @@ export default function AdminTemplatesPage() {
     y: '',
   });
 
+  interface Font {
+    id: string;
+    name: string;
+    fileName: string;
+    minFontSizePt?: number;
+    isDefault?: boolean;
+  }
+
   const [form, setForm] = useState({
     name: '',
     categoryId: '',
@@ -97,6 +116,9 @@ export default function AdminTemplatesPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [formError, setFormError] = useState('');
+  const [fonts, setFonts] = useState<Font[]>([]);
+  const [hideMode, setHideMode] = useState(false);
+  const [hiddenCount, setHiddenCount] = useState(0);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -104,12 +126,15 @@ export default function AdminTemplatesPage() {
       api.get('/templates/admin/all'),
       api.get('/categories'),
       api.get('/products?take=9999'),
+      api.get('/fonts'),
     ])
-      .then(([tRes, cRes, pRes]) => {
+      .then(([tRes, cRes, pRes, fRes]) => {
         setTemplates(tRes.data || []);
         setCategories(cRes.data || []);
         const productList = pRes.data?.items || pRes.data || [];
         setProducts(Array.isArray(productList) ? productList : []);
+        const fontList = fRes.data?.items || fRes.data || [];
+        setFonts(Array.isArray(fontList) ? fontList : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -195,6 +220,17 @@ export default function AdminTemplatesPage() {
     return { x, y };
   }
 
+  function removeHiddenElements(svgContent: string): string {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+      doc.querySelectorAll('[data-hide-on-render="true"]').forEach((el) => el.remove());
+      return new XMLSerializer().serializeToString(doc.documentElement);
+    } catch {
+      return svgContent;
+    }
+  }
+
   function detectEditableAreas(svgContent: string): { svgContent: string; areas: EditableArea[] } {
     try {
       const parser = new DOMParser();
@@ -257,8 +293,15 @@ export default function AdminTemplatesPage() {
         });
       });
 
-      // 2. Detectar textos centrales normales
-      let centralIdx = 0;
+      // 2. Detectar textos centrales normales y agruparlos en bloques dinámicos
+      const centralCandidates: {
+        el: Element;
+        text: string;
+        x: number;
+        y: number;
+        fontSize: number;
+        fontFamily?: string;
+      }[] = [];
       doc.querySelectorAll('text').forEach((textEl) => {
         if (textEl.querySelector('textPath')) return;
         if (textEl.getAttribute('data-editable') === 'true') return;
@@ -279,32 +322,74 @@ export default function AdminTemplatesPage() {
           }
         }
 
-        centralIdx++;
-        const fieldId = `line${centralIdx}`;
         const pos = getTextPosition(textEl);
-        const fontSize = parseFloat(textEl.getAttribute('font-size') || '0') || undefined;
-        const fontFamily = textEl.getAttribute('font-family') || undefined;
-
-        textEl.setAttribute('data-editable', 'true');
-        textEl.setAttribute('data-field', fieldId);
-        textEl.setAttribute('data-label', centralIdx === 1 ? 'Texto central' : `Texto central ${centralIdx}`);
-        textEl.setAttribute('data-type', 'text');
-        if (pos.x) textEl.setAttribute('data-x', pos.x);
-        if (pos.y) textEl.setAttribute('data-y', pos.y);
-        if (fontSize) textEl.setAttribute('data-font-size', String(fontSize));
-        if (fontFamily) textEl.setAttribute('data-font-family', fontFamily);
-
-        areas.push({
-          id: fieldId,
-          label: centralIdx === 1 ? 'Texto central' : `Texto central ${centralIdx}`,
-          defaultText: text,
-          type: 'text',
-          x: pos.x ? parseFloat(pos.x) : undefined,
-          y: pos.y ? parseFloat(pos.y) : undefined,
+        const fontSize = parseFloat(textEl.getAttribute('font-size') || '0') || 9;
+        const x = parseFloat(pos.x || '0');
+        const y = parseFloat(pos.y || '0');
+        if (!x && !y) return;
+        centralCandidates.push({
+          el: textEl,
+          text,
+          x,
+          y,
           fontSize,
-          fontFamily,
+          fontFamily: textEl.getAttribute('font-family') || undefined,
         });
       });
+
+      if (centralCandidates.length > 0) {
+        centralCandidates.sort((a, b) => a.y - b.y || a.x - b.x);
+        const groups: typeof centralCandidates[] = [];
+        centralCandidates.forEach((item) => {
+          let added = false;
+          for (const group of groups) {
+            const avgY = group.reduce((s, i) => s + i.y, 0) / group.length;
+            const threshold = Math.max(...group.map((i) => i.fontSize)) * 1.3;
+            if (Math.abs(item.y - avgY) <= threshold) {
+              group.push(item);
+              added = true;
+              break;
+            }
+          }
+          if (!added) groups.push([item]);
+        });
+
+        groups.forEach((group, gIdx) => {
+          group.sort((a, b) => a.x - b.x);
+          const defaultText = group.map((g) => g.text).join('\n');
+          const avgX = group.reduce((s, g) => s + g.x, 0) / group.length;
+          const avgY = group.reduce((s, g) => s + g.y, 0) / group.length;
+          const avgFontSize = group.reduce((s, g) => s + g.fontSize, 0) / group.length;
+          const fieldId = `central${groups.length === 1 ? '' : gIdx + 1}`;
+          const label = groups.length === 1 ? 'Texto central' : `Texto central ${gIdx + 1}`;
+
+          group.forEach((item) => {
+            item.el.setAttribute('data-editable', 'true');
+            item.el.setAttribute('data-field', fieldId);
+            item.el.setAttribute('data-label', label);
+            item.el.setAttribute('data-type', 'text');
+            item.el.setAttribute('data-multi-line', 'true');
+            item.el.setAttribute('data-max-lines', '3');
+            item.el.setAttribute('data-x', String(item.x));
+            item.el.setAttribute('data-y', String(item.y));
+            item.el.setAttribute('data-font-size', String(item.fontSize));
+            if (item.fontFamily) item.el.setAttribute('data-font-family', item.fontFamily);
+          });
+
+          areas.push({
+            id: fieldId,
+            label,
+            defaultText,
+            type: 'text',
+            x: avgX,
+            y: avgY,
+            fontSize: avgFontSize,
+            fontFamily: group[0].fontFamily,
+            multiLine: true,
+            maxLines: 3,
+          });
+        });
+      }
 
       return { svgContent: new XMLSerializer().serializeToString(doc.documentElement), areas };
     } catch {
@@ -340,6 +425,28 @@ export default function AdminTemplatesPage() {
     const container = previewRef.current;
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+
+      if (hideMode) {
+        const svg = container.querySelector('svg');
+        if (!svg) return;
+        const elToHide = (target.closest('path, text, circle, line, rect, polygon, g') as Element | null) || target;
+        if (!elToHide || elToHide === svg || elToHide === container) return;
+        const currentHide = elToHide.getAttribute('data-hide-on-render');
+        if (currentHide === 'true') {
+          elToHide.removeAttribute('data-hide-on-render');
+          elToHide.removeAttribute('data-hide-label');
+          setHiddenCount((prev) => Math.max(0, prev - 1));
+        } else {
+          elToHide.setAttribute('data-hide-on-render', 'true');
+          elToHide.setAttribute('data-hide-label', elToHide.tagName.toLowerCase());
+          setHiddenCount((prev) => prev + 1);
+        }
+        setSvgPreview(container.innerHTML);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       const textEl = target.closest('text');
 
       if (textEl) {
@@ -404,6 +511,18 @@ export default function AdminTemplatesPage() {
       const svg = container.querySelector('svg') as SVGSVGElement | null;
       if (!svg) return;
       const coords = getSvgCoordinates(svg, container, e.clientX, e.clientY);
+
+      // Ocultar el elemento visual subyacente (path, forma, etc.) para evitar que el
+      // texto manual se sobreponga al texto/gráfico original del SVG.
+      const originalEl = target.closest('path, circle, line, rect, polygon') as Element | null;
+      if (originalEl && originalEl !== svg) {
+        originalEl.setAttribute('data-hide-on-render', 'true');
+        originalEl.setAttribute('data-hide-label', originalEl.tagName.toLowerCase());
+        setHiddenCount((prev) => prev + 1);
+        setSvgPreview(container.innerHTML);
+        manualTargetRef.current = originalEl;
+      }
+
       const doc = svg.ownerDocument;
       const circle = getCircleCenter(doc) || getSvgViewBoxCenter(doc);
 
@@ -436,7 +555,7 @@ export default function AdminTemplatesPage() {
     return () => {
       container.removeEventListener('click', handleClick);
     };
-  }, [svgPreview, editableAreas.length]);
+  }, [svgPreview, editableAreas.length, hideMode, hiddenCount]);
 
   const extractEditableAreas = (svgContent: string): EditableArea[] => {
     try {
@@ -458,6 +577,8 @@ export default function AdminTemplatesPage() {
         const fontFamily = el.getAttribute('data-font-family') || el.getAttribute('font-family');
         const x = el.getAttribute('data-x') || el.getAttribute('x');
         const y = el.getAttribute('data-y') || el.getAttribute('y');
+        const multiLine = el.getAttribute('data-multi-line');
+        const dataMaxLines = el.getAttribute('data-max-lines');
 
         const area: EditableArea = {
           id: field,
@@ -467,6 +588,8 @@ export default function AdminTemplatesPage() {
           fontSize: fontSize ? parseFloat(fontSize) : undefined,
           fontFamily: fontFamily || undefined,
           maxLength: maxLength ? parseInt(maxLength, 10) : undefined,
+          multiLine: multiLine === 'true' ? true : undefined,
+          maxLines: dataMaxLines ? parseInt(dataMaxLines, 10) : undefined,
         };
 
         if (type === 'circular') {
@@ -554,10 +677,14 @@ export default function AdminTemplatesPage() {
     data.append('sortOrder', form.sortOrder);
     data.append('editableAreas', JSON.stringify(editableAreas));
     selectedProductIds.forEach((id) => data.append('productIds', id));
-    if (file) {
+    const svgToSend = svgPreview ? removeHiddenElements(svgPreview) : svgPreview;
+    if (hiddenCount > 0 && svgToSend) {
+      const svgFile = new File([svgToSend], file?.name || 'template.svg', { type: 'image/svg+xml' });
+      data.append('file', svgFile);
+    } else if (file) {
       data.append('file', file);
-    } else if (editing && svgPreview) {
-      const svgFile = new File([svgPreview], 'template.svg', { type: 'image/svg+xml' });
+    } else if (editing && svgToSend) {
+      const svgFile = new File([svgToSend], 'template.svg', { type: 'image/svg+xml' });
       data.append('file', svgFile);
     }
 
@@ -615,6 +742,8 @@ export default function AdminTemplatesPage() {
         if (area.maxLength) textEl.setAttribute('data-maxlength', String(area.maxLength));
         if (area.fontSize) textEl.setAttribute('data-font-size', String(area.fontSize));
         if (area.fontFamily) textEl.setAttribute('data-font-family', area.fontFamily);
+        if (area.multiLine) textEl.setAttribute('data-multi-line', 'true');
+        if (area.maxLines) textEl.setAttribute('data-max-lines', String(area.maxLines));
         if (area.type === 'circular') {
           if (area.radius !== undefined) textEl.setAttribute('data-radius', String(area.radius));
           if (area.centerX !== undefined) textEl.setAttribute('data-center-x', String(area.centerX));
@@ -732,10 +861,21 @@ export default function AdminTemplatesPage() {
     setEditableAreas((prev) => [...prev.filter((a) => a.id !== newArea.id), newArea]);
     setSelectedTextIndex(null);
     setSelectedTextManual(false);
+    manualTargetRef.current = null;
     setFormError('');
   };
 
   const cancelSelection = () => {
+    // Si se ocultó un elemento original para una área manual, desocultarlo al cancelar
+    if (manualTargetRef.current) {
+      manualTargetRef.current.removeAttribute('data-hide-on-render');
+      manualTargetRef.current.removeAttribute('data-hide-label');
+      setHiddenCount((prev) => Math.max(0, prev - 1));
+      if (previewRef.current) {
+        setSvgPreview(previewRef.current.innerHTML);
+      }
+      manualTargetRef.current = null;
+    }
     setSelectedTextIndex(null);
     setSelectedTextManual(false);
     setFormError('');
@@ -902,6 +1042,23 @@ export default function AdminTemplatesPage() {
                   <p className="text-xs text-gray-500 mt-2 text-center">
                     Si no se detecta un texto, hacé clic sobre él.
                   </p>
+                  <Button
+                    variant={hideMode ? 'default' : 'outline'}
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={() => {
+                      setHideMode((prev) => !prev);
+                      setSelectedTextIndex(null);
+                      setSelectedTextManual(false);
+                    }}
+                  >
+                    {hideMode ? 'Desactivar modo ocultar' : 'Modo ocultar elementos'}
+                  </Button>
+                  {hideMode && (
+                    <p className="text-xs text-orange-600 mt-2 text-center">
+                      Hacé clic en los elementos que querés ocultar (texto original, líneas decorativas, etc.). {hiddenCount} oculto(s).
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -943,11 +1100,30 @@ export default function AdminTemplatesPage() {
                     value={selectedTextForm.fontSize}
                     onChange={(e) => setSelectedTextForm({ ...selectedTextForm, fontSize: e.target.value })}
                   />
-                  <Input
-                    placeholder="Fuente"
+                  <Select
                     value={selectedTextForm.fontFamily}
-                    onChange={(e) => setSelectedTextForm({ ...selectedTextForm, fontFamily: e.target.value })}
-                  />
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      const selectedFont = fonts.find((f) => f.name === value);
+                      const minPt = selectedFont?.minFontSizePt ?? 6;
+                      setSelectedTextForm((prev) => ({
+                        ...prev,
+                        fontFamily: value,
+                        fontSize: !prev.fontSize || parseFloat(prev.fontSize) < minPt ? String(minPt) : prev.fontSize,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10">
+                      <SelectValue placeholder="Fuente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fonts.map((font) => (
+                        <SelectItem key={font.id} value={font.name}>
+                          {font.name} {font.minFontSizePt ? `(mín ${font.minFontSizePt}pt)` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     placeholder="Max caracteres"
                     value={selectedTextForm.maxLength}

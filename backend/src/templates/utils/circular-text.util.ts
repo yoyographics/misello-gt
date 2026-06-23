@@ -16,9 +16,16 @@ export interface CircularArea {
   x?: number;
   y?: number;
   maxLength?: number;
+  /** Permitir saltos de línea dentro del mismo campo central. */
+  multiLine?: boolean;
+  /** Máximo de líneas permitidas (por defecto 3). */
+  maxLines?: number;
+  /** Interlineado en unidades SVG (por defecto fontSize * 1.2). */
+  lineHeight?: number;
 }
 
 const DEFAULT_FONT_SIZE = 9;
+const DEFAULT_LINE_HEIGHT_RATIO = 1.2;
 const WIDTH_MAP: Record<string, number> = {
   I: 0.28, i: 0.28, l: 0.28, '!': 0.28, '.': 0.28, ',': 0.28, ';': 0.28,
   ':': 0.28, '|': 0.28, ' ': 0.3,
@@ -618,24 +625,56 @@ export function applyTemplateFields(
 
   areas.forEach((area) => {
     if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
-      const value = fields[area.id] ?? area.defaultText ?? '';
+      const rawValue = fields[area.id] ?? area.defaultText ?? '';
+      const value = String(rawValue);
       removeCentralField(parsed, area.id);
 
-      const textNode: any = {
-        ':@': {
-          'data-central-field': area.id,
-          x: String(area.x),
-          y: String(area.y),
-          'font-size': String(area.fontSize || DEFAULT_FONT_SIZE),
-          'text-anchor': 'middle',
-          'dominant-baseline': 'central',
-        },
-        '#text': value,
-      };
-      if (area.fontFamily) {
-        textNode[':@']['font-family'] = area.fontFamily;
-      }
-      appendToSvg(parsed, textNode);
+      const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+      const lineHeight = area.lineHeight || fontSize * DEFAULT_LINE_HEIGHT_RATIO;
+      const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
+
+      const lines = (area.multiLine !== false ? value.split('\n') : [value])
+        .map((l) => l.trim())
+        .filter((l, idx, arr) => l !== '' || arr.length === 1);
+      const clampedLines = lines.slice(0, maxLines);
+      if (clampedLines.length === 0) clampedLines.push('');
+
+      const centerY = area.y;
+      const count = clampedLines.length;
+      let startY = centerY;
+      if (count === 2) startY = centerY - lineHeight / 2;
+      else if (count >= 3) startY = centerY - lineHeight;
+
+      // Ocultar el texto editable original para evitar que se vea detrás del reemplazo
+      walk(parsed, (node) => {
+        const attr = node[':@'];
+        if (
+          attr &&
+          attr['data-editable'] === 'true' &&
+          attr['data-field'] === area.id
+        ) {
+          attr['visibility'] = 'hidden';
+        }
+      });
+
+      clampedLines.forEach((line, idx) => {
+        const textNode: any = {
+          ':@': {
+            'data-central-field': area.id,
+            'data-central-line': String(idx),
+            x: String(area.x),
+            y: String(startY + idx * lineHeight),
+            'font-size': String(fontSize),
+            'text-anchor': 'middle',
+            'dominant-baseline': 'central',
+          },
+          '#text': line,
+        };
+        if (area.fontFamily) {
+          textNode[':@']['font-family'] = area.fontFamily;
+        }
+        appendToSvg(parsed, textNode);
+      });
     }
   });
 

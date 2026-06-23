@@ -14,6 +14,20 @@ export interface CircularArea {
   x?: number;
   y?: number;
   maxLength?: number;
+  /** Permitir saltos de línea dentro del mismo campo central. */
+  multiLine?: boolean;
+  /** Máximo de líneas permitidas (por defecto 3). */
+  maxLines?: number;
+  /** Interlineado en unidades SVG (por defecto fontSize * 1.2). */
+  lineHeight?: number;
+}
+
+const DEFAULT_LINE_HEIGHT_RATIO = 1.2;
+
+export function estimateTextWidth(text: string, fontSize: number): number {
+  return text
+    .split('')
+    .reduce((sum, char) => sum + estimateCharWidth(char, fontSize), 0);
 }
 
 const DEFAULT_FONT_SIZE = 9;
@@ -159,6 +173,9 @@ export function applyTemplateFields(
   const parser = new DOMParser();
   const doc = parser.parseFromString(result, 'image/svg+xml');
 
+  // Ocultar elementos marcados por el admin (textos originales convertidos a path, líneas decorativas, etc.)
+  doc.querySelectorAll('[data-hide-on-render="true"]').forEach((el) => el.remove());
+
   // Textos normales data-editable
   const texts = doc.querySelectorAll('text[data-editable="true"]');
   texts.forEach((el) => {
@@ -181,20 +198,48 @@ export function applyTemplateFields(
   // Textos centrales detectados
   areas.forEach((area) => {
     if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
-      const value = fields[area.id] ?? area.defaultText ?? '';
-      const existing = doc.querySelector(`text[data-central-field="${area.id}"]`);
-      if (existing) existing.remove();
+      const rawValue = fields[area.id] ?? area.defaultText ?? '';
+      const value = String(rawValue);
 
-      const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
-      textEl.setAttribute('data-central-field', area.id);
-      textEl.setAttribute('x', String(area.x));
-      textEl.setAttribute('y', String(area.y));
-      if (area.fontSize) textEl.setAttribute('font-size', String(area.fontSize));
-      if (area.fontFamily) textEl.setAttribute('font-family', area.fontFamily);
-      textEl.setAttribute('text-anchor', 'middle');
-      textEl.setAttribute('dominant-baseline', 'central');
-      textEl.textContent = value;
-      doc.documentElement.appendChild(textEl);
+      // Remover líneas centrales previas generadas por este campo
+      doc.querySelectorAll(`text[data-central-field="${area.id}"]`).forEach((el) => el.remove());
+
+      // Ocultar el texto editable original para evitar que se vea detrás del reemplazo
+      const original = doc.querySelector(`text[data-editable="true"][data-field="${area.id}"]`);
+      if (original) {
+        original.setAttribute('visibility', 'hidden');
+      }
+
+      const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+      const lineHeight = area.lineHeight || fontSize * DEFAULT_LINE_HEIGHT_RATIO;
+      const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
+
+      // Dividir en líneas cuando el campo permita multilinea (saltos \n)
+      const lines = (area.multiLine !== false ? value.split('\n') : [value])
+        .map((l) => l.trim())
+        .filter((l, idx, arr) => l !== '' || arr.length === 1);
+      const clampedLines = lines.slice(0, maxLines);
+      if (clampedLines.length === 0) clampedLines.push('');
+
+      const centerY = area.y;
+      const count = clampedLines.length;
+      let startY = centerY;
+      if (count === 2) startY = centerY - lineHeight / 2;
+      else if (count >= 3) startY = centerY - lineHeight;
+
+      clampedLines.forEach((line, idx) => {
+        const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textEl.setAttribute('data-central-field', area.id);
+        textEl.setAttribute('data-central-line', String(idx));
+        textEl.setAttribute('x', String(area.x));
+        textEl.setAttribute('y', String(startY + idx * lineHeight));
+        textEl.setAttribute('font-size', String(fontSize));
+        if (area.fontFamily) textEl.setAttribute('font-family', area.fontFamily);
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('dominant-baseline', 'central');
+        textEl.textContent = line;
+        doc.documentElement.appendChild(textEl);
+      });
     }
   });
 

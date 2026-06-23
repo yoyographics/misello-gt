@@ -21,7 +21,7 @@ import {
 import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X, Stamp } from 'lucide-react';
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
-import { applyTemplateFields as applyTemplateFieldsCircular, CircularArea } from '@/lib/circular-text';
+import { applyTemplateFields as applyTemplateFieldsCircular, CircularArea, estimateTextWidth } from '@/lib/circular-text';
 import { detectCircularText } from '@/lib/detect-circular-text';
 
 interface Category {
@@ -102,6 +102,9 @@ interface EditableArea {
   startAngle?: number;
   letterSpacing?: number;
   baseline?: 'top' | 'bottom';
+  multiLine?: boolean;
+  maxLines?: number;
+  lineHeight?: number;
 }
 
 type StampType = 'MONTURA_AUTOMATICA' | 'FECHADOR' | 'PORTATIL' | 'EMBOSADORA';
@@ -265,6 +268,9 @@ export default function DesignPage() {
   const [templateFontId, setTemplateFontId] = useState<string>('');
   const [templateFontSize, setTemplateFontSize] = useState<number>(12);
   const [useTemplate, setUseTemplate] = useState(false);
+  const [templateFieldValidation, setTemplateFieldValidation] = useState<
+    Record<string, { tooLong: boolean; lineValidations: { text: string; widthMm: number; safeWidthMm: number }[] }>
+  >({});
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [showTemplateSelection, setShowTemplateSelection] = useState(false);
 
@@ -722,6 +728,44 @@ export default function DesignPage() {
     setShowTemplateSelection(false);
   };
 
+  const getSafeWidthMm = useCallback((product: Product | null) => {
+    if (!product) return 0;
+    const { shape, widthMm, heightMm } = product;
+    const minDim = Math.min(widthMm || 0, heightMm || 0);
+    if (shape === 'CIRCULAR') return minDim * 0.65;
+    if (shape === 'OVAL') return minDim * 0.7;
+    return (widthMm || 0) * 0.8;
+  }, []);
+
+  useEffect(() => {
+    if (!useTemplate || !selectedTemplate || !selectedProduct) {
+      setTemplateFieldValidation({});
+      return;
+    }
+    const safeWidthMm = getSafeWidthMm(selectedProduct);
+    const fontSize = templateFontSize || 12;
+    const next: Record<
+      string,
+      { tooLong: boolean; lineValidations: { text: string; widthMm: number; safeWidthMm: number }[] }
+    > = {};
+    selectedTemplate.editableAreas?.forEach((area) => {
+      if (area.type !== 'text') return;
+      const rawValue = templateFields[area.id] ?? area.defaultText ?? '';
+      const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
+      const lines = String(rawValue).split('\n').slice(0, maxLines);
+      const lineValidations = lines.map((line) => ({
+        text: line,
+        widthMm: estimateTextWidth(line, fontSize) * 0.3528,
+        safeWidthMm,
+      }));
+      next[area.id] = {
+        tooLong: lineValidations.some((l) => l.widthMm > safeWidthMm),
+        lineValidations,
+      };
+    });
+    setTemplateFieldValidation(next);
+  }, [useTemplate, selectedTemplate, selectedProduct, templateFields, templateFontSize, getSafeWidthMm]);
+
   const applyTemplateFields = (svgContent: string, fields: Record<string, string>): string => {
     const font = fonts.find((f) => f.id === templateFontId);
     // Usar la fuente cargada por @font-face para la preview; fallback al nombre legible
@@ -1148,19 +1192,53 @@ export default function DesignPage() {
                   <code>data-editable=&quot;true&quot;</code>.
                 </div>
               )}
-              {selectedTemplate.editableAreas?.map((area) => (
-                <div key={area.id}>
-                  <label className="text-sm font-medium mb-1 block">{area.label}</label>
-                  <Input
-                    value={templateFields[area.id] || ''}
-                    onChange={(e) =>
-                      setTemplateFields((prev) => ({ ...prev, [area.id]: e.target.value }))
-                    }
-                    placeholder={area.defaultText}
-                    maxLength={area.maxLength}
-                  />
-                </div>
-              ))}
+              {selectedTemplate.editableAreas?.map((area) => {
+                const validation = templateFieldValidation[area.id];
+                const isTextArea = area.type === 'text';
+                return (
+                  <div key={area.id}>
+                    <label className="text-sm font-medium mb-1 block">{area.label}</label>
+                    {isTextArea ? (
+                      <textarea
+                        value={templateFields[area.id] || ''}
+                        onChange={(e) =>
+                          setTemplateFields((prev) => ({ ...prev, [area.id]: e.target.value }))
+                        }
+                        placeholder={area.defaultText}
+                        maxLength={area.maxLength}
+                        rows={Math.min(area.maxLines || 3, 3)}
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                      />
+                    ) : (
+                      <Input
+                        value={templateFields[area.id] || ''}
+                        onChange={(e) =>
+                          setTemplateFields((prev) => ({ ...prev, [area.id]: e.target.value }))
+                        }
+                        placeholder={area.defaultText}
+                        maxLength={area.maxLength}
+                      />
+                    )}
+                    {validation?.tooLong && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <div>
+                          <p className="font-medium">El texto puede salirse del área segura</p>
+                          <ul className="mt-1 space-y-0.5">
+                            {validation.lineValidations
+                              .filter((l) => l.widthMm > l.safeWidthMm)
+                              .map((l, i) => (
+                                <li key={i}>
+                                  • &ldquo;{l.text}&rdquo; ({l.widthMm.toFixed(1)}mm / {l.safeWidthMm.toFixed(1)}mm)
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               <Separator />
 
