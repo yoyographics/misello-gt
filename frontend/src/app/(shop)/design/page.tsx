@@ -24,7 +24,7 @@ import { redirectToGoogleLogin } from '@/lib/auth-utils';
 import {
   applyTemplateFields as applyTemplateFieldsCircular,
   CircularArea,
-  computeCentralSafeWidthMm,
+  computeCentralSafeWidthSvg,
   estimateTextWidth,
   wrapCentralText,
 } from '@/lib/circular-text';
@@ -282,7 +282,7 @@ export default function DesignPage() {
       string,
       {
         tooLong: boolean;
-        lineValidations: { text: string; widthMm: number; safeWidthMm: number }[];
+        lineValidations: { text: string; widthSvg: number; safeWidthSvg: number }[];
         minFontSize?: number;
         tooLongAtMin?: boolean;
       }
@@ -775,23 +775,22 @@ export default function DesignPage() {
       const settings = templateAreaSettings[area.id];
       const fontId = settings?.fontId || templateFontId || '';
       const font = fonts.find((f) => f.id === fontId);
-      const minPt = font?.minFontSizePt ?? 6;
       const fontSize = settings?.fontSize || templateFontSize || area.fontSize || 12;
-      const fallbackSafeWidthMm = getSafeWidthMm(selectedProduct);
-      const safeWidthMm = computeCentralSafeWidthMm(
+      const fallbackSafeWidthSvg = getSafeWidthMm(selectedProduct);
+      const safeWidthSvg = computeCentralSafeWidthSvg(
         selectedTemplate.editableAreas || [],
-        fontSize * 0.3528,
+        fontSize,
         selectedProduct.widthMm,
         selectedTemplate.svgContent,
-        fallbackSafeWidthMm,
+        fallbackSafeWidthSvg,
         selectedProduct.heightMm,
         selectedProduct.shape,
       );
-      if (!safeWidthMm) return value;
+      if (!safeWidthSvg) return value;
 
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
       // Aplicar word-wrap inteligente
-      const wrapResult = wrapCentralText(value, fontSize, safeWidthMm, maxLines);
+      const wrapResult = wrapCentralText(value, fontSize, safeWidthSvg, maxLines);
       return wrapResult.lines.join('\n');
     },
     [fonts, getSafeWidthMm, selectedProduct, selectedTemplate, templateAreaSettings, templateFontId, templateFontSize],
@@ -807,7 +806,7 @@ export default function DesignPage() {
       string,
       {
         tooLong: boolean;
-        lineValidations: { text: string; widthMm: number; safeWidthMm: number }[];
+        lineValidations: { text: string; widthSvg: number; safeWidthSvg: number }[];
         minFontSize?: number;
         tooLongAtMin?: boolean;
       }
@@ -820,10 +819,9 @@ export default function DesignPage() {
       const font = fonts.find((f) => f.id === areaFontId);
       const minFontSize = font?.minFontSizePt ?? 6;
 
-      const areaFontSizeMm = areaFontSize * 0.3528;
-      const safeWidthMm = computeCentralSafeWidthMm(
+      const safeWidthSvg = computeCentralSafeWidthSvg(
         selectedTemplate.editableAreas || [],
-        areaFontSizeMm,
+        areaFontSize,
         selectedProduct.widthMm,
         selectedTemplate.svgContent,
         fallbackSafeWidthMm,
@@ -831,10 +829,9 @@ export default function DesignPage() {
         selectedProduct.shape,
       );
 
-      const minFontSizeMm = minFontSize * 0.3528;
-      const safeWidthMmAtMin = computeCentralSafeWidthMm(
+      const safeWidthSvgAtMin = computeCentralSafeWidthSvg(
         selectedTemplate.editableAreas || [],
-        minFontSizeMm,
+        minFontSize,
         selectedProduct.widthMm,
         selectedTemplate.svgContent,
         fallbackSafeWidthMm,
@@ -846,15 +843,15 @@ export default function DesignPage() {
       const lines = String(rawValue).split('\n').slice(0, maxLines);
       const lineValidations = lines.map((line) => ({
         text: line,
-        widthMm: estimateTextWidth(line, areaFontSize) * 0.3528,
-        safeWidthMm,
+        widthSvg: estimateTextWidth(line, areaFontSize),
+        safeWidthSvg,
       }));
       next[area.id] = {
-        tooLong: lineValidations.some((l) => l.widthMm > safeWidthMm),
+        tooLong: lineValidations.some((l) => l.widthSvg > l.safeWidthSvg),
         lineValidations,
         minFontSize,
         tooLongAtMin: lines.some(
-          (line) => estimateTextWidth(line, minFontSize) * 0.3528 > safeWidthMmAtMin,
+          (line) => estimateTextWidth(line, minFontSize) > safeWidthSvgAtMin,
         ),
       };
     });
@@ -878,7 +875,7 @@ export default function DesignPage() {
       };
     });
     return applyTemplateFieldsCircular(svgContent, fields, areas, {
-      safeWidthMm: getSafeWidthMm(selectedProduct),
+      safeWidthSvg: getSafeWidthMm(selectedProduct),
       productWidthMm: selectedProduct?.widthMm,
       productHeightMm: selectedProduct?.heightMm,
       productShape: selectedProduct?.shape,
@@ -1425,10 +1422,10 @@ export default function DesignPage() {
                           <p className="font-medium">El texto puede salirse del área segura</p>
                           <ul className="mt-1 space-y-0.5">
                             {validation.lineValidations
-                              .filter((l) => l.widthMm > l.safeWidthMm)
+                              .filter((l) => l.widthSvg > l.safeWidthSvg)
                               .map((l, i) => (
                                 <li key={i}>
-                                  • &ldquo;{l.text}&rdquo; ({l.widthMm.toFixed(1)}mm / {l.safeWidthMm.toFixed(1)}mm)
+                                  • &ldquo;{l.text}&rdquo; (ancho excede límite)
                                 </li>
                               ))}
                           </ul>
