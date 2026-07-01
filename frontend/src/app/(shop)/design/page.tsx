@@ -21,7 +21,12 @@ import {
 import { ArrowLeft, Plus, Minus, Check, AlertTriangle, Loader2, ShoppingCart, X, Stamp } from 'lucide-react';
 import { SvgImage } from '@/components/svg-image';
 import { redirectToGoogleLogin } from '@/lib/auth-utils';
-import { applyTemplateFields as applyTemplateFieldsCircular, CircularArea, estimateTextWidth } from '@/lib/circular-text';
+import {
+  applyTemplateFields as applyTemplateFieldsCircular,
+  CircularArea,
+  computeCentralSafeWidthMm,
+  estimateTextWidth,
+} from '@/lib/circular-text';
 import { detectCircularText } from '@/lib/detect-circular-text';
 
 interface Category {
@@ -272,7 +277,15 @@ export default function DesignPage() {
   >({});
   const [useTemplate, setUseTemplate] = useState(false);
   const [templateFieldValidation, setTemplateFieldValidation] = useState<
-    Record<string, { tooLong: boolean; lineValidations: { text: string; widthMm: number; safeWidthMm: number }[] }>
+    Record<
+      string,
+      {
+        tooLong: boolean;
+        lineValidations: { text: string; widthMm: number; safeWidthMm: number }[];
+        minFontSize?: number;
+        tooLongAtMin?: boolean;
+      }
+    >
   >({});
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [showTemplateSelection, setShowTemplateSelection] = useState(false);
@@ -750,20 +763,83 @@ export default function DesignPage() {
     return (widthMm || 0) * 0.8;
   }, []);
 
+  /**
+   * Trunca el texto central al ancho disponible calculado con el tamaño minimo de la fuente.
+   * Evita que el usuario escriba mas de lo que cabe cuando ya se alcanzo el limite inferior.
+   */
+  const clampCentralText = useCallback(
+    (area: EditableArea, value: string): string => {
+      if (!selectedTemplate || !selectedProduct) return value;
+      const settings = templateAreaSettings[area.id];
+      const fontId = settings?.fontId || templateFontId || '';
+      const font = fonts.find((f) => f.id === fontId);
+      const minPt = font?.minFontSizePt ?? 6;
+      const minFontSizeMm = minPt * 0.3528;
+      const fallbackSafeWidthMm = getSafeWidthMm(selectedProduct);
+      const safeWidthMm = computeCentralSafeWidthMm(
+        selectedTemplate.editableAreas || [],
+        minFontSizeMm,
+        selectedProduct.widthMm,
+        selectedTemplate.svgContent,
+        fallbackSafeWidthMm,
+      );
+      if (!safeWidthMm) return value;
+
+      const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
+      const lines = value.split('\n').slice(0, maxLines);
+      const clampedLines = lines.map((line) => {
+        let truncated = line;
+        while (truncated.length > 0 && estimateTextWidth(truncated, minPt) * 0.3528 > safeWidthMm) {
+          truncated = truncated.slice(0, -1);
+        }
+        return truncated;
+      });
+      return clampedLines.join('\n');
+    },
+    [fonts, getSafeWidthMm, selectedProduct, selectedTemplate, templateAreaSettings, templateFontId],
+  );
+
   useEffect(() => {
     if (!useTemplate || !selectedTemplate || !selectedProduct) {
       setTemplateFieldValidation({});
       return;
     }
-    const safeWidthMm = getSafeWidthMm(selectedProduct);
+    const fallbackSafeWidthMm = getSafeWidthMm(selectedProduct);
     const next: Record<
       string,
-      { tooLong: boolean; lineValidations: { text: string; widthMm: number; safeWidthMm: number }[] }
+      {
+        tooLong: boolean;
+        lineValidations: { text: string; widthMm: number; safeWidthMm: number }[];
+        minFontSize?: number;
+        tooLongAtMin?: boolean;
+      }
     > = {};
     selectedTemplate.editableAreas?.forEach((area) => {
       if (area.type !== 'text') return;
       const rawValue = templateFields[area.id] ?? area.defaultText ?? '';
       const areaFontSize = templateAreaSettings[area.id]?.fontSize || templateFontSize || area.fontSize || 12;
+      const areaFontId = templateAreaSettings[area.id]?.fontId || templateFontId || '';
+      const font = fonts.find((f) => f.id === areaFontId);
+      const minFontSize = font?.minFontSizePt ?? 6;
+
+      const areaFontSizeMm = areaFontSize * 0.3528;
+      const safeWidthMm = computeCentralSafeWidthMm(
+        selectedTemplate.editableAreas || [],
+        areaFontSizeMm,
+        selectedProduct.widthMm,
+        selectedTemplate.svgContent,
+        fallbackSafeWidthMm,
+      );
+
+      const minFontSizeMm = minFontSize * 0.3528;
+      const safeWidthMmAtMin = computeCentralSafeWidthMm(
+        selectedTemplate.editableAreas || [],
+        minFontSizeMm,
+        selectedProduct.widthMm,
+        selectedTemplate.svgContent,
+        fallbackSafeWidthMm,
+      );
+
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
       const lines = String(rawValue).split('\n').slice(0, maxLines);
       const lineValidations = lines.map((line) => ({
@@ -774,10 +850,14 @@ export default function DesignPage() {
       next[area.id] = {
         tooLong: lineValidations.some((l) => l.widthMm > safeWidthMm),
         lineValidations,
+        minFontSize,
+        tooLongAtMin: lines.some(
+          (line) => estimateTextWidth(line, minFontSize) * 0.3528 > safeWidthMmAtMin,
+        ),
       };
     });
     setTemplateFieldValidation(next);
-  }, [useTemplate, selectedTemplate, selectedProduct, templateFields, templateFontSize, templateAreaSettings, getSafeWidthMm]);
+  }, [useTemplate, selectedTemplate, selectedProduct, templateFields, templateFontSize, templateAreaSettings, templateFontId, fonts, getSafeWidthMm]);
 
   const applyTemplateFields = (svgContent: string, fields: Record<string, string>): string => {
     const areas = (selectedTemplate?.editableAreas || []).map((area) => {
@@ -792,10 +872,12 @@ export default function DesignPage() {
         ...area,
         fontFamily,
         fontSize: settings.fontSize || templateFontSize || area.fontSize || 12,
+        minFontSize: font?.minFontSizePt ?? 6,
       };
     });
     return applyTemplateFieldsCircular(svgContent, fields, areas, {
       safeWidthMm: getSafeWidthMm(selectedProduct),
+      productWidthMm: selectedProduct?.widthMm,
     });
   };
 
@@ -1250,9 +1332,10 @@ export default function DesignPage() {
                     {isTextArea ? (
                       <textarea
                         value={templateFields[area.id] || ''}
-                        onChange={(e) =>
-                          setTemplateFields((prev) => ({ ...prev, [area.id]: e.target.value }))
-                        }
+                        onChange={(e) => {
+                          const clamped = clampCentralText(area, e.target.value);
+                          setTemplateFields((prev) => ({ ...prev, [area.id]: clamped }));
+                        }}
                         placeholder={area.defaultText}
                         maxLength={area.maxLength}
                         rows={Math.min(area.maxLines || 3, 3)}
@@ -1320,7 +1403,18 @@ export default function DesignPage() {
                       </p>
                     )}
 
-                    {validation?.tooLong && (
+                    {validation?.tooLongAtMin ? (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <div>
+                          <p className="font-medium">Límite alcanzado</p>
+                          <p className="mt-0.5">
+                            El texto no cabe ni siquiera con el tamaño mínimo de {validation.minFontSize}pt.
+                            No se permite escribir más caracteres.
+                          </p>
+                        </div>
+                      </div>
+                    ) : validation?.tooLong ? (
                       <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-2">
                         <AlertTriangle className="h-4 w-4 shrink-0" />
                         <div>
@@ -1336,7 +1430,7 @@ export default function DesignPage() {
                           </ul>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}

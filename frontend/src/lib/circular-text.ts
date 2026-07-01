@@ -20,6 +20,8 @@ export interface CircularArea {
   maxLines?: number;
   /** Interlineado en unidades SVG (por defecto fontSize * 1.2). */
   lineHeight?: number;
+  /** Tamaño minimo permitido para esta area (pt). */
+  minFontSize?: number;
 }
 
 const DEFAULT_LINE_HEIGHT_RATIO = 1.2;
@@ -210,6 +212,56 @@ function renderCircularTextAsLetters(
 export interface ApplyTemplateFieldsOptions {
   /** Ancho seguro en mm para textos centrales; si se excede se escala el font-size proporcionalmente. */
   safeWidthMm?: number;
+  /** Ancho del producto en mm para calcular la escala SVG->mm. */
+  productWidthMm?: number;
+}
+
+function parseSvgViewBoxWidth(svgContent: string): number | null {
+  const match = svgContent.match(/viewBox=["'][^"']+\s+[^"']+\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)["']/);
+  if (match) return parseFloat(match[1]);
+  const widthMatch = svgContent.match(/width=["'](\d+(?:\.\d+)?)(?:mm|px|pt)?["']/);
+  if (widthMatch) return parseFloat(widthMatch[1]);
+  return null;
+}
+
+/**
+ * Calcula el ancho disponible para el texto central considerando los arcos circulares
+ * superior e inferior. Evita que el texto central toque los textos circulares.
+ * Si no hay datos suficientes retorna el fallback.
+ */
+export function computeCentralSafeWidthMm(
+  areas: CircularArea[],
+  fontSizeMm: number,
+  productWidthMm?: number,
+  svgContent?: string,
+  fallbackSafeWidthMm?: number,
+): number {
+  if (!productWidthMm || !svgContent) {
+    return fallbackSafeWidthMm || productWidthMm || 0;
+  }
+  const viewBoxWidth = parseSvgViewBoxWidth(svgContent);
+  if (!viewBoxWidth) return fallbackSafeWidthMm || productWidthMm || 0;
+  const scale = productWidthMm / viewBoxWidth;
+
+  const circularTop = areas.find((a) => a.type === 'circular' && a.baseline === 'top');
+  const circularBottom = areas.find((a) => a.type === 'circular' && a.baseline === 'bottom');
+
+  if (!circularTop && !circularBottom) {
+    return fallbackSafeWidthMm || productWidthMm || 0;
+  }
+
+  const availableWidths: number[] = [];
+  [circularTop, circularBottom].forEach((area) => {
+    if (!area?.radius) return;
+    const rMm = area.radius * scale;
+    const halfHeight = fontSizeMm / 2;
+    if (rMm > halfHeight) {
+      availableWidths.push(2 * Math.sqrt(rMm * rMm - halfHeight * halfHeight));
+    }
+  });
+
+  if (availableWidths.length === 0) return fallbackSafeWidthMm || productWidthMm || 0;
+  return Math.min(...availableWidths);
 }
 
 export function applyTemplateFields(
@@ -288,16 +340,28 @@ export function applyTemplateFields(
       if (count === 2) startY = centerY - lineHeight / 2;
       else if (count >= 3) startY = centerY - lineHeight;
 
+      // Calcular ancho disponible central basado en los radios reales de los textos circulares
+      const centralFontSizeMm = fontSize * 0.3528;
+      const safeWidthMm = computeCentralSafeWidthMm(
+        areas,
+        centralFontSizeMm,
+        options?.productWidthMm,
+        svgContent,
+        options?.safeWidthMm,
+      );
+
       clampedLines.forEach((line, idx) => {
         // Si el texto central excede el ancho seguro, escalar el font-size proporcionalmente
-        // para que no invada los textos circulares.
+        // para que no invada los textos circulares. Nunca escalar por debajo del minimo.
         let effectiveFontSize = fontSize;
-        if (options?.safeWidthMm && area.x !== undefined) {
+        if (safeWidthMm && area.x !== undefined) {
           const lineWidthMm = estimateTextWidth(line, fontSize) * 0.3528;
-          if (lineWidthMm > options.safeWidthMm && lineWidthMm > 0) {
-            effectiveFontSize = fontSize * (options.safeWidthMm / lineWidthMm);
+          if (lineWidthMm > safeWidthMm && lineWidthMm > 0) {
+            effectiveFontSize = fontSize * (safeWidthMm / lineWidthMm);
           }
         }
+        const minFontSize = area.minFontSize ?? 1;
+        effectiveFontSize = Math.max(effectiveFontSize, minFontSize);
 
         const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
         textEl.setAttribute('data-central-field', area.id);

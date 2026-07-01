@@ -204,6 +204,7 @@ export class DesignService {
           ...area,
           fontSize: finalSize,
           fontFamily: effectiveFont?.name || area.fontFamily || 'Arial, sans-serif',
+          minFontSize: minPt > 0 ? minPt : undefined,
         };
       }),
     );
@@ -223,7 +224,7 @@ export class DesignService {
       template.svgContent,
       fields,
       processedAreas,
-      { safeWidthMm },
+      { safeWidthMm, productWidthMm: widthMm },
     );
 
     // Generar PNG preview con resvg
