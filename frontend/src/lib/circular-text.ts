@@ -254,9 +254,11 @@ export function computeCentralSafeWidthMm(
   [circularTop, circularBottom].forEach((area) => {
     if (!area?.radius) return;
     const rMm = area.radius * scale;
-    const halfHeight = fontSizeMm / 2;
-    if (rMm > halfHeight) {
-      availableWidths.push(2 * Math.sqrt(rMm * rMm - halfHeight * halfHeight));
+    // Margen = altura completa de la letra (fontSizeMm) + 10% de seguridad adicional
+    // para evitar que el texto central toque los textos circulares y el marco
+    const clearance = fontSizeMm * 1.1;
+    if (rMm > clearance) {
+      availableWidths.push(2 * Math.sqrt(rMm * rMm - clearance * clearance));
     }
   });
 

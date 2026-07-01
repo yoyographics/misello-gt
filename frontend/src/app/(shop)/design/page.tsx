@@ -789,6 +789,7 @@ export default function DesignPage() {
       const lines = value.split('\n').slice(0, maxLines);
       const clampedLines = lines.map((line) => {
         let truncated = line;
+        // Truncar caracter por caracter hasta que quepa en el ancho seguro
         while (truncated.length > 0 && estimateTextWidth(truncated, minPt) * 0.3528 > safeWidthMm) {
           truncated = truncated.slice(0, -1);
         }
