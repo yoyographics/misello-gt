@@ -270,9 +270,15 @@ export function computeCentralSafeWidthMm(
   [circularTop, circularBottom].forEach((area) => {
     if (!area?.radius) return;
     const rMm = area.radius * scale;
-    // Margen = altura completa de la letra (fontSizeMm) + 10% de seguridad adicional
-    // para evitar que el texto central toque los textos circulares y el marco
-    const clearance = fontSizeMm * 1.1;
+    // Margen de seguridad: altura de la letra central + altura estimada de las letras circulares
+    // + un margen adicional de 1.5x para garantizar que nunca se toquen.
+    // Los textos circulares tienen letras que se extienden hacia el centro del sello,
+    // por lo que necesitamos dejar espacio para su altura también.
+    const circularFontSizeMm = (area.fontSize || 9) * 0.3528 * scale;
+    // clearance = radio - distancia al borde interior del texto circular
+    // Queremos que el texto central quede completamente dentro del área segura
+    // Margen total = altura letra central + altura letra circular + 50% extra de seguridad
+    const clearance = (fontSizeMm + circularFontSizeMm) * 1.5;
     if (rMm > clearance) {
       availableWidths.push(2 * Math.sqrt(rMm * rMm - clearance * clearance));
     }
