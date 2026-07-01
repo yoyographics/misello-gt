@@ -511,12 +511,10 @@ export function applyTemplateFields(
         .filter((l, idx, arr) => l !== '' || arr.length === 1);
 
       // Aplicar word-wrap inteligente a cada línea del usuario
-      let allLines: string[] = [];
-      let wasTruncated = false;
+      const allLines: string[] = [];
       for (const userLine of userLines) {
         const wrapResult = wrapCentralText(userLine, fontSize, safeWidthMm, maxLines - allLines.length);
         allLines.push(...wrapResult.lines);
-        if (wrapResult.wasTruncated) wasTruncated = true;
         if (allLines.length >= maxLines) break;
       }
       const clampedLines = allLines.slice(0, maxLines);
