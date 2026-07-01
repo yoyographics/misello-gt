@@ -5,6 +5,7 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import {
   applyTemplateFields as applyCircularTemplateFields,
+  ApplyTemplateFieldsOptions,
   detectCircularText,
   CircularArea,
 } from './utils/circular-text.util';
@@ -208,8 +209,9 @@ export class TemplatesService {
     svgContent: string,
     fields: Record<string, string>,
     areas?: CircularArea[],
+    options?: ApplyTemplateFieldsOptions,
   ): string {
-    return applyCircularTemplateFields(svgContent, fields, areas || []);
+    return applyCircularTemplateFields(svgContent, fields, areas || [], options);
   }
 
   private walkAndExtract(node: any, areas: CircularArea[]) {

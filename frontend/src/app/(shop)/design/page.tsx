@@ -267,6 +267,9 @@ export default function DesignPage() {
   const [templateFields, setTemplateFields] = useState<Record<string, string>>({});
   const [templateFontId, setTemplateFontId] = useState<string>('');
   const [templateFontSize, setTemplateFontSize] = useState<number>(12);
+  const [templateAreaSettings, setTemplateAreaSettings] = useState<
+    Record<string, { fontId: string; fontSize: number }>
+  >({});
   const [useTemplate, setUseTemplate] = useState(false);
   const [templateFieldValidation, setTemplateFieldValidation] = useState<
     Record<string, { tooLong: boolean; lineValidations: { text: string; widthMm: number; safeWidthMm: number }[] }>
@@ -586,6 +589,7 @@ export default function DesignPage() {
           productId: selectedProduct.id,
           templateId: selectedTemplate.id,
           templateData: templateFields,
+          templateAreaSettings,
           fontId: templateFontId || selectedTemplate.defaultFont?.id || '',
           templateFontSize: templateFontSize || undefined,
           inkId: selectedInk || undefined,
@@ -652,6 +656,7 @@ export default function DesignPage() {
     setTemplates([]);
     setSelectedTemplate(null);
     setTemplateFields({});
+    setTemplateAreaSettings({});
     setUseTemplate(false);
     setShowTemplateSelection(false);
     localStorage.removeItem(STORAGE_KEY);
@@ -713,12 +718,20 @@ export default function DesignPage() {
     const areas = normalizeEditableAreas(template.editableAreas);
     setSelectedTemplate({ ...template, editableAreas: areas });
     const initialFields: Record<string, string> = {};
+    const initialSettings: Record<string, { fontId: string; fontSize: number }> = {};
+    const defaultFontId =
+      template.defaultFont?.id || fonts.find((f) => f.isDefault)?.id || fonts[0]?.id || '';
     areas.forEach((area) => {
       initialFields[area.id] = area.defaultText || '';
+      initialSettings[area.id] = {
+        fontId: defaultFontId,
+        fontSize: area.fontSize || 12,
+      };
     });
     setTemplateFields(initialFields);
-    setTemplateFontId(template.defaultFont?.id || fonts.find((f) => f.isDefault)?.id || fonts[0]?.id || '');
+    setTemplateFontId(defaultFontId);
     setTemplateFontSize(areas[0]?.fontSize || 12);
+    setTemplateAreaSettings(initialSettings);
     setUseTemplate(true);
     setShowTemplateSelection(false);
   };
@@ -743,7 +756,6 @@ export default function DesignPage() {
       return;
     }
     const safeWidthMm = getSafeWidthMm(selectedProduct);
-    const fontSize = templateFontSize || 12;
     const next: Record<
       string,
       { tooLong: boolean; lineValidations: { text: string; widthMm: number; safeWidthMm: number }[] }
@@ -751,11 +763,12 @@ export default function DesignPage() {
     selectedTemplate.editableAreas?.forEach((area) => {
       if (area.type !== 'text') return;
       const rawValue = templateFields[area.id] ?? area.defaultText ?? '';
+      const areaFontSize = templateAreaSettings[area.id]?.fontSize || templateFontSize || area.fontSize || 12;
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
       const lines = String(rawValue).split('\n').slice(0, maxLines);
       const lineValidations = lines.map((line) => ({
         text: line,
-        widthMm: estimateTextWidth(line, fontSize) * 0.3528,
+        widthMm: estimateTextWidth(line, areaFontSize) * 0.3528,
         safeWidthMm,
       }));
       next[area.id] = {
@@ -764,20 +777,26 @@ export default function DesignPage() {
       };
     });
     setTemplateFieldValidation(next);
-  }, [useTemplate, selectedTemplate, selectedProduct, templateFields, templateFontSize, getSafeWidthMm]);
+  }, [useTemplate, selectedTemplate, selectedProduct, templateFields, templateFontSize, templateAreaSettings, getSafeWidthMm]);
 
   const applyTemplateFields = (svgContent: string, fields: Record<string, string>): string => {
-    const font = fonts.find((f) => f.id === templateFontId);
-    // Usar la fuente cargada por @font-face para la preview; fallback al nombre legible
-    const fontFamily = loadedFonts.has(templateFontId)
-      ? `font-${templateFontId}`
-      : font?.name || selectedTemplate?.editableAreas?.[0]?.fontFamily || 'Arial, sans-serif';
-    const areas = (selectedTemplate?.editableAreas || []).map((area) => ({
-      ...area,
-      fontFamily,
-      fontSize: templateFontSize || area.fontSize || 12,
-    }));
-    return applyTemplateFieldsCircular(svgContent, fields, areas);
+    const areas = (selectedTemplate?.editableAreas || []).map((area) => {
+      const settings = templateAreaSettings[area.id] || {};
+      const areaFontId = settings.fontId || templateFontId || selectedTemplate?.defaultFont?.id || '';
+      const font = fonts.find((f) => f.id === areaFontId);
+      // Usar la fuente cargada por @font-face para la preview; fallback al nombre legible
+      const fontFamily = loadedFonts.has(areaFontId)
+        ? `font-${areaFontId}`
+        : font?.name || area.fontFamily || 'Arial, sans-serif';
+      return {
+        ...area,
+        fontFamily,
+        fontSize: settings.fontSize || templateFontSize || area.fontSize || 12,
+      };
+    });
+    return applyTemplateFieldsCircular(svgContent, fields, areas, {
+      safeWidthMm: getSafeWidthMm(selectedProduct),
+    });
   };
 
   const addToCart = () => {
@@ -1195,6 +1214,36 @@ export default function DesignPage() {
               {selectedTemplate.editableAreas?.map((area) => {
                 const validation = templateFieldValidation[area.id];
                 const isTextArea = area.type === 'text';
+                const areaSettings = templateAreaSettings[area.id] || { fontId: '', fontSize: 12 };
+                const areaFont = fonts.find((f) => f.id === areaSettings.fontId);
+                const minPt = areaFont?.minFontSizePt ?? 6;
+                const allSizes = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 24];
+                const availableSizes = allSizes.filter((s) => s >= minPt);
+
+                const updateAreaFont = (value: string | null) => {
+                  if (!value) return;
+                  const fontId = value;
+                  setTemplateAreaSettings((prev) => {
+                    const next = { ...prev };
+                    const current = next[area.id] || { fontId, fontSize: area.fontSize || 12 };
+                    const newFont = fonts.find((f) => f.id === fontId);
+                    const newMinPt = newFont?.minFontSizePt ?? 6;
+                    next[area.id] = {
+                      ...current,
+                      fontId,
+                      fontSize: current.fontSize < newMinPt ? newMinPt : current.fontSize,
+                    };
+                    return next;
+                  });
+                };
+
+                const updateAreaFontSize = (fontSize: number) => {
+                  setTemplateAreaSettings((prev) => ({
+                    ...prev,
+                    [area.id]: { ...(prev[area.id] || { fontId: areaSettings.fontId }), fontSize },
+                  }));
+                };
+
                 return (
                   <div key={area.id}>
                     <label className="text-sm font-medium mb-1 block">{area.label}</label>
@@ -1219,6 +1268,58 @@ export default function DesignPage() {
                         maxLength={area.maxLength}
                       />
                     )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Fuente</label>
+                        <Select value={areaSettings.fontId} onValueChange={updateAreaFont}>
+                          <SelectTrigger className="w-full h-9">
+                            <SelectValue placeholder="Fuente">
+                              {fonts.find((f) => f.id === areaSettings.fontId)?.name}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[360px]">
+                            {fonts.map((font) => (
+                              <SelectItem key={font.id} value={font.id} className="h-12 px-3">
+                                <span
+                                  className="text-lg leading-none"
+                                  style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
+                                >
+                                  {font.name}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Tamaño</label>
+                        <Select
+                          value={`${areaSettings.fontSize}pt`}
+                          onValueChange={(v) => {
+                            if (!v) return;
+                            updateAreaFontSize(parseInt(v.replace(/pt$/, ''), 10));
+                          }}
+                        >
+                          <SelectTrigger className="w-full h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSizes.map((s) => (
+                              <SelectItem key={s} value={`${s}pt`}>{s}pt</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {minPt > 0 && areaSettings.fontSize < minPt && (
+                      <p className="text-xs text-amber-700 mt-1">
+                        La fuente {areaFont?.name} requiere un tamaño mínimo de {minPt}pt.
+                      </p>
+                    )}
+
                     {validation?.tooLong && (
                       <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-2">
                         <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -1239,85 +1340,6 @@ export default function DesignPage() {
                   </div>
                 );
               })}
-
-              <Separator />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Fuente</label>
-                  <Select
-                    value={templateFontId}
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      setTemplateFontId(value);
-                      const newFont = fonts.find((f) => f.id === value);
-                      const minPt = newFont?.minFontSizePt ?? 6;
-                      if (templateFontSize < minPt) {
-                        setTemplateFontSize(minPt);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full h-10">
-                      <SelectValue placeholder="Selecciona una fuente">
-                        {fonts.find((f) => f.id === templateFontId)?.name}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[360px]">
-                      {fonts.map((font) => (
-                        <SelectItem key={font.id} value={font.id} className="h-12 px-3">
-                          <span
-                            className="text-lg leading-none"
-                            style={loadedFonts.has(font.id) ? { fontFamily: `"font-${font.id}"` } : {}}
-                          >
-                            {font.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Tamaño de fuente</label>
-                  {(() => {
-                    const currentFont = fonts.find((f) => f.id === templateFontId);
-                    const minPt = currentFont?.minFontSizePt ?? 6;
-                    const allSizes = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 24];
-                    const availableSizes = allSizes.filter((s) => s >= minPt);
-                    return (
-                      <Select
-                        value={`${templateFontSize}pt`}
-                        onValueChange={(v) => {
-                          if (!v) return;
-                          setTemplateFontSize(parseInt(v.replace(/pt$/, ''), 10));
-                        }}
-                      >
-                        <SelectTrigger className="w-full h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableSizes.map((s) => (
-                            <SelectItem key={s} value={`${s}pt`}>{s}pt</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {(() => {
-                const currentFont = fonts.find((f) => f.id === templateFontId);
-                const minPt = currentFont?.minFontSizePt;
-                if (minPt && templateFontSize < minPt) {
-                  return (
-                    <p className="text-xs text-amber-700">
-                      La fuente {currentFont.name} requiere un tamaño minimo de {minPt}pt.
-                    </p>
-                  );
-                }
-                return null;
-              })()}
 
               <Separator />
 

@@ -157,14 +157,15 @@ export class DesignService {
     }
 
     const fields: Record<string, string> = dto.templateData || {};
+    const areaSettings = dto.templateAreaSettings || {};
 
     // Cargar fuente seleccionada o fuente por defecto de la plantilla
-    const fontId = dto.fontId || template.defaultFontId;
-    let selectedFont: { id: string; name: string; minFontSizePt: number | null } | null = null;
-    if (fontId) {
-      const font = await this.prisma.font.findUnique({ where: { id: fontId } });
+    const globalFontId = dto.fontId || template.defaultFontId;
+    let globalFont: { id: string; name: string; minFontSizePt: number | null } | null = null;
+    if (globalFontId) {
+      const font = await this.prisma.font.findUnique({ where: { id: globalFontId } });
       if (font) {
-        selectedFont = {
+        globalFont = {
           id: font.id,
           name: font.name,
           minFontSizePt: font.minFontSizePt ?? null,
@@ -172,25 +173,57 @@ export class DesignService {
       }
     }
 
-    // Aplicar fuente y validar tamaños minimos
+    // Cache de fuentes por area para evitar consultas repetidas
+    const fontCache = new Map<string, { id: string; name: string; minFontSizePt: number | null } | null>();
+    const getFont = async (fontId?: string) => {
+      if (!fontId) return null;
+      if (fontCache.has(fontId)) return fontCache.get(fontId);
+      const font = await this.prisma.font.findUnique({ where: { id: fontId } });
+      const result = font
+        ? { id: font.id, name: font.name, minFontSizePt: font.minFontSizePt ?? null }
+        : null;
+      fontCache.set(fontId, result);
+      return result;
+    };
+
+    // Aplicar fuente/tamaño por area, respetando configuracion del wizard
     const areas = (template.editableAreas || []) as any[];
     const requestedFontSizePt = dto.templateFontSize;
-    const processedAreas = areas.map((area) => {
-      const baseFontSize = requestedFontSizePt ?? area.fontSize ?? 12;
-      const minPt = selectedFont?.minFontSizePt ?? 0;
-      const finalSize = minPt > 0 && baseFontSize < minPt ? minPt : baseFontSize;
-      return {
-        ...area,
-        fontSize: finalSize,
-        fontFamily: selectedFont?.name || area.fontFamily || 'Arial, sans-serif',
-      };
-    });
+    const processedAreas = await Promise.all(
+      areas.map(async (area) => {
+        const setting = areaSettings[area.id] || {};
+        const areaFontId = setting.fontId || globalFontId;
+        const areaFont = areaFontId ? await getFont(areaFontId) : null;
+        const effectiveFont = areaFont || globalFont;
+
+        const baseFontSize = setting.fontSize ?? requestedFontSizePt ?? area.fontSize ?? 12;
+        const minPt = effectiveFont?.minFontSizePt ?? 0;
+        const finalSize = minPt > 0 && baseFontSize < minPt ? minPt : baseFontSize;
+
+        return {
+          ...area,
+          fontSize: finalSize,
+          fontFamily: effectiveFont?.name || area.fontFamily || 'Arial, sans-serif',
+        };
+      }),
+    );
+
+    // Calcular ancho seguro para textos centrales segun el producto
+    const shape = product.shape || 'RECTANGULAR';
+    const widthMm = product.widthMm || 0;
+    const heightMm = product.heightMm || 0;
+    const minDim = Math.min(widthMm, heightMm);
+    let safeWidthMm: number | undefined;
+    if (shape === 'CIRCULAR') safeWidthMm = minDim * 0.65;
+    else if (shape === 'OVAL') safeWidthMm = minDim * 0.7;
+    else safeWidthMm = widthMm * 0.8;
 
     // Aplicar textos al SVG
     const finalSvg = this.templatesService.applyTemplateFields(
       template.svgContent,
       fields,
       processedAreas,
+      { safeWidthMm },
     );
 
     // Generar PNG preview con resvg
@@ -234,6 +267,7 @@ export class DesignService {
         templateId: template.id,
         templateName: template.name,
         fields,
+        areaSettings: dto.templateAreaSettings || {},
         productId: product.id,
       },
       previewPngUrl: previewDataUri,

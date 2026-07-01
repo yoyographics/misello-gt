@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsArray, IsBoolean, IsUUID, ArrayMinSize, MaxLength, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsBoolean, IsUUID, ArrayMinSize, MaxLength, IsNumber, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class DesignLineDto {
   @IsString()
@@ -70,4 +71,7 @@ export class DesignRequestDto {
 
   @IsOptional()
   templateData?: Record<string, string>;
+
+  @IsOptional()
+  templateAreaSettings?: Record<string, { fontId?: string; fontSize?: number }>;
 }

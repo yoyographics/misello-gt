@@ -164,7 +164,11 @@ function renderCircularTextAsLetters(
   const totalAngleRad = totalWidth / radius;
   const startAngleRad = degToRad(startAngle);
 
-  let currentAngle = startAngleRad - totalAngleRad / 2;
+  // Para el arco inferior el texto debe leerse de izquierda a derecha,
+  // por lo que recorremos el arco en sentido antihorario (ángulos decrecientes).
+  const isBottom = baseline === 'bottom';
+  const direction = isBottom ? -1 : 1;
+  let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
 
   const group = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
   group.setAttribute('data-circular-field', area.id);
@@ -172,7 +176,7 @@ function renderCircularTextAsLetters(
 
   chars.forEach((char, idx) => {
     const charWidth = charWidths[idx];
-    const angle = currentAngle + (charWidth / 2 + letterSpacing / 2) / radius;
+    const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
 
     const x = centerX + Math.cos(angle) * radius;
     const y = centerY + Math.sin(angle) * radius;
@@ -195,7 +199,7 @@ function renderCircularTextAsLetters(
     textEl.textContent = char === ' ' ? '\u00A0' : char;
 
     group.appendChild(textEl);
-    currentAngle = angle + (charWidth / 2 + letterSpacing / 2) / radius;
+    currentAngle = angle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
   });
 
   doc.documentElement.appendChild(group);
@@ -203,10 +207,16 @@ function renderCircularTextAsLetters(
   return new XMLSerializer().serializeToString(doc.documentElement);
 }
 
+export interface ApplyTemplateFieldsOptions {
+  /** Ancho seguro en mm para textos centrales; si se excede se escala el font-size proporcionalmente. */
+  safeWidthMm?: number;
+}
+
 export function applyTemplateFields(
   svgContent: string,
   fields: Record<string, string>,
   areas: CircularArea[],
+  options?: ApplyTemplateFieldsOptions,
 ): string {
   let result = svgContent;
 
@@ -279,12 +289,22 @@ export function applyTemplateFields(
       else if (count >= 3) startY = centerY - lineHeight;
 
       clampedLines.forEach((line, idx) => {
+        // Si el texto central excede el ancho seguro, escalar el font-size proporcionalmente
+        // para que no invada los textos circulares.
+        let effectiveFontSize = fontSize;
+        if (options?.safeWidthMm && area.x !== undefined) {
+          const lineWidthMm = estimateTextWidth(line, fontSize) * 0.3528;
+          if (lineWidthMm > options.safeWidthMm && lineWidthMm > 0) {
+            effectiveFontSize = fontSize * (options.safeWidthMm / lineWidthMm);
+          }
+        }
+
         const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
         textEl.setAttribute('data-central-field', area.id);
         textEl.setAttribute('data-central-line', String(idx));
         textEl.setAttribute('x', String(area.x));
         textEl.setAttribute('y', String(startY + idx * lineHeight));
-        textEl.setAttribute('font-size', String(fontSize));
+        textEl.setAttribute('font-size', String(effectiveFontSize));
         if (area.fontFamily) textEl.setAttribute('font-family', area.fontFamily);
         textEl.setAttribute('text-anchor', 'middle');
         textEl.setAttribute('dominant-baseline', 'central');

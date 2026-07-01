@@ -51,6 +51,12 @@ function estimateCharWidth(char: string, fontSize: number): number {
   return fontSize * width;
 }
 
+function estimateTextWidth(text: string, fontSize: number): number {
+  return text
+    .split('')
+    .reduce((sum, char) => sum + estimateCharWidth(char, fontSize), 0);
+}
+
 function walk(node: any, cb: (n: any) => void): void {
   if (Array.isArray(node)) {
     node.forEach((child) => walk(child, cb));
@@ -225,7 +231,11 @@ function renderCircularTextAsLetters(
   const totalAngleRad = totalWidth / radius;
   const startAngleRad = degToRad(startAngle);
 
-  let currentAngle = startAngleRad - totalAngleRad / 2;
+  // Para el arco inferior el texto debe leerse de izquierda a derecha,
+  // por lo que recorremos el arco en sentido antihorario (angulos decrecientes).
+  const isBottom = baseline === 'bottom';
+  const direction = isBottom ? -1 : 1;
+  let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
 
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -246,7 +256,7 @@ function renderCircularTextAsLetters(
 
   chars.forEach((char, idx) => {
     const charWidth = charWidths[idx];
-    const angle = currentAngle + (charWidth / 2 + letterSpacing / 2) / radius;
+    const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
 
     const x = centerX + Math.cos(angle) * radius;
     const y = centerY + Math.sin(angle) * radius;
@@ -272,7 +282,7 @@ function renderCircularTextAsLetters(
     };
 
     groupNode.g.push(textNode);
-    currentAngle = angle + (charWidth / 2 + letterSpacing / 2) / radius;
+    currentAngle = angle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
   });
 
   appendToSvg(parsed, groupNode);
@@ -630,10 +640,16 @@ function removeOriginalPathGroups(root: any, areas: CircularArea[]): void {
   });
 }
 
+export interface ApplyTemplateFieldsOptions {
+  /** Ancho seguro en mm para textos centrales; si se excede se escala el font-size proporcionalmente. */
+  safeWidthMm?: number;
+}
+
 export function applyTemplateFields(
   svgContent: string,
   fields: Record<string, string>,
   areas: CircularArea[],
+  options?: ApplyTemplateFieldsOptions,
 ): string {
   let result = svgContent;
 
@@ -715,13 +731,23 @@ export function applyTemplateFields(
       });
 
       clampedLines.forEach((line, idx) => {
+        // Si el texto central excede el ancho seguro, escalar el font-size proporcionalmente
+        // para que no invada los textos circulares.
+        let effectiveFontSize = fontSize;
+        if (options?.safeWidthMm && area.x !== undefined) {
+          const lineWidthMm = estimateTextWidth(line, fontSize) * 0.3528;
+          if (lineWidthMm > options.safeWidthMm && lineWidthMm > 0) {
+            effectiveFontSize = fontSize * (options.safeWidthMm / lineWidthMm);
+          }
+        }
+
         const textNode: any = {
           ':@': {
             'data-central-field': area.id,
             'data-central-line': String(idx),
             x: String(area.x),
             y: String(startY + idx * lineHeight),
-            'font-size': String(fontSize),
+            'font-size': String(effectiveFontSize),
             'text-anchor': 'middle',
             'dominant-baseline': 'central',
           },
