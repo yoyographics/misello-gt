@@ -89,6 +89,53 @@ function getDeepestTspan(el: Element): Element {
   return child ? getDeepestTspan(child) : el;
 }
 
+function getPathMidpoint(pathEl: SVGPathElement): { x: number; y: number } | null {
+  try {
+    const len = pathEl.getTotalLength();
+    const p = pathEl.getPointAtLength(len / 2);
+    return { x: p.x, y: p.y };
+  } catch {
+    return null;
+  }
+}
+
+function pathMatchesArea(pathEl: SVGPathElement, area: CircularArea): boolean {
+  const mid = getPathMidpoint(pathEl);
+  if (!mid) return false;
+
+  if (area.type === 'circular' && area.radius && area.centerX !== undefined && area.centerY !== undefined) {
+    const dx = mid.x - area.centerX;
+    const dy = mid.y - area.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const tolerance = area.radius * 0.25;
+    const baseline = area.baseline || 'top';
+    const sideOk = baseline === 'top' ? mid.y < area.centerY : mid.y > area.centerY;
+    return Math.abs(dist - area.radius) < tolerance && sideOk;
+  }
+
+  if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
+    const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+    return Math.abs(mid.x - area.x) < fontSize * 4 && Math.abs(mid.y - area.y) < fontSize * 3;
+  }
+
+  return false;
+}
+
+function removeOriginalPathGroups(doc: Document, areas: CircularArea[]): void {
+  doc.querySelectorAll('g').forEach((g) => {
+    const groupPaths = Array.from(g.children).filter((el) => el.tagName.toLowerCase() === 'path') as SVGPathElement[];
+    if (groupPaths.length < 3) return;
+
+    for (const area of areas) {
+      const matches = groupPaths.filter((p) => pathMatchesArea(p, area));
+      if (matches.length >= 3 && matches.length >= groupPaths.length * 0.5) {
+        g.remove();
+        break;
+      }
+    }
+  });
+}
+
 function renderCircularTextAsLetters(
   svgContent: string,
   text: string,
@@ -175,6 +222,10 @@ export function applyTemplateFields(
 
   // Ocultar elementos marcados por el admin (textos originales convertidos a path, líneas decorativas, etc.)
   doc.querySelectorAll('[data-hide-on-render="true"]').forEach((el) => el.remove());
+
+  // Si el SVG aun contiene textos originales convertidos a paths (por un guardado anterior),
+  // eliminar los grupos de paths que coincidan con las areas editables.
+  removeOriginalPathGroups(doc, areas);
 
   // Textos normales data-editable
   const texts = doc.querySelectorAll('text[data-editable="true"]');

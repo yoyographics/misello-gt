@@ -1,4 +1,5 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import { svgPathProperties } from 'svg-path-properties';
 
 export interface CircularArea {
   id: string;
@@ -573,6 +574,62 @@ function removeMarkedNodes(node: any): any {
   return result;
 }
 
+function getPathMidpoint(d: string): { x: number; y: number } | null {
+  try {
+    const props = new svgPathProperties(d);
+    const len = props.getTotalLength();
+    const p = props.getPointAtLength(len / 2);
+    return { x: p.x, y: p.y };
+  } catch {
+    return null;
+  }
+}
+
+function pathNodeMatchesArea(node: any, area: CircularArea): boolean {
+  const d = node[':@']?.d || '';
+  const mid = getPathMidpoint(d);
+  if (!mid) return false;
+
+  if (area.type === 'circular' && area.radius && area.centerX !== undefined && area.centerY !== undefined) {
+    const dx = mid.x - area.centerX;
+    const dy = mid.y - area.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const tolerance = area.radius * 0.25;
+    const baseline = area.baseline || 'top';
+    const sideOk = baseline === 'top' ? mid.y < area.centerY : mid.y > area.centerY;
+    return Math.abs(dist - area.radius) < tolerance && sideOk;
+  }
+
+  if (area.type === 'text' && area.x !== undefined && area.y !== undefined) {
+    const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+    return Math.abs(mid.x - area.x) < fontSize * 4 && Math.abs(mid.y - area.y) < fontSize * 3;
+  }
+
+  return false;
+}
+
+function removeOriginalPathGroups(root: any, areas: CircularArea[]): void {
+  const groups = findNodes(root, 'g');
+  groups.forEach((g) => {
+    const childPaths: any[] = [];
+    walk(g, (n) => {
+      if (n === g) return;
+      if (n && n[':@'] && n[':@'].d !== undefined) {
+        childPaths.push(n);
+      }
+    });
+    if (childPaths.length < 3) return;
+
+    for (const area of areas) {
+      const matches = childPaths.filter((p) => pathNodeMatchesArea(p, area));
+      if (matches.length >= 3 && matches.length >= childPaths.length * 0.5) {
+        g.__delete = true;
+        break;
+      }
+    }
+  });
+}
+
 export function applyTemplateFields(
   svgContent: string,
   fields: Record<string, string>,
@@ -678,6 +735,12 @@ export function applyTemplateFields(
     }
   });
 
+  // Si el SVG aun contiene textos originales convertidos a paths, eliminar los grupos
+  // de paths que coincidan con las areas editables.
+  removeOriginalPathGroups(parsed, areas);
+
+  const cleaned = removeMarkedNodes(parsed);
+
   const builder = new XMLBuilder({
     ignoreAttributes: false,
     attributeNamePrefix: '',
@@ -685,7 +748,7 @@ export function applyTemplateFields(
     format: false,
   });
 
-  return builder.build(parsed);
+  return builder.build(cleaned);
 }
 
 function removeCentralField(node: any, fieldId: string): void {
