@@ -320,9 +320,10 @@ export function svgWidthToMm(widthSvg: number, productWidthMm?: number, svgConte
 }
 
 /**
- * Divide un texto en líneas respetando un ancho máximo en unidades SVG (word-wrap).
- * Si una palabra individual no cabe, la divide por caracteres.
- * Nunca excede maxLines. Si el texto no cabe completo, trunca la última línea.
+ * Procesa un texto con saltos de línea respetando el ancho máximo por línea.
+ * - Respeta los saltos de línea del usuario (\n).
+ * - Si una línea excede el ancho, hace word-wrap automático dentro de esa línea.
+ * - Nunca excede maxLines en total. Si sobran líneas, trunca la última.
  */
 export function wrapCentralText(
   text: string,
@@ -334,127 +335,123 @@ export function wrapCentralText(
     return { lines: [text || ''], wasTruncated: false };
   }
 
-  // Normalizar: reemplazar saltos de línea por espacios para tratar todo como un flujo
-  const normalizedText = text.replace(/\n/g, ' ').trim();
-  if (!normalizedText) {
-    return { lines: [''], wasTruncated: false };
-  }
+  const userLines = text.split('\n');
+  const resultLines: string[] = [];
+  let wasTruncated = false;
 
-  const words = normalizedText.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let currentLine = '';
-
-  for (const word of words) {
-    // Verificar si ya alcanzamos el máximo de líneas
-    if (lines.length >= maxLines) {
-      // Truncar la última línea si excede el ancho
-      const lastIdx = lines.length - 1;
-      let lastLine = lines[lastIdx];
-      while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
-        lastLine = lastLine.slice(0, -1);
-      }
-      lines[lastIdx] = lastLine;
-      return { lines, wasTruncated: true };
+  for (const userLine of userLines) {
+    // Si ya alcanzamos maxLines, truncar y salir
+    if (resultLines.length >= maxLines) {
+      wasTruncated = true;
+      break;
     }
 
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const testWidth = estimateTextWidth(testLine, fontSize);
-
-    if (testWidth <= safeWidthSvg) {
-      // La palabra cabe en la línea actual
-      currentLine = testLine;
+    const trimmedLine = userLine.trim();
+    if (!trimmedLine) {
+      // Línea vacía del usuario: solo agregar si hay espacio
+      if (resultLines.length < maxLines) {
+        resultLines.push('');
+      }
       continue;
     }
 
-    // La palabra con espacio no cabe. ¿Cabe sola?
-    const wordWidth = estimateTextWidth(word, fontSize);
-    if (wordWidth <= safeWidthSvg) {
-      // La palabra sola cabe. Guardar línea anterior y empezar nueva.
-      if (currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
+    // Verificar si la línea del usuario cabe completa
+    const lineWidth = estimateTextWidth(trimmedLine, fontSize);
+    if (lineWidth <= safeWidthSvg) {
+      // Cabe completa, respetarla
+      if (resultLines.length < maxLines) {
+        resultLines.push(trimmedLine);
       } else {
-        // No hay línea anterior, la palabra sola cabe
-        currentLine = word;
+        wasTruncated = true;
       }
-    } else {
-      // La palabra sola NO cabe. Necesitamos dividirla.
-      if (currentLine) {
-        lines.push(currentLine);
-        currentLine = '';
-      }
+      continue;
+    }
 
-      // Si ya alcanzamos maxLines, truncar y salir
-      if (lines.length >= maxLines) {
-        const lastIdx = lines.length - 1;
-        let lastLine = lines[lastIdx];
-        while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
-          lastLine = lastLine.slice(0, -1);
-        }
-        lines[lastIdx] = lastLine;
-        return { lines, wasTruncated: true };
+    // La línea excede el ancho. Hacer word-wrap dentro de ella.
+    const words = trimmedLine.split(/\s+/).filter(Boolean);
+    let currentLine = '';
+
+    for (const word of words) {
+      // Verificar si ya alcanzamos maxLines
+      if (resultLines.length >= maxLines) {
+        wasTruncated = true;
+        break;
       }
 
-      // Dividir la palabra larga en caracteres, respetando maxLines
-      let chars = word;
-      while (chars.length > 0) {
-        // Si la línea actual está vacía, intentar poner caracteres
-        if (!currentLine) {
-          if (estimateTextWidth(chars[0], fontSize) > safeWidthSvg) {
-            // Ni un solo caracter cabe. Truncar con lo que tenemos.
-            return { lines: lines.length > 0 ? lines : [''], wasTruncated: true };
-          }
-          currentLine = chars[0];
-          chars = chars.slice(1);
-          continue;
-        }
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = estimateTextWidth(testLine, fontSize);
 
-        // Intentar agregar el siguiente caracter
-        const combined = `${currentLine}${chars[0]}`;
-        if (estimateTextWidth(combined, fontSize) > safeWidthSvg) {
-          // No cabe. Guardar línea actual y empezar nueva.
-          lines.push(currentLine);
-          currentLine = '';
+      if (testWidth <= safeWidthSvg) {
+        currentLine = testLine;
+        continue;
+      }
 
-          // Verificar si alcanzamos maxLines
-          if (lines.length >= maxLines) {
-            const lastIdx = lines.length - 1;
-            let lastLine = lines[lastIdx];
-            while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
-              lastLine = lastLine.slice(0, -1);
-            }
-            lines[lastIdx] = lastLine;
-            return { lines, wasTruncated: true };
-          }
+      // La palabra con espacio no cabe. ¿Cabe sola?
+      const wordWidth = estimateTextWidth(word, fontSize);
+      if (wordWidth <= safeWidthSvg) {
+        if (currentLine) {
+          resultLines.push(currentLine);
+          currentLine = word;
         } else {
-          currentLine = combined;
-          chars = chars.slice(1);
+          currentLine = word;
+        }
+      } else {
+        // La palabra sola NO cabe. Dividirla por caracteres.
+        if (currentLine) {
+          resultLines.push(currentLine);
+          currentLine = '';
+        }
+
+        if (resultLines.length >= maxLines) {
+          wasTruncated = true;
+          break;
+        }
+
+        let chars = word;
+        while (chars.length > 0) {
+          if (!currentLine) {
+            if (estimateTextWidth(chars[0], fontSize) > safeWidthSvg) {
+              return { lines: resultLines.length > 0 ? resultLines : [''], wasTruncated: true };
+            }
+            currentLine = chars[0];
+            chars = chars.slice(1);
+            continue;
+          }
+
+          const combined = `${currentLine}${chars[0]}`;
+          if (estimateTextWidth(combined, fontSize) > safeWidthSvg) {
+            resultLines.push(currentLine);
+            currentLine = '';
+
+            if (resultLines.length >= maxLines) {
+              wasTruncated = true;
+              // Truncar última línea
+              const lastIdx = resultLines.length - 1;
+              let lastLine = resultLines[lastIdx];
+              while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
+                lastLine = lastLine.slice(0, -1);
+              }
+              resultLines[lastIdx] = lastLine;
+              break;
+            }
+          } else {
+            currentLine = combined;
+            chars = chars.slice(1);
+          }
         }
       }
     }
-  }
 
-  // Agregar la última línea si hay contenido
-  if (currentLine) {
-    if (lines.length < maxLines) {
-      lines.push(currentLine);
-    } else {
-      // Truncar la última línea existente
-      const lastIdx = lines.length - 1;
-      let lastLine = lines[lastIdx];
-      while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
-        lastLine = lastLine.slice(0, -1);
-      }
-      lines[lastIdx] = lastLine;
-      return { lines, wasTruncated: true };
+    // Agregar la última línea del procesamiento de esta línea de usuario
+    if (currentLine && resultLines.length < maxLines) {
+      resultLines.push(currentLine);
+    } else if (currentLine && resultLines.length >= maxLines) {
+      wasTruncated = true;
     }
   }
 
   // Truncar si excedimos maxLines (por seguridad)
-  const finalLines = lines.slice(0, maxLines);
-  const wasTruncated = lines.length > maxLines;
-
-  // Si la última línea excede el ancho, truncarla
+  const finalLines = resultLines.slice(0, maxLines);
   if (finalLines.length > 0) {
     const lastIdx = finalLines.length - 1;
     let lastLine = finalLines[lastIdx];
@@ -464,7 +461,7 @@ export function wrapCentralText(
     finalLines[lastIdx] = lastLine;
   }
 
-  return { lines: finalLines.length > 0 ? finalLines : [''], wasTruncated };
+  return { lines: finalLines.length > 0 ? finalLines : [''], wasTruncated: wasTruncated || resultLines.length > maxLines };
 }
 
 export function applyTemplateFields(
@@ -541,19 +538,9 @@ export function applyTemplateFields(
         options?.productShape,
       );
 
-      // Dividir en líneas cuando el campo permita multilinea (saltos \n)
-      const userLines = (area.multiLine !== false ? value.split('\n') : [value])
-        .map((l) => l.trim())
-        .filter((l, idx, arr) => l !== '' || arr.length === 1);
-
-      // Aplicar word-wrap inteligente a cada línea del usuario
-      const allLines: string[] = [];
-      for (const userLine of userLines) {
-        const wrapResult = wrapCentralText(userLine, fontSize, safeWidthSvg, maxLines - allLines.length);
-        allLines.push(...wrapResult.lines);
-        if (allLines.length >= maxLines) break;
-      }
-      const clampedLines = allLines.slice(0, maxLines);
+      // Aplicar word-wrap inteligente respetando saltos de línea del usuario
+      const wrapResult = wrapCentralText(value, fontSize, safeWidthSvg, maxLines);
+      const clampedLines = wrapResult.lines;
       if (clampedLines.length === 0) clampedLines.push('');
 
       const centerY = area.y;
