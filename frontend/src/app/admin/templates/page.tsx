@@ -811,14 +811,14 @@ export default function AdminTemplatesPage() {
     data.append('editableAreas', JSON.stringify(editableAreas));
     selectedProductIds.forEach((id) => data.append('productIds', id));
     const svgToSend = svgPreview ? removeHiddenElements(svgPreview) : svgPreview;
-    if (hiddenCount > 0 && svgToSend) {
+    const hasProcessedSvg =
+      !!svgPreview &&
+      (svgPreview.includes('data-editable="true"') || svgPreview.includes('data-hide-on-render="true"'));
+    if (svgToSend && (hasProcessedSvg || hiddenCount > 0 || editing)) {
       const svgFile = new File([svgToSend], file?.name || 'template.svg', { type: 'image/svg+xml' });
       data.append('file', svgFile);
     } else if (file) {
       data.append('file', file);
-    } else if (editing && svgToSend) {
-      const svgFile = new File([svgToSend], 'template.svg', { type: 'image/svg+xml' });
-      data.append('file', svgFile);
     }
 
     try {
