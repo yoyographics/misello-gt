@@ -346,7 +346,7 @@ export function wrapCentralText(
       break;
     }
 
-    const trimmedLine = userLine.trim();
+    const trimmedLine = userLine.trimEnd();
     if (!trimmedLine) {
       // Línea vacía del usuario: solo agregar si hay espacio
       if (resultLines.length < maxLines) {
@@ -358,7 +358,7 @@ export function wrapCentralText(
     // Verificar si la línea del usuario cabe completa
     const lineWidth = estimateTextWidth(trimmedLine, fontSize);
     if (lineWidth <= safeWidthSvg) {
-      // Cabe completa, respetarla
+      // Cabe completa, respetarla (incluyendo espacios al final)
       if (resultLines.length < maxLines) {
         resultLines.push(trimmedLine);
       } else {

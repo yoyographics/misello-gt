@@ -801,7 +801,7 @@ export function wrapCentralText(
       break;
     }
 
-    const trimmedLine = userLine.trim();
+    const trimmedLine = userLine.trimEnd();
     if (!trimmedLine) {
       // Línea vacía del usuario: solo agregar si hay espacio
       if (resultLines.length < maxLines) {
