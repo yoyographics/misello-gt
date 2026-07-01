@@ -171,6 +171,19 @@ export default function AdminTemplatesPage() {
           bestR = r;
         }
       });
+      // Descartar circulos decorativos muy pequenos comparados con el viewBox
+      const svg = doc.querySelector('svg');
+      const viewBox = svg?.getAttribute('viewBox');
+      let viewBoxSize = 100;
+      if (viewBox) {
+        const parts = viewBox.split(/[\s,]+/).map(parseFloat);
+        if (parts.length >= 4) viewBoxSize = Math.max(parts[2], parts[3]);
+      } else {
+        const width = parseFloat(svg?.getAttribute('width') || '0');
+        const height = parseFloat(svg?.getAttribute('height') || '0');
+        viewBoxSize = Math.max(width, height) || 100;
+      }
+      if (bestR < viewBoxSize * 0.08) return null;
       return {
         x: parseFloat(best.getAttribute('cx') || '0'),
         y: parseFloat(best.getAttribute('cy') || '0'),
@@ -187,12 +200,12 @@ export default function AdminTemplatesPage() {
     if (viewBox) {
       const parts = viewBox.split(/[\s,]+/).map(parseFloat);
       if (parts.length >= 4) {
-        return { x: parts[0] + parts[2] / 2, y: parts[1] + parts[3] / 2, radius: 0 };
+        return { x: parts[0] + parts[2] / 2, y: parts[1] + parts[3] / 2, radius: Math.min(parts[2], parts[3]) / 2 };
       }
     }
     const width = parseFloat(svg.getAttribute('width') || '0');
     const height = parseFloat(svg.getAttribute('height') || '0');
-    if (width && height) return { x: width / 2, y: height / 2, radius: 0 };
+    if (width && height) return { x: width / 2, y: height / 2, radius: Math.min(width, height) / 2 };
     return null;
   }
 
@@ -229,6 +242,110 @@ export default function AdminTemplatesPage() {
     } catch {
       return svgContent;
     }
+  }
+
+  function detectPathTextGroups(doc: Document, circle: { x: number; y: number; radius: number } | null): EditableArea[] {
+    if (!circle) return [];
+    const areas: EditableArea[] = [];
+    const minPaths = 4;
+
+    doc.querySelectorAll('g').forEach((g) => {
+      // Solo analizar grupos que no contengan subgrupos ni textos reales
+      if (g.querySelector('g, text')) return;
+
+      const paths = Array.from(g.querySelectorAll('path'));
+      if (paths.length < minPaths) return;
+
+      const centers: { x: number; y: number }[] = [];
+      let totalLength = 0;
+
+      paths.forEach((p) => {
+        try {
+          const pathEl = p as SVGPathElement;
+          const len = pathEl.getTotalLength();
+          totalLength += len;
+          const point = pathEl.getPointAtLength(len / 2);
+          centers.push({ x: point.x, y: point.y });
+        } catch {
+          // ignorar paths que no se puedan medir
+        }
+      });
+
+      if (centers.length < minPaths) return;
+
+      const distances = centers.map((c) => Math.sqrt((c.x - circle.x) ** 2 + (c.y - circle.y) ** 2));
+      const avgDist = distances.reduce((a, b) => a + b, 0) / distances.length;
+      const avgX = centers.reduce((s, c) => s + c.x, 0) / centers.length;
+      const avgY = centers.reduce((s, c) => s + c.y, 0) / centers.length;
+      const minX = Math.min(...centers.map((c) => c.x));
+      const maxX = Math.max(...centers.map((c) => c.x));
+      const minY = Math.min(...centers.map((c) => c.y));
+      const maxY = Math.max(...centers.map((c) => c.y));
+      const spreadX = maxX - minX;
+      const spreadY = maxY - minY;
+
+      const distVariance = distances.reduce((s, d) => s + (d - avgDist) ** 2, 0) / distances.length;
+      const distStdDev = Math.sqrt(distVariance);
+      const yVariance = centers.reduce((s, c) => s + (c.y - avgY) ** 2, 0) / centers.length;
+      const yStdDev = Math.sqrt(yVariance);
+
+      // Descartar formas grandes de fondo (circulos del sello)
+      const bboxArea = spreadX * spreadY;
+      const effectiveRadius = circle.radius || Math.min(circle.x * 2, circle.y * 2) / 2;
+      const circleArea = Math.PI * effectiveRadius * effectiveRadius;
+      if (bboxArea > circleArea * 0.65 || totalLength > effectiveRadius * 30) return;
+
+      const distTolerance = effectiveRadius * 0.15;
+      const yTolerance = effectiveRadius * 0.22;
+
+      // Texto circular: paths a distancia similar del centro, formando un arco
+      const isCircular = avgDist > effectiveRadius * 0.35 && distStdDev < distTolerance && spreadX > effectiveRadius * 0.25;
+      // Texto central: paths cerca del centro, alineados horizontalmente
+      const isCentral = avgDist < effectiveRadius * 0.55 && yStdDev < yTolerance && spreadX > effectiveRadius * 0.15;
+
+      if (isCircular) {
+        const baseline = avgY < circle.y ? 'top' : 'bottom';
+        const fieldId = `circular${areas.filter((a) => a.type === 'circular').length + 1}`;
+        paths.forEach((p) => {
+          p.setAttribute('data-hide-on-render', 'true');
+          p.setAttribute('data-field', fieldId);
+          p.setAttribute('data-type', 'circular');
+          p.setAttribute('data-baseline', baseline);
+        });
+        areas.push({
+          id: fieldId,
+          label: baseline === 'top' ? 'Texto circular superior' : 'Texto circular inferior',
+          defaultText: '',
+          type: 'circular',
+          radius: avgDist,
+          centerX: circle.x,
+          centerY: circle.y,
+          startAngle: baseline === 'top' ? -90 : 90,
+          baseline,
+        });
+      } else if (isCentral) {
+        const textIdx = areas.filter((a) => a.type === 'text').length + 1;
+        const fieldId = textIdx === 1 ? 'central' : `central${textIdx}`;
+        const label = textIdx === 1 ? 'Texto central' : `Texto central ${textIdx}`;
+        paths.forEach((p) => {
+          p.setAttribute('data-hide-on-render', 'true');
+          p.setAttribute('data-field', fieldId);
+          p.setAttribute('data-type', 'text');
+        });
+        areas.push({
+          id: fieldId,
+          label,
+          defaultText: '',
+          type: 'text',
+          x: avgX,
+          y: avgY,
+          multiLine: true,
+          maxLines: 3,
+        });
+      }
+    });
+
+    return areas;
   }
 
   function detectEditableAreas(svgContent: string): { svgContent: string; areas: EditableArea[] } {
@@ -391,6 +508,12 @@ export default function AdminTemplatesPage() {
         });
       }
 
+      // Fallback: si no se detectaron textos reales, intentar detectar textos dibujados como paths
+      if (areas.length === 0) {
+        const pathAreas = detectPathTextGroups(doc, circle);
+        areas.push(...pathAreas);
+      }
+
       return { svgContent: new XMLSerializer().serializeToString(doc.documentElement), areas };
     } catch {
       return { svgContent, areas: [] };
@@ -447,7 +570,7 @@ export default function AdminTemplatesPage() {
         return;
       }
 
-      const textEl = target.closest('text');
+      const textEl = target.closest('text, path[data-field], g[data-field]');
 
       if (textEl) {
         const indexAttr = textEl.getAttribute('data-misello-index');
@@ -455,20 +578,20 @@ export default function AdminTemplatesPage() {
         const index = parseInt(indexAttr, 10);
         if (isNaN(index)) return;
 
-        const hasTextPath = !!textEl.querySelector('textPath');
-        const fontSize = textEl.getAttribute('font-size') || '';
-        const fontFamily = textEl.getAttribute('font-family') || '';
-        const defaultText = textEl.textContent || '';
+        const fieldId = textEl.getAttribute('data-field') || `field${editableAreas.length + 1}`;
+        const existingArea = editableAreas.find((a) => a.id === fieldId);
 
-        let type: 'text' | 'circular' = 'text';
-        let radius = '';
-        let centerX = '';
-        let centerY = '';
-        let startAngle = '';
-        let baseline: 'top' | 'bottom' = 'top';
+        const hasTextPath = textEl.tagName.toLowerCase() === 'text' && !!textEl.querySelector('textPath');
+        const typeFromAttr = (textEl.getAttribute('data-type') as 'text' | 'circular') || existingArea?.type || 'text';
+        const type: 'text' | 'circular' = hasTextPath || typeFromAttr === 'circular' ? 'circular' : 'text';
 
-        if (hasTextPath) {
-          type = 'circular';
+        let radius = existingArea?.radius !== undefined ? String(existingArea.radius) : textEl.getAttribute('data-radius') || '';
+        let centerX = existingArea?.centerX !== undefined ? String(existingArea.centerX) : textEl.getAttribute('data-center-x') || '';
+        let centerY = existingArea?.centerY !== undefined ? String(existingArea.centerY) : textEl.getAttribute('data-center-y') || '';
+        let startAngle = existingArea?.startAngle !== undefined ? String(existingArea.startAngle) : textEl.getAttribute('data-start-angle') || '';
+        let baseline = existingArea?.baseline || (textEl.getAttribute('data-baseline') as 'top' | 'bottom') || 'top';
+
+        if (hasTextPath && (!radius || !centerX || !centerY)) {
           const doc = new DOMParser().parseFromString(svgPreview, 'image/svg+xml');
           const circle = getCircleCenter(doc);
           const tp = textEl.querySelector('textPath');
@@ -476,22 +599,32 @@ export default function AdminTemplatesPage() {
           const pathEl = doc.querySelector(href) as SVGPathElement | null;
           if (circle && pathEl) {
             const bbox = getPathApproxCenter(pathEl);
-            centerX = String(circle.x);
-            centerY = String(circle.y);
-            radius = String(Math.sqrt((bbox.x - circle.x) ** 2 + (bbox.y - circle.y) ** 2));
-            baseline = bbox.y < circle.y ? 'top' : 'bottom';
-            startAngle = baseline === 'top' ? '-90' : '90';
+            centerX = centerX || String(circle.x);
+            centerY = centerY || String(circle.y);
+            radius = radius || String(Math.sqrt((bbox.x - circle.x) ** 2 + (bbox.y - circle.y) ** 2));
+            baseline = baseline || (bbox.y < circle.y ? 'top' : 'bottom');
+            startAngle = startAngle || (baseline === 'top' ? '-90' : '90');
           }
         }
+
+        const defaultText = existingArea?.defaultText || textEl.textContent || '';
+        const fontSize =
+          existingArea?.fontSize !== undefined
+            ? String(existingArea.fontSize)
+            : textEl.getAttribute('font-size') || textEl.getAttribute('data-font-size') || '';
+        const fontFamily =
+          existingArea?.fontFamily || textEl.getAttribute('font-family') || textEl.getAttribute('data-font-family') || '';
+        const x = existingArea?.x !== undefined ? String(existingArea.x) : textEl.getAttribute('data-x') || textEl.getAttribute('x') || '';
+        const y = existingArea?.y !== undefined ? String(existingArea.y) : textEl.getAttribute('data-y') || textEl.getAttribute('y') || '';
 
         setSelectedTextIndex(index);
         setSelectedTextManual(false);
         setSelectedTextType(type);
         setSelectedTextForm({
-          id: `field${editableAreas.length + 1}`,
-          label: hasTextPath ? 'Texto circular' : 'Texto editable',
+          id: fieldId,
+          label: existingArea?.label || (type === 'circular' ? 'Texto circular' : 'Texto editable'),
           defaultText,
-          maxLength: '',
+          maxLength: existingArea?.maxLength !== undefined ? String(existingArea.maxLength) : textEl.getAttribute('data-maxlength') || '',
           radius,
           centerX,
           centerY,
@@ -499,8 +632,8 @@ export default function AdminTemplatesPage() {
           baseline,
           fontSize,
           fontFamily,
-          x: textEl.getAttribute('x') || '',
-          y: textEl.getAttribute('y') || '',
+          x,
+          y,
         });
         e.preventDefault();
         e.stopPropagation();
@@ -548,8 +681,8 @@ export default function AdminTemplatesPage() {
       e.stopPropagation();
     };
 
-    container.querySelectorAll('text').forEach((el) => {
-      el.style.cursor = 'pointer';
+    container.querySelectorAll('text, path[data-field], g[data-field]').forEach((el) => {
+      (el as HTMLElement).style.cursor = 'pointer';
     });
     container.addEventListener('click', handleClick);
     return () => {
@@ -562,7 +695,7 @@ export default function AdminTemplatesPage() {
       const areas: EditableArea[] = [];
       const parser = new DOMParser();
       const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-      const texts = doc.querySelectorAll('text[data-editable="true"]');
+      const texts = doc.querySelectorAll('text[data-editable="true"], path[data-field], g[data-field]');
       texts.forEach((el) => {
         const field = el.getAttribute('data-field') || 'field1';
         const label = el.getAttribute('data-label') || 'Texto editable';
@@ -626,12 +759,12 @@ export default function AdminTemplatesPage() {
           styleEl = doc.createElementNS('http://www.w3.org/2000/svg', 'style') as SVGStyleElement;
           svg.insertBefore(styleEl, svg.firstChild);
         }
-        const hoverCss = `text[data-misello-index] { cursor: pointer; } text[data-misello-index]:hover { outline: 2px dashed #f97316; }`;
+        const hoverCss = `text[data-misello-index], path[data-misello-index], g[data-misello-index] { cursor: pointer; } text[data-misello-index]:hover, path[data-misello-index]:hover, g[data-misello-index]:hover { outline: 2px dashed #f97316; }`;
         if (!(styleEl.textContent || '').includes('data-misello-index')) {
           styleEl.textContent = (styleEl.textContent || '') + hoverCss;
         }
       }
-      doc.querySelectorAll('text').forEach((el, i) => {
+      doc.querySelectorAll('text, path[data-field], g[data-field]').forEach((el, i) => {
         el.setAttribute('data-misello-index', String(i));
       });
       return new XMLSerializer().serializeToString(doc.documentElement);
@@ -714,7 +847,9 @@ export default function AdminTemplatesPage() {
       const doc = parser.parseFromString(svgContent, 'image/svg+xml');
       areas.forEach((area) => {
         // Buscar por data-field existente o por posición aproximada
-        let textEl: Element | null = doc.querySelector(`text[data-field="${area.id}"]`);
+        let textEl: Element | null = doc.querySelector(
+          `text[data-field="${area.id}"], path[data-field="${area.id}"], g[data-field="${area.id}"]`,
+        );
         if (!textEl) {
           // Buscar un text no marcado que coincida con el texto por defecto
           const texts = Array.from(doc.querySelectorAll('text')).filter(
@@ -735,7 +870,12 @@ export default function AdminTemplatesPage() {
           }
         }
         if (!textEl) return;
-        textEl.setAttribute('data-editable', 'true');
+        const tagName = textEl.tagName.toLowerCase();
+        if (tagName === 'text') {
+          textEl.setAttribute('data-editable', 'true');
+        } else {
+          textEl.setAttribute('data-hide-on-render', 'true');
+        }
         textEl.setAttribute('data-field', area.id);
         textEl.setAttribute('data-label', area.label);
         textEl.setAttribute('data-type', area.type || 'text');
@@ -802,8 +942,8 @@ export default function AdminTemplatesPage() {
 
     let textEl: Element | null = null;
     if (!selectedTextManual && selectedTextIndex !== null) {
-      const textEls = Array.from(doc.querySelectorAll('text'));
-      textEl = textEls[selectedTextIndex] || null;
+      const selectableEls = Array.from(doc.querySelectorAll('text, path[data-field], g[data-field]'));
+      textEl = selectableEls[selectedTextIndex] || null;
     }
 
     if (!textEl && selectedTextType === 'text' && x && y) {
@@ -819,7 +959,12 @@ export default function AdminTemplatesPage() {
 
     if (!textEl) return;
 
-    textEl.setAttribute('data-editable', 'true');
+    const tagName = textEl.tagName.toLowerCase();
+    if (tagName === 'text') {
+      textEl.setAttribute('data-editable', 'true');
+    } else {
+      textEl.setAttribute('data-hide-on-render', 'true');
+    }
     textEl.setAttribute('data-field', id.trim());
     textEl.setAttribute('data-label', label.trim());
     textEl.setAttribute('data-type', selectedTextType);
@@ -886,12 +1031,18 @@ export default function AdminTemplatesPage() {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(svgPreview, 'image/svg+xml');
-      const textEl = doc.querySelector(`text[data-field="${areaId}"]`);
+      const textEl = doc.querySelector(
+        `text[data-field="${areaId}"], path[data-field="${areaId}"], g[data-field="${areaId}"]`,
+      );
       if (textEl) {
         textEl.removeAttribute('data-editable');
+        textEl.removeAttribute('data-hide-on-render');
+        textEl.removeAttribute('data-hide-label');
         textEl.removeAttribute('data-field');
         textEl.removeAttribute('data-label');
         textEl.removeAttribute('data-maxlength');
+        textEl.removeAttribute('data-type');
+        textEl.removeAttribute('data-baseline');
         setSvgPreview(new XMLSerializer().serializeToString(doc.documentElement));
       }
     } catch {}
