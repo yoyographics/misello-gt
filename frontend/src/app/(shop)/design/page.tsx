@@ -1239,11 +1239,16 @@ export default function DesignPage() {
                 className={`p-4 cursor-pointer ${CARD_BASE} ${selectedTemplate?.id === t.id ? CARD_SELECTED : ''}`}
                 onClick={() => selectTemplate(t)}
               >
-                <div className="h-32 bg-gray-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                <div className="h-32 bg-gray-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
                   {t.svgContent ? (
                     <div
-                      className="w-full h-full"
-                      dangerouslySetInnerHTML={{ __html: t.svgContent }}
+                      className="w-full h-full flex items-center justify-center"
+                      dangerouslySetInnerHTML={{
+                        __html: t.svgContent.replace(
+                          /<svg\b/,
+                          '<svg style="max-width:100%;max-height:100%;width:auto;height:auto;" preserveAspectRatio="xMidYMid meet"'
+                        ),
+                      }}
                     />
                   ) : (
                     <span className="text-gray-300 text-2xl">📄</span>

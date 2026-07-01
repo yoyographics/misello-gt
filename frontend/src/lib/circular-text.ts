@@ -330,27 +330,46 @@ export function wrapCentralText(
   safeWidthSvg: number,
   maxLines: number,
 ): { lines: string[]; wasTruncated: boolean } {
-  if (!safeWidthSvg || safeWidthSvg <= 0) {
-    return { lines: [text], wasTruncated: false };
+  if (!safeWidthSvg || safeWidthSvg <= 0 || !text) {
+    return { lines: [text || ''], wasTruncated: false };
   }
 
-  const words = text.split(/\s+/).filter(Boolean);
+  // Normalizar: reemplazar saltos de línea por espacios para tratar todo como un flujo
+  const normalizedText = text.replace(/\n/g, ' ').trim();
+  if (!normalizedText) {
+    return { lines: [''], wasTruncated: false };
+  }
+
+  const words = normalizedText.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let currentLine = '';
 
   for (const word of words) {
+    // Verificar si ya alcanzamos el máximo de líneas
+    if (lines.length >= maxLines) {
+      // Truncar la última línea si excede el ancho
+      const lastIdx = lines.length - 1;
+      let lastLine = lines[lastIdx];
+      while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
+        lastLine = lastLine.slice(0, -1);
+      }
+      lines[lastIdx] = lastLine;
+      return { lines, wasTruncated: true };
+    }
+
     const testLine = currentLine ? `${currentLine} ${word}` : word;
     const testWidth = estimateTextWidth(testLine, fontSize);
 
     if (testWidth <= safeWidthSvg) {
+      // La palabra cabe en la línea actual
       currentLine = testLine;
       continue;
     }
 
-    // La palabra con espacio no cabe. Intentar solo la palabra.
+    // La palabra con espacio no cabe. ¿Cabe sola?
     const wordWidth = estimateTextWidth(word, fontSize);
     if (wordWidth <= safeWidthSvg) {
-      // La palabra sola cabe, pero no con el espacio. Guardar línea anterior y empezar nueva.
+      // La palabra sola cabe. Guardar línea anterior y empezar nueva.
       if (currentLine) {
         lines.push(currentLine);
         currentLine = word;
@@ -359,77 +378,79 @@ export function wrapCentralText(
         currentLine = word;
       }
     } else {
-      // La palabra sola NO cabe. Dividirla por caracteres.
+      // La palabra sola NO cabe. Necesitamos dividirla.
       if (currentLine) {
         lines.push(currentLine);
         currentLine = '';
       }
 
-      // Si ya usamos todas las líneas permitidas, truncar
+      // Si ya alcanzamos maxLines, truncar y salir
       if (lines.length >= maxLines) {
-        // Truncar la última línea existente
-        const lastLine = lines[lines.length - 1] || '';
-        let truncated = lastLine;
-        while (truncated.length > 0 && estimateTextWidth(truncated, fontSize) > safeWidthSvg) {
-          truncated = truncated.slice(0, -1);
+        const lastIdx = lines.length - 1;
+        let lastLine = lines[lastIdx];
+        while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
+          lastLine = lastLine.slice(0, -1);
         }
-        lines[lines.length - 1] = truncated;
+        lines[lastIdx] = lastLine;
         return { lines, wasTruncated: true };
       }
 
-      // Dividir la palabra larga en caracteres
+      // Dividir la palabra larga en caracteres, respetando maxLines
       let chars = word;
       while (chars.length > 0) {
-        // Si la línea actual está llena o vacía, verificar si cabe
-        if (currentLine) {
-          const combined = `${currentLine}${chars[0]}`;
-          if (estimateTextWidth(combined, fontSize) > safeWidthSvg) {
-            lines.push(currentLine);
-            currentLine = '';
-            if (lines.length >= maxLines) {
-              // Truncar última línea
-              const lastLine = lines[lines.length - 1] || '';
-              let truncated = lastLine;
-              while (truncated.length > 0 && estimateTextWidth(truncated, fontSize) > safeWidthSvg) {
-                truncated = truncated.slice(0, -1);
-              }
-              lines[lines.length - 1] = truncated;
-              return { lines, wasTruncated: true };
-            }
-            continue;
-          }
-          currentLine = combined;
-          chars = chars.slice(1);
-        } else {
-          // Línea vacía, intentar poner caracteres uno por uno
+        // Si la línea actual está vacía, intentar poner caracteres
+        if (!currentLine) {
           if (estimateTextWidth(chars[0], fontSize) > safeWidthSvg) {
-            // Ni un solo caracter cabe (fontSize muy grande). Truncar.
+            // Ni un solo caracter cabe. Truncar con lo que tenemos.
             return { lines: lines.length > 0 ? lines : [''], wasTruncated: true };
           }
           currentLine = chars[0];
           chars = chars.slice(1);
+          continue;
+        }
+
+        // Intentar agregar el siguiente caracter
+        const combined = `${currentLine}${chars[0]}`;
+        if (estimateTextWidth(combined, fontSize) > safeWidthSvg) {
+          // No cabe. Guardar línea actual y empezar nueva.
+          lines.push(currentLine);
+          currentLine = '';
+
+          // Verificar si alcanzamos maxLines
+          if (lines.length >= maxLines) {
+            const lastIdx = lines.length - 1;
+            let lastLine = lines[lastIdx];
+            while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
+              lastLine = lastLine.slice(0, -1);
+            }
+            lines[lastIdx] = lastLine;
+            return { lines, wasTruncated: true };
+          }
+        } else {
+          currentLine = combined;
+          chars = chars.slice(1);
         }
       }
     }
+  }
 
-    // Verificar si excedimos maxLines
-    if (lines.length >= maxLines) {
-      const lastLine = lines[lines.length - 1] || '';
-      let truncated = lastLine;
-      while (truncated.length > 0 && estimateTextWidth(truncated, fontSize) > safeWidthSvg) {
-        truncated = truncated.slice(0, -1);
+  // Agregar la última línea si hay contenido
+  if (currentLine) {
+    if (lines.length < maxLines) {
+      lines.push(currentLine);
+    } else {
+      // Truncar la última línea existente
+      const lastIdx = lines.length - 1;
+      let lastLine = lines[lastIdx];
+      while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) > safeWidthSvg) {
+        lastLine = lastLine.slice(0, -1);
       }
-      lines[lines.length - 1] = truncated;
+      lines[lastIdx] = lastLine;
       return { lines, wasTruncated: true };
     }
   }
 
-  // Agregar la última línea
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  // Truncar si excedimos maxLines
+  // Truncar si excedimos maxLines (por seguridad)
   const finalLines = lines.slice(0, maxLines);
   const wasTruncated = lines.length > maxLines;
 
