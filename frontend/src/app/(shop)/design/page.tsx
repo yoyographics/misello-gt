@@ -26,6 +26,7 @@ import {
   CircularArea,
   computeCentralSafeWidthMm,
   estimateTextWidth,
+  wrapCentralText,
 } from '@/lib/circular-text';
 import { detectCircularText } from '@/lib/detect-circular-text';
 
@@ -764,8 +765,9 @@ export default function DesignPage() {
   }, []);
 
   /**
-   * Trunca el texto central al ancho disponible calculado con el tamaño minimo de la fuente.
-   * Evita que el usuario escriba mas de lo que cabe cuando ya se alcanzo el limite inferior.
+   * Trunca y hace wrap del texto central al ancho disponible.
+   * Si el texto excede el ancho, pasa automáticamente a 2 líneas, luego 3.
+   * Si aún no cabe al tamaño mínimo, trunca con advertencia.
    */
   const clampCentralText = useCallback(
     (area: EditableArea, value: string): string => {
@@ -774,30 +776,25 @@ export default function DesignPage() {
       const fontId = settings?.fontId || templateFontId || '';
       const font = fonts.find((f) => f.id === fontId);
       const minPt = font?.minFontSizePt ?? 6;
-      const minFontSizeMm = minPt * 0.3528;
+      const fontSize = settings?.fontSize || templateFontSize || area.fontSize || 12;
       const fallbackSafeWidthMm = getSafeWidthMm(selectedProduct);
       const safeWidthMm = computeCentralSafeWidthMm(
         selectedTemplate.editableAreas || [],
-        minFontSizeMm,
+        fontSize * 0.3528,
         selectedProduct.widthMm,
         selectedTemplate.svgContent,
         fallbackSafeWidthMm,
+        selectedProduct.heightMm,
+        selectedProduct.shape,
       );
       if (!safeWidthMm) return value;
 
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
-      const lines = value.split('\n').slice(0, maxLines);
-      const clampedLines = lines.map((line) => {
-        let truncated = line;
-        // Truncar caracter por caracter hasta que quepa en el ancho seguro
-        while (truncated.length > 0 && estimateTextWidth(truncated, minPt) * 0.3528 > safeWidthMm) {
-          truncated = truncated.slice(0, -1);
-        }
-        return truncated;
-      });
-      return clampedLines.join('\n');
+      // Aplicar word-wrap inteligente
+      const wrapResult = wrapCentralText(value, fontSize, safeWidthMm, maxLines);
+      return wrapResult.lines.join('\n');
     },
-    [fonts, getSafeWidthMm, selectedProduct, selectedTemplate, templateAreaSettings, templateFontId],
+    [fonts, getSafeWidthMm, selectedProduct, selectedTemplate, templateAreaSettings, templateFontId, templateFontSize],
   );
 
   useEffect(() => {
@@ -830,6 +827,8 @@ export default function DesignPage() {
         selectedProduct.widthMm,
         selectedTemplate.svgContent,
         fallbackSafeWidthMm,
+        selectedProduct.heightMm,
+        selectedProduct.shape,
       );
 
       const minFontSizeMm = minFontSize * 0.3528;
@@ -839,6 +838,8 @@ export default function DesignPage() {
         selectedProduct.widthMm,
         selectedTemplate.svgContent,
         fallbackSafeWidthMm,
+        selectedProduct.heightMm,
+        selectedProduct.shape,
       );
 
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
@@ -879,6 +880,8 @@ export default function DesignPage() {
     return applyTemplateFieldsCircular(svgContent, fields, areas, {
       safeWidthMm: getSafeWidthMm(selectedProduct),
       productWidthMm: selectedProduct?.widthMm,
+      productHeightMm: selectedProduct?.heightMm,
+      productShape: selectedProduct?.shape,
     });
   };
 

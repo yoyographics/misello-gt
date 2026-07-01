@@ -167,7 +167,7 @@ function renderCircularTextAsLetters(
   const startAngleRad = degToRad(startAngle);
 
   // Para el arco inferior el texto debe leerse de izquierda a derecha,
-  // por lo que recorremos el arco en sentido antihorario (ángulos decrecientes).
+  // por lo que recorremos el arco en sentido antihorario (angulos decrecientes).
   const isBottom = baseline === 'bottom';
   const direction = isBottom ? -1 : 1;
   let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
@@ -214,6 +214,10 @@ export interface ApplyTemplateFieldsOptions {
   safeWidthMm?: number;
   /** Ancho del producto en mm para calcular la escala SVG->mm. */
   productWidthMm?: number;
+  /** Alto del producto en mm para limitar el texto central verticalmente. */
+  productHeightMm?: number;
+  /** Forma del producto para calcular margen del marco. */
+  productShape?: string;
 }
 
 function parseSvgViewBoxWidth(svgContent: string): number | null {
@@ -224,10 +228,20 @@ function parseSvgViewBoxWidth(svgContent: string): number | null {
   return null;
 }
 
+function parseSvgViewBoxHeight(svgContent: string): number | null {
+  const match = svgContent.match(/viewBox=["'][^"']+\s+[^"']+\s+\d+(?:\.\d+)?\s+(\d+(?:\.\d+)?)["']/);
+  if (match) return parseFloat(match[1]);
+  const heightMatch = svgContent.match(/height=["'](\d+(?:\.\d+)?)(?:mm|px|pt)?["']/);
+  if (heightMatch) return parseFloat(heightMatch[1]);
+  return null;
+}
+
 /**
- * Calcula el ancho disponible para el texto central considerando los arcos circulares
- * superior e inferior. Evita que el texto central toque los textos circulares.
- * Si no hay datos suficientes retorna el fallback.
+ * Calcula el ancho disponible para el texto central considerando:
+ * 1. Los arcos circulares superior e inferior (radio + margen).
+ * 2. El marco físico del producto (nunca tocar los bordes del sello).
+ * 
+ * Retorna el ancho más restrictivo de ambos.
  */
 export function computeCentralSafeWidthMm(
   areas: CircularArea[],
@@ -235,20 +249,22 @@ export function computeCentralSafeWidthMm(
   productWidthMm?: number,
   svgContent?: string,
   fallbackSafeWidthMm?: number,
+  productHeightMm?: number,
+  productShape?: string,
 ): number {
   if (!productWidthMm || !svgContent) {
     return fallbackSafeWidthMm || productWidthMm || 0;
   }
   const viewBoxWidth = parseSvgViewBoxWidth(svgContent);
+  const viewBoxHeight = parseSvgViewBoxHeight(svgContent);
   if (!viewBoxWidth) return fallbackSafeWidthMm || productWidthMm || 0;
-  const scale = productWidthMm / viewBoxWidth;
+  const scaleX = productWidthMm / viewBoxWidth;
+  const scaleY = viewBoxHeight ? (productHeightMm || productWidthMm) / viewBoxHeight : scaleX;
+  const scale = Math.min(scaleX, scaleY);
 
+  // 1. Ancho disponible por arcos circulares
   const circularTop = areas.find((a) => a.type === 'circular' && a.baseline === 'top');
   const circularBottom = areas.find((a) => a.type === 'circular' && a.baseline === 'bottom');
-
-  if (!circularTop && !circularBottom) {
-    return fallbackSafeWidthMm || productWidthMm || 0;
-  }
 
   const availableWidths: number[] = [];
   [circularTop, circularBottom].forEach((area) => {
@@ -262,8 +278,155 @@ export function computeCentralSafeWidthMm(
     }
   });
 
-  if (availableWidths.length === 0) return fallbackSafeWidthMm || productWidthMm || 0;
-  return Math.min(...availableWidths);
+  const circularWidth = availableWidths.length > 0 ? Math.min(...availableWidths) : Infinity;
+
+  // 2. Ancho disponible por el marco físico del producto
+  // El texto central nunca debe tocar los bordes del sello. Margen = 2x altura de letra.
+  const frameMarginMm = fontSizeMm * 2;
+  let frameWidth = Infinity;
+  if (productShape === 'CIRCULAR') {
+    // Para circular: el ancho seguro es el diámetro menos margen en ambos lados
+    const diameter = Math.min(productWidthMm, productHeightMm || productWidthMm);
+    frameWidth = Math.max(0, diameter - frameMarginMm * 2);
+  } else if (productShape === 'OVAL') {
+    // Para oval: ancho del ovalo menos margen
+    frameWidth = Math.max(0, productWidthMm - frameMarginMm * 2);
+  } else {
+    // Rectangular/cuadrado: ancho menos margen
+    frameWidth = Math.max(0, productWidthMm - frameMarginMm * 2);
+  }
+
+  // Retornar el más restrictivo
+  const result = Math.min(circularWidth, frameWidth);
+  if (!isFinite(result)) return fallbackSafeWidthMm || productWidthMm || 0;
+  return result;
+}
+
+/**
+ * Divide un texto en líneas respetando un ancho máximo (word-wrap).
+ * Si una palabra individual no cabe, la divide por caracteres.
+ * Nunca excede maxLines. Si el texto no cabe completo, trunca la última línea.
+ */
+export function wrapCentralText(
+  text: string,
+  fontSize: number,
+  safeWidthMm: number,
+  maxLines: number,
+): { lines: string[]; wasTruncated: boolean } {
+  if (!safeWidthMm || safeWidthMm <= 0) {
+    return { lines: [text], wasTruncated: false };
+  }
+
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = estimateTextWidth(testLine, fontSize) * 0.3528;
+
+    if (testWidth <= safeWidthMm) {
+      currentLine = testLine;
+      continue;
+    }
+
+    // La palabra con espacio no cabe. Intentar solo la palabra.
+    const wordWidth = estimateTextWidth(word, fontSize) * 0.3528;
+    if (wordWidth <= safeWidthMm) {
+      // La palabra sola cabe, pero no con el espacio. Guardar línea anterior y empezar nueva.
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        // No hay línea anterior, la palabra sola cabe
+        currentLine = word;
+      }
+    } else {
+      // La palabra sola NO cabe. Dividirla por caracteres.
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = '';
+      }
+
+      // Si ya usamos todas las líneas permitidas, truncar
+      if (lines.length >= maxLines) {
+        // Truncar la última línea existente
+        const lastLine = lines[lines.length - 1] || '';
+        let truncated = lastLine;
+        while (truncated.length > 0 && estimateTextWidth(truncated, fontSize) * 0.3528 > safeWidthMm) {
+          truncated = truncated.slice(0, -1);
+        }
+        lines[lines.length - 1] = truncated;
+        return { lines, wasTruncated: true };
+      }
+
+      // Dividir la palabra larga en caracteres
+      let chars = word;
+      while (chars.length > 0) {
+        // Si la línea actual está llena o vacía, verificar si cabe
+        if (currentLine) {
+          const combined = `${currentLine}${chars[0]}`;
+          if (estimateTextWidth(combined, fontSize) * 0.3528 > safeWidthMm) {
+            lines.push(currentLine);
+            currentLine = '';
+            if (lines.length >= maxLines) {
+              // Truncar última línea
+              const lastLine = lines[lines.length - 1] || '';
+              let truncated = lastLine;
+              while (truncated.length > 0 && estimateTextWidth(truncated, fontSize) * 0.3528 > safeWidthMm) {
+                truncated = truncated.slice(0, -1);
+              }
+              lines[lines.length - 1] = truncated;
+              return { lines, wasTruncated: true };
+            }
+            continue;
+          }
+          currentLine = combined;
+          chars = chars.slice(1);
+        } else {
+          // Línea vacía, intentar poner caracteres uno por uno
+          if (estimateTextWidth(chars[0], fontSize) * 0.3528 > safeWidthMm) {
+            // Ni un solo caracter cabe (fontSize muy grande). Truncar.
+            return { lines: lines.length > 0 ? lines : [''], wasTruncated: true };
+          }
+          currentLine = chars[0];
+          chars = chars.slice(1);
+        }
+      }
+    }
+
+    // Verificar si excedimos maxLines
+    if (lines.length >= maxLines) {
+      const lastLine = lines[lines.length - 1] || '';
+      let truncated = lastLine;
+      while (truncated.length > 0 && estimateTextWidth(truncated, fontSize) * 0.3528 > safeWidthMm) {
+        truncated = truncated.slice(0, -1);
+      }
+      lines[lines.length - 1] = truncated;
+      return { lines, wasTruncated: true };
+    }
+  }
+
+  // Agregar la última línea
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  // Truncar si excedimos maxLines
+  const finalLines = lines.slice(0, maxLines);
+  const wasTruncated = lines.length > maxLines;
+
+  // Si la última línea excede el ancho, truncarla
+  if (finalLines.length > 0) {
+    const lastIdx = finalLines.length - 1;
+    let lastLine = finalLines[lastIdx];
+    while (lastLine.length > 0 && estimateTextWidth(lastLine, fontSize) * 0.3528 > safeWidthMm) {
+      lastLine = lastLine.slice(0, -1);
+    }
+    finalLines[lastIdx] = lastLine;
+  }
+
+  return { lines: finalLines.length > 0 ? finalLines : [''], wasTruncated };
 }
 
 export function applyTemplateFields(
@@ -329,20 +492,8 @@ export function applyTemplateFields(
       const lineHeight = area.lineHeight || fontSize * DEFAULT_LINE_HEIGHT_RATIO;
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
 
-      // Dividir en líneas cuando el campo permita multilinea (saltos \n)
-      const lines = (area.multiLine !== false ? value.split('\n') : [value])
-        .map((l) => l.trim())
-        .filter((l, idx, arr) => l !== '' || arr.length === 1);
-      const clampedLines = lines.slice(0, maxLines);
-      if (clampedLines.length === 0) clampedLines.push('');
-
-      const centerY = area.y;
-      const count = clampedLines.length;
-      let startY = centerY;
-      if (count === 2) startY = centerY - lineHeight / 2;
-      else if (count >= 3) startY = centerY - lineHeight;
-
       // Calcular ancho disponible central basado en los radios reales de los textos circulares
+      // y el marco físico del producto
       const centralFontSizeMm = fontSize * 0.3528;
       const safeWidthMm = computeCentralSafeWidthMm(
         areas,
@@ -350,7 +501,32 @@ export function applyTemplateFields(
         options?.productWidthMm,
         svgContent,
         options?.safeWidthMm,
+        options?.productHeightMm,
+        options?.productShape,
       );
+
+      // Dividir en líneas cuando el campo permita multilinea (saltos \n)
+      const userLines = (area.multiLine !== false ? value.split('\n') : [value])
+        .map((l) => l.trim())
+        .filter((l, idx, arr) => l !== '' || arr.length === 1);
+
+      // Aplicar word-wrap inteligente a cada línea del usuario
+      let allLines: string[] = [];
+      let wasTruncated = false;
+      for (const userLine of userLines) {
+        const wrapResult = wrapCentralText(userLine, fontSize, safeWidthMm, maxLines - allLines.length);
+        allLines.push(...wrapResult.lines);
+        if (wrapResult.wasTruncated) wasTruncated = true;
+        if (allLines.length >= maxLines) break;
+      }
+      const clampedLines = allLines.slice(0, maxLines);
+      if (clampedLines.length === 0) clampedLines.push('');
+
+      const centerY = area.y;
+      const count = clampedLines.length;
+      let startY = centerY;
+      if (count === 2) startY = centerY - lineHeight / 2;
+      else if (count >= 3) startY = centerY - lineHeight;
 
       clampedLines.forEach((line, idx) => {
         // Si el texto central excede el ancho seguro, escalar el font-size proporcionalmente

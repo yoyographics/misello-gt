@@ -224,7 +224,7 @@ export class DesignService {
       template.svgContent,
       fields,
       processedAreas,
-      { safeWidthMm, productWidthMm: widthMm },
+      { safeWidthMm, productWidthMm: widthMm, productHeightMm: heightMm, productShape: shape },
     );
 
     // Generar PNG preview con resvg
