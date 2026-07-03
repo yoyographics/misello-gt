@@ -766,8 +766,9 @@ export default function DesignPage() {
 
   /**
    * Trunca y hace wrap del texto central al ancho disponible.
-   * Si el texto excede el ancho, pasa automáticamente a 2 líneas, luego 3.
-   * Si aún no cabe al tamaño mínimo, trunca con advertencia.
+   * Ya no se usa en onChange (se guarda el valor exacto del usuario),
+   * pero se mantiene por si se necesita para exportación.
+   * @deprecated El wrap se aplica ahora solo al renderizar el SVG.
    */
   const clampCentralText = useCallback(
     (area: EditableArea, value: string): string => {
@@ -840,14 +841,16 @@ export default function DesignPage() {
       );
 
       const maxLines = Math.max(1, Math.min(area.maxLines || 3, 3));
-      const lines = String(rawValue).split('\n').slice(0, maxLines);
+      // Usar wrapCentralText para obtener las líneas reales que se renderizarán
+      const wrapResult = wrapCentralText(String(rawValue), areaFontSize, safeWidthSvg, maxLines);
+      const lines = wrapResult.lines;
       const lineValidations = lines.map((line) => ({
         text: line,
         widthSvg: estimateTextWidth(line, areaFontSize),
         safeWidthSvg,
       }));
       next[area.id] = {
-        tooLong: lineValidations.some((l) => l.widthSvg > l.safeWidthSvg),
+        tooLong: wrapResult.wasTruncated || lineValidations.some((l) => l.widthSvg > l.safeWidthSvg),
         lineValidations,
         minFontSize,
         tooLongAtMin: lines.some(
@@ -1339,8 +1342,8 @@ export default function DesignPage() {
                       <textarea
                         value={templateFields[area.id] || ''}
                         onChange={(e) => {
-                          const clamped = clampCentralText(area, e.target.value);
-                          setTemplateFields((prev) => ({ ...prev, [area.id]: clamped }));
+                          // Guardar el valor exacto del usuario (sin transformar en tiempo real)
+                          setTemplateFields((prev) => ({ ...prev, [area.id]: e.target.value }));
                         }}
                         placeholder={area.defaultText}
                         maxLength={area.maxLength}
