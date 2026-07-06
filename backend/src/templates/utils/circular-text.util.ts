@@ -239,6 +239,12 @@ function renderCircularTextAsLetters(
   const direction = isBottom ? -1 : 1;
   let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
 
+  // Ajustar radio para compensar la altura de las letras.
+  // Con dominant-baseline="central", el centro de cada letra está en el círculo.
+  // Para arco superior: las letras se extienden hacia arriba (fuera), reducir radio.
+  // Para arco inferior: las letras se extienden hacia abajo (dentro), aumentar radio.
+  const effectiveRadius = isBottom ? radius + fontSize * 0.4 : radius - fontSize * 0.4;
+
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '',
@@ -260,8 +266,8 @@ function renderCircularTextAsLetters(
     const charWidth = charWidths[idx];
     const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
 
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
+    const x = centerX + Math.cos(angle) * effectiveRadius;
+    const y = centerY + Math.sin(angle) * effectiveRadius;
 
     let rotation = (angle * 180) / Math.PI;
     if (baseline === 'top') {
@@ -1019,9 +1025,8 @@ export function applyTemplateFields(
 
       const centerY = area.y;
       const count = clampedLines.length;
-      let startY = centerY;
-      if (count === 2) startY = centerY - lineHeight / 2;
-      else if (count >= 3) startY = centerY - lineHeight;
+      // Centrado vertical real: el centro del bloque de líneas debe coincidir con centerY
+      const startY = centerY - ((count - 1) * lineHeight) / 2;
 
       clampedLines.forEach((line, idx) => {
         // Si el texto central excede el ancho seguro, escalar el font-size proporcionalmente
