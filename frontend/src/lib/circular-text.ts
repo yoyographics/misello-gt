@@ -148,9 +148,7 @@ function renderCircularTextAsLetters(
   const centerY = area.centerY ?? 45.355;
   const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? 0.2;
   const baseline = area.baseline || 'top';
-  const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
 
   if (!text) text = area.defaultText || '';
 
@@ -160,55 +158,68 @@ function renderCircularTextAsLetters(
   const existing = doc.querySelector(`g[data-circular-field="${area.id}"]`);
   if (existing) existing.remove();
 
-  const chars = text.split('');
-  const charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-  const totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-  const totalAngleRad = totalWidth / radius;
-  const startAngleRad = degToRad(startAngle);
-
-  // Para el arco inferior el texto debe leerse de izquierda a derecha,
-  // por lo que recorremos el arco en sentido antihorario (angulos decrecientes).
   const isBottom = baseline === 'bottom';
-  const direction = isBottom ? -1 : 1;
-  let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
 
-  // Ajustar radio para compensar la altura de las letras.
-  // Con dominant-baseline="central", el centro de cada letra está en el círculo.
-  // Para arco superior: las letras se extienden hacia arriba (fuera), reducir radio.
-  // Para arco inferior: las letras se extienden hacia abajo (dentro), aumentar radio.
-  const effectiveRadius = isBottom ? radius + fontSize * 0.4 : radius - fontSize * 0.4;
+  // Crear un path circular para textPath.
+  // Para arco superior: el path es el círculo exterior. El texto fluye sobre el path
+  // y las letras "suben" hacia el centro del sello (baseline sobre el path).
+  // Para arco inferior: el path es un círculo interior. El texto fluye sobre el path
+  // y las letras "suben" hacia afuera (hacia el borde del sello).
+  // Esto hace que la línea media de la tipografía esté sobre el círculo.
+  const pathRadius = isBottom ? radius - fontSize * 0.7 : radius + fontSize * 0.1;
+
+  const pathId = `circular-path-${area.id}`;
+  const path = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('id', pathId);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'none');
+
+  // Path circular: desde el ángulo -90 (arriba) en sentido horario.
+  // Para arco inferior, necesitamos que el texto se lea de izquierda a derecha.
+  // Con textPath, el texto sigue la dirección del path. Si el path va en sentido
+  // horario, el arco inferior se recorre de derecha a izquierda (texto al revés).
+  // Para corregir, creamos el path en sentido antihorario para el arco inferior,
+  // o usamos side="right".
+  // 
+  // Solución: crear un path de arco que vaya en la dirección correcta.
+  // Para arco superior: arco de -180 a 0 (sentido horario, arriba).
+  // Para arco inferior: arco de 0 a -180 (sentido antihorario, abajo) —
+  //   esto hace que el path vaya de izquierda a derecha en la parte inferior.
+  const startAngle = isBottom ? 180 : -180;
+  const endAngle = isBottom ? 0 : 0;
+  const largeArc = 1;
+  const sweep = isBottom ? 0 : 1;
+
+  const x1 = centerX + pathRadius * Math.cos(degToRad(startAngle));
+  const y1 = centerY + pathRadius * Math.sin(degToRad(startAngle));
+  const x2 = centerX + pathRadius * Math.cos(degToRad(endAngle));
+  const y2 = centerY + pathRadius * Math.sin(degToRad(endAngle));
+
+  path.setAttribute('d', `M ${x1} ${y1} A ${pathRadius} ${pathRadius} 0 ${largeArc} ${sweep} ${x2} ${y2}`);
+
+  const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+  textEl.setAttribute('font-family', fontFamily);
+  textEl.setAttribute('font-size', fontSize.toString());
+  textEl.setAttribute('text-anchor', 'middle');
+  // dominant-baseline="middle" alinea el centro vertical del em-box con el path.
+  // Pero con textPath, la baseline del texto se alinea con el path.
+  // Queremos que la línea media (x-height) esté sobre el círculo.
+  // La baseline está aproximadamente a fontSize * 0.25 por debajo del centro.
+  // Ajustamos con dy para compensar.
+  textEl.setAttribute('dominant-baseline', 'middle');
+
+  const textPath = doc.createElementNS('http://www.w3.org/2000/svg', 'textPath');
+  textPath.setAttribute('href', `#${pathId}`);
+  textPath.setAttribute('startOffset', '50%');
+  textPath.textContent = text;
+
+  textEl.appendChild(textPath);
 
   const group = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
   group.setAttribute('data-circular-field', area.id);
   group.setAttribute('class', 'circular-text');
-
-  chars.forEach((char, idx) => {
-    const charWidth = charWidths[idx];
-    const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
-
-    const x = centerX + Math.cos(angle) * effectiveRadius;
-    const y = centerY + Math.sin(angle) * effectiveRadius;
-
-    let rotation = (angle * 180) / Math.PI;
-    if (baseline === 'top') {
-      rotation += 90;
-    } else {
-      rotation -= 90;
-    }
-
-    const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
-    textEl.setAttribute('x', x.toFixed(2));
-    textEl.setAttribute('y', y.toFixed(2));
-    textEl.setAttribute('transform', `rotate(${rotation.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)})`);
-    textEl.setAttribute('font-family', fontFamily);
-    textEl.setAttribute('font-size', fontSize.toString());
-    textEl.setAttribute('text-anchor', 'middle');
-    textEl.setAttribute('dominant-baseline', 'central');
-    textEl.textContent = char === ' ' ? '\u00A0' : char;
-
-    group.appendChild(textEl);
-    currentAngle = angle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
-  });
+  group.appendChild(path);
+  group.appendChild(textEl);
 
   doc.documentElement.appendChild(group);
 

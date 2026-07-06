@@ -221,29 +221,37 @@ function renderCircularTextAsLetters(
   const centerY = area.centerY ?? 45.355;
   const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? 0.2;
   const baseline = area.baseline || 'top';
-  const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
 
   if (!text) text = area.defaultText || '';
 
-  const chars = text.split('');
-  const charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-  const totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-  const totalAngleRad = totalWidth / radius;
-  const startAngleRad = degToRad(startAngle);
-
-  // Para el arco inferior el texto debe leerse de izquierda a derecha,
-  // por lo que recorremos el arco en sentido antihorario (angulos decrecientes).
   const isBottom = baseline === 'bottom';
-  const direction = isBottom ? -1 : 1;
-  let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
 
-  // Ajustar radio para compensar la altura de las letras.
-  // Con dominant-baseline="central", el centro de cada letra está en el círculo.
-  // Para arco superior: las letras se extienden hacia arriba (fuera), reducir radio.
-  // Para arco inferior: las letras se extienden hacia abajo (dentro), aumentar radio.
-  const effectiveRadius = isBottom ? radius + fontSize * 0.4 : radius - fontSize * 0.4;
+  // Crear un path circular para textPath.
+  // Para arco superior: el path es el círculo exterior. El texto fluye sobre el path
+  // y las letras "suben" hacia el centro del sello (baseline sobre el path).
+  // Para arco inferior: el path es un círculo interior. El texto fluye sobre el path
+  // y las letras "suben" hacia afuera (hacia el borde del sello).
+  // Esto hace que la línea media de la tipografía esté sobre el círculo.
+  const pathRadius = isBottom ? radius - fontSize * 0.7 : radius + fontSize * 0.1;
+
+  const pathId = `circular-path-${area.id}`;
+
+  // Path circular: desde el ángulo -180 a 0.
+  // Para arco superior: arco de -180 a 0 (sentido horario, arriba).
+  // Para arco inferior: arco de 180 a 0 (sentido antihorario, abajo) —
+  //   esto hace que el path vaya de izquierda a derecha en la parte inferior.
+  const startAngle = isBottom ? 180 : -180;
+  const endAngle = 0;
+  const largeArc = 1;
+  const sweep = isBottom ? 0 : 1;
+
+  const x1 = centerX + pathRadius * Math.cos(degToRad(startAngle));
+  const y1 = centerY + pathRadius * Math.sin(degToRad(startAngle));
+  const x2 = centerX + pathRadius * Math.cos(degToRad(endAngle));
+  const y2 = centerY + pathRadius * Math.sin(degToRad(endAngle));
+
+  const pathD = `M ${x1} ${y1} A ${pathRadius} ${pathRadius} 0 ${largeArc} ${sweep} ${x2} ${y2}`;
 
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -254,6 +262,33 @@ function renderCircularTextAsLetters(
   const parsed = parser.parse(svgContent);
   removeCircularGroup(parsed, area.id);
 
+  const pathNode: any = {
+    ':@': {
+      id: pathId,
+      fill: 'none',
+      stroke: 'none',
+      d: pathD,
+    },
+  };
+
+  const textPathNode: any = {
+    ':@': {
+      href: `#${pathId}`,
+      startOffset: '50%',
+    },
+    '#text': text,
+  };
+
+  const textNode: any = {
+    ':@': {
+      'font-family': fontFamily,
+      'font-size': fontSize.toString(),
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle',
+    },
+    textPath: [textPathNode],
+  };
+
   const groupNode: any = {
     ':@': {
       'data-circular-field': area.id,
@@ -262,36 +297,9 @@ function renderCircularTextAsLetters(
     g: [],
   };
 
-  chars.forEach((char, idx) => {
-    const charWidth = charWidths[idx];
-    const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
-
-    const x = centerX + Math.cos(angle) * effectiveRadius;
-    const y = centerY + Math.sin(angle) * effectiveRadius;
-
-    let rotation = (angle * 180) / Math.PI;
-    if (baseline === 'top') {
-      rotation += 90;
-    } else {
-      rotation -= 90;
-    }
-
-    const textNode: any = {
-      ':@': {
-        x: x.toFixed(2),
-        y: y.toFixed(2),
-        transform: `rotate(${rotation.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)})`,
-        'font-family': fontFamily,
-        'font-size': fontSize.toString(),
-        'text-anchor': 'middle',
-        'dominant-baseline': 'central',
-      },
-      '#text': char === ' ' ? '\u00A0' : char,
-    };
-
-    groupNode.g.push(textNode);
-    currentAngle = angle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
-  });
+  // Insertar path y text en el grupo
+  groupNode.g.push(pathNode);
+  groupNode.g.push(textNode);
 
   appendToSvg(parsed, groupNode);
 
