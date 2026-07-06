@@ -262,6 +262,7 @@ export function renderCircularText(
   svgContent: string,
   text: string,
   area: CircularArea,
+  frame?: FrameInfo | null,
 ): string {
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -297,7 +298,7 @@ export function renderCircularText(
     return builder.build(parsed);
   }
 
-  return renderCircularTextAsLetters(svgContent, text, area);
+  return renderCircularTextAsLetters(svgContent, text, area, frame);
 }
 
 function findDeepestTextNode(node: any): any {
@@ -316,22 +317,67 @@ function renderCircularTextAsLetters(
   svgContent: string,
   text: string,
   area: CircularArea,
+  frame?: FrameInfo | null,
 ): string {
   const radius = area.radius || 40;
   const centerX = area.centerX ?? 45.355;
   const centerY = area.centerY ?? 45.355;
-  const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+  let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
   const letterSpacing = area.letterSpacing ?? 0.2;
   const baseline = area.baseline || 'top';
   const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
+  const minFontSize = area.minFontSize ?? 1;
 
   if (!text) text = area.defaultText || '';
 
-  const chars = text.split('');
-  const charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-  const totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-  const totalAngleRad = totalWidth / radius;
+  // Calcular el arco máximo disponible para el texto circular.
+  // El texto no debe salirse del marco del sello.
+  // El arco disponible es un semicírculo (180° = π radianes) menos un margen de seguridad.
+  // El margen es proporcional al tamaño de la fuente para evitar que las letras toquen los lados.
+  const marginAngle = Math.max(0.1, fontSize / radius); // Margen angular mínimo
+  const maxArcAngle = Math.PI - marginAngle * 2; // Semicírculo menos márgenes
+
+  // Calcular el ancho total del texto al tamaño actual
+  let chars = text.split('');
+  let charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
+  let totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
+  let totalAngleRad = totalWidth / radius;
+
+  // Si el texto excede el arco disponible, intentar reducir el font-size proporcionalmente
+  if (totalAngleRad > maxArcAngle) {
+    const scaleFactor = maxArcAngle / totalAngleRad;
+    const scaledFontSize = fontSize * scaleFactor;
+
+    if (scaledFontSize >= minFontSize) {
+      // Auto-escalar: reducir font-size para que quepa
+      fontSize = scaledFontSize;
+      charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
+      totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
+      totalAngleRad = totalWidth / radius;
+    } else {
+      // Ni siquiera al mínimo cabe. Truncar el texto.
+      fontSize = minFontSize;
+      // Recalcular cuántos caracteres caben al tamaño mínimo
+      const maxWidth = maxArcAngle * radius;
+      let accumulatedWidth = 0;
+      let truncateIndex = 0;
+      for (let i = 0; i < chars.length; i++) {
+        const charW = estimateCharWidth(chars[i], fontSize);
+        if (accumulatedWidth + charW > maxWidth) {
+          truncateIndex = i;
+          break;
+        }
+        accumulatedWidth += charW + letterSpacing;
+        truncateIndex = i + 1;
+      }
+      chars = chars.slice(0, truncateIndex);
+      charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
+      totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
+      totalAngleRad = totalWidth / radius;
+    }
+  }
+
   const startAngleRad = degToRad(startAngle);
 
   // Para el arco inferior el texto debe leerse de izquierda a derecha,
@@ -1043,10 +1089,13 @@ export function applyTemplateFields(
 ): string {
   let result = svgContent;
 
+  // Detectar el marco/borde del sello para usar como referencia de límites
+  const frame = detectFrameFromSvg(svgContent);
+
   areas.forEach((area) => {
     if (area.type === 'circular') {
       const value = fields[area.id] ?? area.defaultText ?? '';
-      result = renderCircularText(result, value, area);
+      result = renderCircularText(result, value, area, frame);
     }
   });
 
