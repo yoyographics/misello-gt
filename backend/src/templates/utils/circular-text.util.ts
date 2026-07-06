@@ -27,6 +27,14 @@ export interface CircularArea {
   minFontSize?: number;
 }
 
+/** Información del marco/borde del sello detectado desde paths del SVG. */
+export interface FrameInfo {
+  cx: number;
+  cy: number;
+  radius: number;
+  strokeWidth: number;
+}
+
 const DEFAULT_FONT_SIZE = 9;
 const DEFAULT_LINE_HEIGHT_RATIO = 1.2;
 const WIDTH_MAP: Record<string, number> = {
@@ -46,6 +54,99 @@ const WIDTH_MAP: Record<string, number> = {
 
 function degToRad(deg: number): number {
   return (deg * Math.PI) / 180;
+}
+
+/**
+ * Detecta el marco/borde circular del sello desde los <path> del SVG.
+ * Busca paths que formen círculos concéntricos (común en sellos redondos).
+ * Retorna el círculo más grande encontrado (el borde exterior).
+ */
+export function detectFrameFromSvg(svgContent: string): FrameInfo | null {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    parseAttributeValue: false,
+    preserveOrder: true,
+  });
+  const parsed = parser.parse(svgContent);
+
+  const circles: FrameInfo[] = [];
+
+  // Recorrer todos los paths del SVG
+  walk(parsed, (node) => {
+    const attr = node[':@'];
+    if (!attr || !attr.d) return;
+
+    const d = attr.d;
+    const strokeWidth = parseFloat(attr['stroke-width'] || '0');
+
+    const circle = parseCircleFromPath(d);
+    if (circle) {
+      circles.push({ ...circle, strokeWidth });
+    }
+  });
+
+  if (circles.length === 0) return null;
+
+  // Retornar el círculo más grande (borde exterior del sello)
+  return circles.reduce((largest, c) => (c.radius > largest.radius ? c : largest));
+}
+
+/**
+ * Parsea un path SVG en busca de comandos que formen un círculo.
+ */
+function parseCircleFromPath(d: string): { cx: number; cy: number; radius: number } | null {
+  // Patrón 1: Arco completo
+  const arcMatch = d.match(/M\s+([\d.]+)\s+([\d.]+)\s+A\s+([\d.]+)\s+([\d.]+)\s+0\s+1\s+1\s+([\d.]+)\s+([\d.]+)/i);
+  if (arcMatch) {
+    const x1 = parseFloat(arcMatch[1]);
+    const y1 = parseFloat(arcMatch[2]);
+    const rx = parseFloat(arcMatch[3]);
+    const ry = parseFloat(arcMatch[4]);
+    const x2 = parseFloat(arcMatch[5]);
+    const y2 = parseFloat(arcMatch[6]);
+
+    if (Math.abs(rx - ry) < 0.01 && Math.abs(x2 - x1) < 0.1 && Math.abs(y2 - y1) < 0.1) {
+      return { cx: x1 + rx, cy: y1, radius: rx };
+    }
+  }
+
+  // Patrón 2: Path de círculo con movimiento relativo
+  const relMatch = d.match(/M\s+([\d.]+)\s+([\d.]+)\s+m\s+(-?[\d.]+)\s+(-?[\d.]+)\s+a\s+([\d.]+)\s+([\d.]+)/i);
+  if (relMatch) {
+    const cx = parseFloat(relMatch[1]);
+    const cy = parseFloat(relMatch[2]);
+    const r = Math.abs(parseFloat(relMatch[5]));
+    return { cx, cy, radius: r };
+  }
+
+  // Patrón 3: Bounding box aproximado
+  const allCoords = d.match(/[MLACHV]\s+([\d.-]+)(?:[\s,]+([\d.-]+))?/gi);
+  if (allCoords && allCoords.length >= 4) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const coord of allCoords) {
+      const nums = coord.match(/[\d.-]+/g);
+      if (nums) {
+        for (let i = 0; i < nums.length; i += 2) {
+          const x = parseFloat(nums[i]);
+          const y = parseFloat(nums[i + 1]);
+          if (!isNaN(x)) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
+          if (!isNaN(y)) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+        }
+      }
+    }
+    const width = maxX - minX;
+    const height = maxY - minY;
+    if (width > 0 && height > 0 && Math.abs(width - height) / Math.max(width, height) < 0.1) {
+      return {
+        cx: (minX + maxX) / 2,
+        cy: (minY + maxY) / 2,
+        radius: Math.max(width, height) / 2,
+      };
+    }
+  }
+
+  return null;
 }
 
 function estimateCharWidth(char: string, fontSize: number): number {
@@ -221,37 +322,23 @@ function renderCircularTextAsLetters(
   const centerY = area.centerY ?? 45.355;
   const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
+  const letterSpacing = area.letterSpacing ?? 0.2;
   const baseline = area.baseline || 'top';
+  const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
 
   if (!text) text = area.defaultText || '';
 
+  const chars = text.split('');
+  const charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
+  const totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
+  const totalAngleRad = totalWidth / radius;
+  const startAngleRad = degToRad(startAngle);
+
+  // Para el arco inferior el texto debe leerse de izquierda a derecha,
+  // por lo que recorremos el arco en sentido antihorario (angulos decrecientes).
   const isBottom = baseline === 'bottom';
-
-  // Crear un path circular para textPath.
-  // Para arco superior: el path es el círculo exterior. El texto fluye sobre el path
-  // y las letras "suben" hacia el centro del sello (baseline sobre el path).
-  // Para arco inferior: el path es un círculo interior. El texto fluye sobre el path
-  // y las letras "suben" hacia afuera (hacia el borde del sello).
-  // Esto hace que la línea media de la tipografía esté sobre el círculo.
-  const pathRadius = isBottom ? radius - fontSize * 0.7 : radius + fontSize * 0.1;
-
-  const pathId = `circular-path-${area.id}`;
-
-  // Path circular: desde el ángulo -180 a 0.
-  // Para arco superior: arco de -180 a 0 (sentido horario, arriba).
-  // Para arco inferior: arco de 180 a 0 (sentido antihorario, abajo) —
-  //   esto hace que el path vaya de izquierda a derecha en la parte inferior.
-  const startAngle = isBottom ? 180 : -180;
-  const endAngle = 0;
-  const largeArc = 1;
-  const sweep = isBottom ? 0 : 1;
-
-  const x1 = centerX + pathRadius * Math.cos(degToRad(startAngle));
-  const y1 = centerY + pathRadius * Math.sin(degToRad(startAngle));
-  const x2 = centerX + pathRadius * Math.cos(degToRad(endAngle));
-  const y2 = centerY + pathRadius * Math.sin(degToRad(endAngle));
-
-  const pathD = `M ${x1} ${y1} A ${pathRadius} ${pathRadius} 0 ${largeArc} ${sweep} ${x2} ${y2}`;
+  const direction = isBottom ? -1 : 1;
+  let currentAngle = startAngleRad - (direction * totalAngleRad) / 2;
 
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -262,33 +349,6 @@ function renderCircularTextAsLetters(
   const parsed = parser.parse(svgContent);
   removeCircularGroup(parsed, area.id);
 
-  const pathNode: any = {
-    ':@': {
-      id: pathId,
-      fill: 'none',
-      stroke: 'none',
-      d: pathD,
-    },
-  };
-
-  const textPathNode: any = {
-    ':@': {
-      href: `#${pathId}`,
-      startOffset: '50%',
-    },
-    '#text': text,
-  };
-
-  const textNode: any = {
-    ':@': {
-      'font-family': fontFamily,
-      'font-size': fontSize.toString(),
-      'text-anchor': 'middle',
-      'dominant-baseline': 'middle',
-    },
-    textPath: [textPathNode],
-  };
-
   const groupNode: any = {
     ':@': {
       'data-circular-field': area.id,
@@ -297,9 +357,45 @@ function renderCircularTextAsLetters(
     g: [],
   };
 
-  // Insertar path y text en el grupo
-  groupNode.g.push(pathNode);
-  groupNode.g.push(textNode);
+  chars.forEach((char, idx) => {
+    const charWidth = charWidths[idx];
+    const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
+
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+
+    let rotation = (angle * 180) / Math.PI;
+    if (baseline === 'top') {
+      rotation += 90;
+    } else {
+      rotation -= 90;
+    }
+
+    // La baseline del texto está sobre el círculo. Con dominant-baseline="central",
+    // el centro geométrico de la letra está en (x,y). Pero queremos que la baseline
+    // (línea sobre la que se sientan las letras) esté en el círculo.
+    // La baseline está aproximadamente a fontSize * 0.35 por debajo del centro.
+    // Desplazamos la letra hacia el centro del círculo para alinear la baseline.
+    const baselineOffset = fontSize * 0.35;
+    const offsetX = -Math.cos(angle) * baselineOffset;
+    const offsetY = -Math.sin(angle) * baselineOffset;
+
+    const textNode: any = {
+      ':@': {
+        x: (x + offsetX).toFixed(2),
+        y: (y + offsetY).toFixed(2),
+        transform: `rotate(${rotation.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)})`,
+        'font-family': fontFamily,
+        'font-size': fontSize.toString(),
+        'text-anchor': 'middle',
+        'dominant-baseline': 'central',
+      },
+      '#text': char === ' ' ? '\u00A0' : char,
+    };
+
+    groupNode.g.push(textNode);
+    currentAngle = angle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
+  });
 
   appendToSvg(parsed, groupNode);
 
@@ -712,6 +808,11 @@ export function computeCentralSafeWidthSvg(
   const scaleY = viewBoxHeight ? (productHeightMm || productWidthMm) / viewBoxHeight : scaleX;
   const scale = Math.min(scaleX, scaleY);
 
+  // 0. Detectar marco/borde del sello desde paths del SVG (referencia más precisa)
+  const frame = detectFrameFromSvg(svgContent);
+  const frameRadius = frame?.radius;
+  const frameCenterY = frame?.cy;
+
   // 1. Ancho disponible por arcos circulares (en unidades SVG)
   const circularTop = areas.find((a) => a.type === 'circular' && a.baseline === 'top');
   const circularBottom = areas.find((a) => a.type === 'circular' && a.baseline === 'bottom');
@@ -720,11 +821,9 @@ export function computeCentralSafeWidthSvg(
   [circularTop, circularBottom].forEach((area) => {
     if (!area?.radius) return;
     const r = area.radius;
-    // Margen de seguridad en unidades SVG: altura de la letra central + altura de las letras circulares
-    // + margen adicional. Las letras circulares se extienden hacia el centro del sello.
-    // Usamos un margen conservador de 2.0x (altura central + altura circular) para garantizar separación.
+    // Margen de seguridad: altura de la letra central + altura de las letras circulares
     const circularFontSize = area.fontSize || 9;
-    const clearance = (fontSize + circularFontSize) * 2.0;
+    const clearance = (fontSize + circularFontSize) * 1.2;
     if (r > clearance) {
       availableWidths.push(2 * Math.sqrt(r * r - clearance * clearance));
     }
@@ -733,20 +832,23 @@ export function computeCentralSafeWidthSvg(
   const circularWidth = availableWidths.length > 0 ? Math.min(...availableWidths) : Infinity;
 
   // 2. Ancho disponible por el marco físico del producto (en unidades SVG)
-  // El texto central nunca debe tocar los bordes del sello.
-  const frameMargin = fontSize * 2.5;
+  // Si detectamos el marco desde el SVG, usarlo como referencia principal.
   let frameWidthSvg = Infinity;
-  if (productShape === 'CIRCULAR') {
-    // Para circular: el ancho seguro es el diámetro menos margen en ambos lados
+  if (frameRadius && frameCenterY) {
+    const circularTopFontSize = circularTop?.fontSize || 9;
+    const circularBottomFontSize = circularBottom?.fontSize || 9;
+    const maxCircularFontSize = Math.max(circularTopFontSize, circularBottomFontSize);
+    const margin = fontSize + maxCircularFontSize + fontSize * 0.5;
+    const safeRadius = Math.max(0, frameRadius - margin);
+    frameWidthSvg = safeRadius * 2;
+  } else if (productShape === 'CIRCULAR') {
     const diameterMm = Math.min(productWidthMm, productHeightMm || productWidthMm);
     const diameterSvg = diameterMm / scale;
-    frameWidthSvg = Math.max(0, diameterSvg - frameMargin * 2);
+    frameWidthSvg = Math.max(0, diameterSvg - fontSize * 3);
   } else if (productShape === 'OVAL') {
-    // Para oval: ancho del ovalo menos margen
-    frameWidthSvg = Math.max(0, viewBoxWidth - frameMargin * 2);
+    frameWidthSvg = Math.max(0, viewBoxWidth - fontSize * 3);
   } else {
-    // Rectangular/cuadrado: ancho menos margen
-    frameWidthSvg = Math.max(0, viewBoxWidth - frameMargin * 2);
+    frameWidthSvg = Math.max(0, viewBoxWidth - fontSize * 3);
   }
 
   // Retornar el más restrictivo en unidades SVG
