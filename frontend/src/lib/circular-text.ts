@@ -186,8 +186,8 @@ export function renderCircularText(
     }
   }
 
-  // Fallback: generar letras individuales con auto-escalado/truncado
-  return renderCircularTextAsLetters(svgContent, text, area, frame);
+  // Generar textPath nativo SVG — el navegador maneja rotación, baseline y espaciado
+  return renderCircularTextPath(svgContent, text, area, frame);
 }
 
 function getDeepestTspan(el: Element): Element {
@@ -748,6 +748,120 @@ export function applyTemplateFields(
       });
     }
   });
+
+  return new XMLSerializer().serializeToString(doc.documentElement);
+}
+function renderCircularTextPath(
+  svgContent: string,
+  text: string,
+  area: CircularArea,
+  frame?: FrameInfo | null,
+): string {
+  const radius = area.radius || 40;
+  const centerX = area.centerX ?? 45.355;
+  const centerY = area.centerY ?? 45.355;
+  let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+  const fontFamily = area.fontFamily || 'Arial, sans-serif';
+  const baseline = area.baseline || 'top';
+  const minFontSize = area.minFontSize ?? 1;
+  const isBottom = baseline === 'bottom';
+
+  if (!text) text = area.defaultText || '';
+
+  // Calcular ancho del texto para auto-escalado
+  const textWidth = estimateTextWidth(text, fontSize);
+  const arcLength = Math.PI * radius; // Semicírculo
+  const margin = fontSize * 2; // Margen en unidades SVG
+  const availableArc = Math.max(0, arcLength - margin * 2);
+
+  // Auto-escalar si el texto excede el arco disponible
+  if (textWidth > availableArc && availableArc > 0) {
+    const scaleFactor = availableArc / textWidth;
+    const scaledFontSize = fontSize * scaleFactor;
+    if (scaledFontSize >= minFontSize) {
+      fontSize = scaledFontSize;
+    } else {
+      fontSize = minFontSize;
+      // Truncar si no cabe al mínimo
+      const maxWidth = availableArc;
+      let accumulatedWidth = 0;
+      let truncateIndex = 0;
+      for (let i = 0; i < text.length; i++) {
+        const charW = estimateCharWidth(text[i], fontSize);
+        if (accumulatedWidth + charW > maxWidth) {
+          truncateIndex = i;
+          break;
+        }
+        accumulatedWidth += charW;
+        truncateIndex = i + 1;
+      }
+      text = text.slice(0, truncateIndex);
+    }
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+
+  const existing = doc.querySelector(`g[data-circular-field="${area.id}"]`);
+  if (existing) existing.remove();
+
+  // Crear path circular para textPath
+  // Para arco superior: path en sentido horario (arriba del círculo)
+  // Para arco inferior: path en sentido antihorario (abajo del círculo) para que el texto
+  // fluya de izquierda a derecha
+  const pathId = `circular-path-${area.id}`;
+  const path = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('id', pathId);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'none');
+
+  // Radio ajustado: para arco superior, el path está más afuera (baseline sobre el círculo exterior)
+  // para arco inferior, el path está más adentro (baseline sobre el círculo interior)
+  const pathRadius = isBottom ? radius - fontSize * 0.5 : radius + fontSize * 0.1;
+
+  // Crear arco de semicírculo
+  // startAngle: -180 (izquierda) para arco superior, 180 (izquierda) para arco inferior
+  // endAngle: 0 (derecha) para ambos
+  // sweep: 1 (horario) para arco superior, 0 (antihorario) para arco inferior
+  const startAngle = isBottom ? 180 : -180;
+  const endAngle = 0;
+  const largeArc = 1;
+  const sweep = isBottom ? 0 : 1;
+
+  const x1 = centerX + pathRadius * Math.cos(degToRad(startAngle));
+  const y1 = centerY + pathRadius * Math.sin(degToRad(startAngle));
+  const x2 = centerX + pathRadius * Math.cos(degToRad(endAngle));
+  const y2 = centerY + pathRadius * Math.sin(degToRad(endAngle));
+
+  path.setAttribute('d', `M ${x1} ${y1} A ${pathRadius} ${pathRadius} 0 ${largeArc} ${sweep} ${x2} ${y2}`);
+
+  // Crear texto con textPath
+  const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+  textEl.setAttribute('font-family', fontFamily);
+  textEl.setAttribute('font-size', fontSize.toString());
+  textEl.setAttribute('text-anchor', 'middle');
+  // dominant-baseline="middle" alinea el centro vertical del texto con el path
+  textEl.setAttribute('dominant-baseline', 'middle');
+
+  // Para arco inferior, usar side="right" para que el texto esté en el lado exterior del path
+  // (hacia el borde del sello en lugar de hacia el centro)
+  const textPath = doc.createElementNS('http://www.w3.org/2000/svg', 'textPath');
+  textPath.setAttribute('href', `#${pathId}`);
+  textPath.setAttribute('startOffset', '50%');
+  if (isBottom) {
+    textPath.setAttribute('side', 'right');
+  }
+  textPath.textContent = text;
+
+  textEl.appendChild(textPath);
+
+  const group = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+  group.setAttribute('data-circular-field', area.id);
+  group.setAttribute('class', 'circular-text');
+  group.appendChild(path);
+  group.appendChild(textEl);
+
+  doc.documentElement.appendChild(group);
 
   return new XMLSerializer().serializeToString(doc.documentElement);
 }

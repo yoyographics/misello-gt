@@ -298,7 +298,8 @@ export function renderCircularText(
     return builder.build(parsed);
   }
 
-  return renderCircularTextAsLetters(svgContent, text, area, frame);
+  // Generar textPath nativo SVG
+  return renderCircularTextPath(svgContent, text, area, frame);
 }
 
 function findDeepestTextNode(node: any): any {
@@ -311,6 +312,134 @@ function findDeepestTextNode(node: any): any {
     if (found) return found;
   }
   return null;
+}
+
+function renderCircularTextPath(
+  svgContent: string,
+  text: string,
+  area: CircularArea,
+  frame?: FrameInfo | null,
+): string {
+  const radius = area.radius || 40;
+  const centerX = area.centerX ?? 45.355;
+  const centerY = area.centerY ?? 45.355;
+  let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+  const fontFamily = area.fontFamily || 'Arial, sans-serif';
+  const baseline = area.baseline || 'top';
+  const minFontSize = area.minFontSize ?? 1;
+  const isBottom = baseline === 'bottom';
+
+  if (!text) text = area.defaultText || '';
+
+  // Calcular ancho del texto para auto-escalado
+  const textWidth = estimateTextWidth(text, fontSize);
+  const arcLength = Math.PI * radius; // Semicírculo
+  const margin = fontSize * 2; // Margen en unidades SVG
+  const availableArc = Math.max(0, arcLength - margin * 2);
+
+  // Auto-escalar si el texto excede el arco disponible
+  if (textWidth > availableArc && availableArc > 0) {
+    const scaleFactor = availableArc / textWidth;
+    const scaledFontSize = fontSize * scaleFactor;
+    if (scaledFontSize >= minFontSize) {
+      fontSize = scaledFontSize;
+    } else {
+      fontSize = minFontSize;
+      // Truncar si no cabe al mínimo
+      const maxWidth = availableArc;
+      let accumulatedWidth = 0;
+      let truncateIndex = 0;
+      for (let i = 0; i < text.length; i++) {
+        const charW = estimateCharWidth(text[i], fontSize);
+        if (accumulatedWidth + charW > maxWidth) {
+          truncateIndex = i;
+          break;
+        }
+        accumulatedWidth += charW;
+        truncateIndex = i + 1;
+      }
+      text = text.slice(0, truncateIndex);
+    }
+  }
+
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    parseAttributeValue: false,
+    preserveOrder: true,
+  });
+  const parsed = parser.parse(svgContent);
+  removeCircularGroup(parsed, area.id);
+
+  // Crear path circular para textPath
+  const pathId = `circular-path-${area.id}`;
+  const pathRadius = isBottom ? radius - fontSize * 0.5 : radius + fontSize * 0.1;
+
+  const startAngle = isBottom ? 180 : -180;
+  const endAngle = 0;
+  const largeArc = 1;
+  const sweep = isBottom ? 0 : 1;
+
+  const x1 = centerX + pathRadius * Math.cos(degToRad(startAngle));
+  const y1 = centerY + pathRadius * Math.sin(degToRad(startAngle));
+  const x2 = centerX + pathRadius * Math.cos(degToRad(endAngle));
+  const y2 = centerY + pathRadius * Math.sin(degToRad(endAngle));
+
+  const pathD = `M ${x1} ${y1} A ${pathRadius} ${pathRadius} 0 ${largeArc} ${sweep} ${x2} ${y2}`;
+
+  const pathNode: any = {
+    ':@': {
+      id: pathId,
+      fill: 'none',
+      stroke: 'none',
+      d: pathD,
+    },
+  };
+
+  const textPathAttrs: any = {
+    href: `#${pathId}`,
+    startOffset: '50%',
+  };
+  if (isBottom) {
+    textPathAttrs.side = 'right';
+  }
+
+  const textPathNode: any = {
+    ':@': textPathAttrs,
+    '#text': text,
+  };
+
+  const textNode: any = {
+    ':@': {
+      'font-family': fontFamily,
+      'font-size': fontSize.toString(),
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle',
+    },
+    textPath: [textPathNode],
+  };
+
+  const groupNode: any = {
+    ':@': {
+      'data-circular-field': area.id,
+      class: 'circular-text',
+    },
+    g: [],
+  };
+
+  groupNode.g.push(pathNode);
+  groupNode.g.push(textNode);
+
+  appendToSvg(parsed, groupNode);
+
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    preserveOrder: true,
+    format: false,
+  });
+
+  return builder.build(parsed);
 }
 
 function renderCircularTextAsLetters(
