@@ -165,6 +165,16 @@ model Product {
   isActive    Boolean       @default(true)
   stock       Int           @default(0)
   salesCount  Int           @default(0)
+  
+  // Configuración de área reservada para sellos fechadores
+  hasReservedArea    Boolean  @default(false)
+  reservedWidthMm    Float?   // Ancho del área reservada en mm
+  reservedHeightMm   Float?   // Alto del área reservada en mm
+  reservedPositionX  Float?   // Posición X del área reservada (centro si null)
+  reservedPositionY  Float?   // Posición Y del área reservada (centro si null)
+  reservedStroke     Boolean  @default(true)  // Si el área reservada lleva borde (stroke)
+  reservedStrokeWidth Float?   @default(1.0)   // Grosor del borde en unidades SVG
+  
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 

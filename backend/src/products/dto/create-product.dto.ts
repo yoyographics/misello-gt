@@ -87,4 +87,43 @@ export class CreateProductDto {
   @IsOptional()
   @Min(0)
   stock?: number;
+
+  // Configuración de área reservada para sellos fechadores
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsBoolean()
+  @IsOptional()
+  hasReservedArea?: boolean;
+
+  @ApiPropertyOptional({ example: 30 })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  reservedWidthMm?: number;
+
+  @ApiPropertyOptional({ example: 15 })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  reservedHeightMm?: number;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsNumber()
+  @IsOptional()
+  reservedPositionX?: number;
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsNumber()
+  @IsOptional()
+  reservedPositionY?: number;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsBoolean()
+  @IsOptional()
+  reservedStroke?: boolean;
+
+  @ApiPropertyOptional({ example: 1.0, default: 1.0 })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  reservedStrokeWidth?: number;
 }

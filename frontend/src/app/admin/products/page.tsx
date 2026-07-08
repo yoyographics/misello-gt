@@ -49,6 +49,14 @@ interface Product {
   imageUrl?: string;
   imageUrlHover?: string;
   cardLabel?: string;
+  // Área reservada para sellos fechadores
+  hasReservedArea?: boolean;
+  reservedWidthMm?: number;
+  reservedHeightMm?: number;
+  reservedPositionX?: number;
+  reservedPositionY?: number;
+  reservedStroke?: boolean;
+  reservedStrokeWidth?: number;
 }
 
 const SHAPES = [
@@ -69,6 +77,14 @@ const EMPTY_FORM = {
   basePrice: '',
   stock: '',
   isActive: true,
+  // Área reservada
+  hasReservedArea: false,
+  reservedWidthMm: '',
+  reservedHeightMm: '',
+  reservedPositionX: '',
+  reservedPositionY: '',
+  reservedStroke: true,
+  reservedStrokeWidth: '1',
 };
 
 function getImageUrl(url?: string) {
@@ -133,6 +149,14 @@ export default function AdminProductsPage() {
       basePrice: product.basePrice.toString(),
       stock: product.stock.toString(),
       isActive: product.isActive,
+      // Área reservada
+      hasReservedArea: product.hasReservedArea || false,
+      reservedWidthMm: product.reservedWidthMm?.toString() || '',
+      reservedHeightMm: product.reservedHeightMm?.toString() || '',
+      reservedPositionX: product.reservedPositionX?.toString() || '',
+      reservedPositionY: product.reservedPositionY?.toString() || '',
+      reservedStroke: product.reservedStroke !== false,
+      reservedStrokeWidth: product.reservedStrokeWidth?.toString() || '1',
     });
     setImageFile(null);
     setHoverImageFile(null);
@@ -154,6 +178,14 @@ export default function AdminProductsPage() {
         basePrice: parseFloat(form.basePrice),
         stock: parseInt(form.stock) || 0,
         isActive: form.isActive,
+        // Área reservada
+        hasReservedArea: form.hasReservedArea || false,
+        reservedWidthMm: form.reservedWidthMm ? parseFloat(form.reservedWidthMm) : undefined,
+        reservedHeightMm: form.reservedHeightMm ? parseFloat(form.reservedHeightMm) : undefined,
+        reservedPositionX: form.reservedPositionX ? parseFloat(form.reservedPositionX) : undefined,
+        reservedPositionY: form.reservedPositionY ? parseFloat(form.reservedPositionY) : undefined,
+        reservedStroke: form.reservedStroke !== false,
+        reservedStrokeWidth: form.reservedStrokeWidth ? parseFloat(form.reservedStrokeWidth) : 1,
       };
 
       let productId = editingId;
@@ -398,6 +430,59 @@ export default function AdminProductsPage() {
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
               />
               <label htmlFor="isActive" className="text-sm">Activo</label>
+            </div>
+
+            {/* Configuración de área reservada (sellos fechadores) */}
+            <div className="border rounded-lg p-3 bg-gray-50">
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="checkbox"
+                  id="hasReservedArea"
+                  checked={form.hasReservedArea}
+                  onChange={(e) => setForm({ ...form, hasReservedArea: e.target.checked })}
+                />
+                <label htmlFor="hasReservedArea" className="text-sm font-medium">Sello fechador (área reservada)</label>
+              </div>
+
+              {form.hasReservedArea && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium block mb-1.5">Ancho reservado (mm)</label>
+                      <Input type="number" step="0.1" value={form.reservedWidthMm} onChange={(e) => setForm({ ...form, reservedWidthMm: e.target.value })} placeholder="30" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1.5">Alto reservado (mm)</label>
+                      <Input type="number" step="0.1" value={form.reservedHeightMm} onChange={(e) => setForm({ ...form, reservedHeightMm: e.target.value })} placeholder="15" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium block mb-1.5">Posición X (mm, 0=centro)</label>
+                      <Input type="number" step="0.1" value={form.reservedPositionX} onChange={(e) => setForm({ ...form, reservedPositionX: e.target.value })} placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1.5">Posición Y (mm, 0=centro)</label>
+                      <Input type="number" step="0.1" value={form.reservedPositionY} onChange={(e) => setForm({ ...form, reservedPositionY: e.target.value })} placeholder="0" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="reservedStroke"
+                        checked={form.reservedStroke}
+                        onChange={(e) => setForm({ ...form, reservedStroke: e.target.checked })}
+                      />
+                      <label htmlFor="reservedStroke" className="text-xs">Mostrar borde (stroke)</label>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1.5">Grosor borde</label>
+                      <Input type="number" step="0.1" value={form.reservedStrokeWidth} onChange={(e) => setForm({ ...form, reservedStrokeWidth: e.target.value })} placeholder="1" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
