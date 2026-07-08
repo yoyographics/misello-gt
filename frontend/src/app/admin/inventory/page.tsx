@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { Loader2, Plus, Package } from 'lucide-react';
 
 interface Category {
@@ -56,6 +57,7 @@ export default function AdminInventoryPage() {
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
   const [newCategoryIsCustomizable, setNewCategoryIsCustomizable] = useState(false);
+  const { confirm, DialogComponent } = useConfirmDialog();
 
 
 
@@ -94,7 +96,11 @@ export default function AdminInventoryPage() {
       setCategories((prev) =>
         prev.map((c) => (c.id === cat.id ? { ...c, isCustomizable: !newValue } : c))
       );
-      alert(err.response?.data?.message || 'Error actualizando categoria');
+      await confirm({
+        title: err.response?.data?.message || 'Error actualizando categoria',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
@@ -132,6 +138,7 @@ export default function AdminInventoryPage() {
 
   return (
     <div className="space-y-6">
+      <DialogComponent />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Inventario</h1>
         <div className="flex gap-2">

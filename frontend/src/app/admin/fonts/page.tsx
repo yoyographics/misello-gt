@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { Loader2, Upload, Trash2, Eye, EyeOff, Star } from 'lucide-react';
 
 interface Font {
@@ -165,6 +166,7 @@ export default function AdminFontsPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   const fetchFonts = useCallback(() => {
     setLoading(true);
@@ -211,10 +213,12 @@ export default function AdminFontsPage() {
       fetchFonts();
     } catch (err: any) {
       console.error('Upload failed');
-      alert(
-        'Error subiendo fuente. Status: ' + (err.response?.status || 'unknown') +
-        '\nMensaje: ' + (err.response?.data?.message || err.message)
-      );
+      await confirm({
+        title: 'Error subiendo fuente',
+        description: 'Status: ' + (err.response?.status || 'unknown') + '\nMensaje: ' + (err.response?.data?.message || err.message),
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     } finally {
       setUploading(false);
     }
@@ -225,7 +229,11 @@ export default function AdminFontsPage() {
       await api.patch(`/fonts/admin/${id}`, { isActive: !isActive });
       fetchFonts();
     } catch (err) {
-      alert('Error actualizando fuente');
+      await confirm({
+        title: 'Error actualizando fuente',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
@@ -234,7 +242,11 @@ export default function AdminFontsPage() {
       await api.patch(`/fonts/admin/${id}`, { minFontSizePt });
       fetchFonts();
     } catch (err) {
-      alert('Error actualizando tamano minimo');
+      await confirm({
+        title: 'Error actualizando tamaño mínimo',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
@@ -243,22 +255,36 @@ export default function AdminFontsPage() {
       await api.post(`/fonts/admin/${id}/set-default`);
       fetchFonts();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error estableciendo fuente predeterminada');
+      await confirm({
+        title: err.response?.data?.message || 'Error estableciendo fuente predeterminada',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar esta fuente permanentemente?')) return;
+    const confirmed = await confirm({
+      title: '¿Eliminar esta fuente permanentemente?',
+      confirmText: 'Eliminar',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/fonts/admin/${id}`);
       fetchFonts();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error eliminando fuente');
+      await confirm({
+        title: err.response?.data?.message || 'Error eliminando fuente',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
   return (
     <div className="space-y-6">
+      <DialogComponent />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Tipografias</h1>
       </div>

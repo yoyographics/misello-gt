@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { Loader2, Plus, Pencil, Eye, EyeOff, Wand2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,6 +44,7 @@ export default function AdminCategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   const fetchCategories = useCallback(() => {
     setLoading(true);
@@ -109,7 +111,12 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar esta categoria?')) return;
+    const confirmed = await confirm({
+      title: '¿Eliminar esta categoría?',
+      confirmText: 'Eliminar',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/categories/admin/${id}`);
       toast.success('Categoria eliminada');
@@ -121,6 +128,7 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6">
+      <DialogComponent />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Categorias</h1>
         <Button

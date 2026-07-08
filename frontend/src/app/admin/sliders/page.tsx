@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { Loader2, Plus, Pencil, Trash2, ImageIcon, Upload, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -156,6 +157,7 @@ export default function AdminSlidersPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   const fetchSliders = useCallback(() => {
     setLoading(true);
@@ -243,7 +245,12 @@ export default function AdminSlidersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este slider?')) return;
+    const confirmed = await confirm({
+      title: '¿Eliminar este slider?',
+      confirmText: 'Eliminar',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/sliders/admin/${id}`);
       toast.success('Slider eliminado');
@@ -284,6 +291,7 @@ export default function AdminSlidersPage() {
 
   return (
     <div className="space-y-6">
+      <DialogComponent />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Sliders</h1>
         <Button

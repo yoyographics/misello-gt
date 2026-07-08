@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { Loader2, Plus, Pencil, Trash2, ImageIcon, ArrowLeft, ArrowUpDown } from 'lucide-react';
 
 interface Category {
@@ -104,6 +105,7 @@ export default function InventoryCategoryPage({ slug }: { slug: string }) {
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [adjustQty, setAdjustQty] = useState('');
   const [adjusting, setAdjusting] = useState(false);
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -222,19 +224,32 @@ export default function InventoryCategoryPage({ slug }: { slug: string }) {
       setDialogOpen(false);
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error guardando producto');
+      await confirm({
+        title: err.response?.data?.message || 'Error guardando producto',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este producto?')) return;
+    const confirmed = await confirm({
+      title: '¿Eliminar este producto?',
+      confirmText: 'Eliminar',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/products/admin/${id}`);
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error eliminando producto');
+      await confirm({
+        title: err.response?.data?.message || 'Error eliminando producto',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
@@ -256,7 +271,11 @@ export default function InventoryCategoryPage({ slug }: { slug: string }) {
       setAdjustOpen(false);
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error ajustando stock');
+      await confirm({
+        title: err.response?.data?.message || 'Error ajustando stock',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     } finally {
       setAdjusting(false);
     }
@@ -270,6 +289,7 @@ export default function InventoryCategoryPage({ slug }: { slug: string }) {
 
   return (
     <div className="space-y-6">
+      <DialogComponent />
       <div className="flex items-center gap-3 flex-wrap">
         <Button variant="outline" size="sm" onClick={() => router.push('/admin/inventory/')}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Volver

@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { Loader2, Settings, Users, FileText, DollarSign } from 'lucide-react';
 
 export default function AdminSettingsPage() {
@@ -14,6 +15,7 @@ export default function AdminSettingsPage() {
   const [replicaPrice, setReplicaPrice] = useState('');
   const [termsHtml, setTermsHtml] = useState('');
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'ADMIN' });
+  const { confirm, DialogComponent } = useConfirmDialog();
 
   const fetchUsers = useCallback(() => {
     setLoading(true);
@@ -33,30 +35,51 @@ export default function AdminSettingsPage() {
       setNewUser({ name: '', email: '', password: '', role: 'ADMIN' });
       fetchUsers();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error creando usuario');
+      await confirm({
+        title: err.response?.data?.message || 'Error creando usuario',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
   const saveReplicaPrice = async () => {
     try {
       await api.post('/admin/settings/replica-price', { price: Number(replicaPrice) });
-      alert('Precio de replica actualizado');
+      await confirm({
+        title: 'Precio de replica actualizado',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     } catch (err) {
-      alert('Error guardando precio');
+      await confirm({
+        title: 'Error guardando precio',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
   const saveTerms = async () => {
     try {
       await api.post('/admin/settings/terms-and-conditions', { html: termsHtml });
-      alert('Terminos y condiciones actualizados');
+      await confirm({
+        title: 'Terminos y condiciones actualizados',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     } catch (err) {
-      alert('Error guardando terminos');
+      await confirm({
+        title: 'Error guardando terminos',
+        confirmText: 'Aceptar',
+        cancelText: '',
+      });
     }
   };
 
   return (
     <div className="space-y-6">
+      <DialogComponent />
       <h1 className="text-2xl font-bold text-[#1B2A6B]">Configuracion</h1>
 
       <div className="flex gap-2 border-b pb-2">

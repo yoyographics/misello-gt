@@ -1,5 +1,6 @@
 'use client';
 
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -86,6 +87,7 @@ export default function AdminTemplatesPage() {
   const manualTargetRef = useRef<Element | null>(null);
   const [selectedTextIndex, setSelectedTextIndex] = useState<number | null>(null);
   const [selectedTextManual, setSelectedTextManual] = useState(false);
+  const { confirm, DialogComponent } = useConfirmDialog();
   const [selectedTextType, setSelectedTextType] = useState<'text' | 'circular'>('text');
   const [selectedTextForm, setSelectedTextForm] = useState({
     id: '',
@@ -998,12 +1000,19 @@ export default function AdminTemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar esta plantilla?')) return;
+    const confirmed = await confirm({
+      title: '¿Eliminar esta plantilla?',
+      description: 'Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/templates/admin/${id}`);
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error eliminando plantilla');
+      setFormError(err.response?.data?.message || 'Error eliminando plantilla');
     }
   };
 
@@ -1158,6 +1167,7 @@ export default function AdminTemplatesPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      <DialogComponent />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#1B2A6B]">Plantillas de diseño</h1>
         <Button
