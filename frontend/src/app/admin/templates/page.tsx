@@ -152,6 +152,13 @@ export default function AdminTemplatesPage() {
     fetchData();
   }, [fetchData]);
 
+  // Recargar datos cuando se abre el modal
+  useEffect(() => {
+    if (showForm) {
+      fetchData();
+    }
+  }, [showForm, fetchData]);
+
   const resetForm = () => {
     setForm({
       name: '',
