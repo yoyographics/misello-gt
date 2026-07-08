@@ -160,6 +160,13 @@ export class ProductsService {
     return product;
   }
 
+  async findAllAdminSimple() {
+    const items = await this.prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return { items, total: items.length };
+  }
+
   async findOneAdmin(id: string) {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundException('Producto no encontrado');

@@ -49,6 +49,14 @@ export class ProductsController {
     return this.productsService.findAllAdmin(query);
   }
 
+  /** Listado simple para admin sin filtros */
+  @Get('admin/list')
+  @UseGuards(JwtAdminGuard)
+  @ApiBearerAuth()
+  findAllAdminSimple() {
+    return this.productsService.findAllAdminSimple();
+  }
+
   /** Crear producto (admin) */
   @Post('admin')
   @UseGuards(JwtAdminGuard)

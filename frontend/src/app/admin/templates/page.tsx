@@ -130,7 +130,7 @@ export default function AdminTemplatesPage() {
     Promise.all([
       api.get('/templates/admin/all'),
       api.get('/categories'),
-      api.get('/products/admin/all?take=9999'),
+      api.get('/products/admin/list'),
       api.get('/fonts'),
     ])
       .then(([tRes, cRes, pRes, fRes]) => {
