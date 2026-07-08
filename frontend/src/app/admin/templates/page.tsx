@@ -141,7 +141,10 @@ export default function AdminTemplatesPage() {
         const fontList = fRes.data?.items || fRes.data || [];
         setFonts(Array.isArray(fontList) ? fontList : []);
       })
-      .catch(() => {})
+      .catch((err) => {
+        const msg = err.response?.data?.message || err.message || 'Error de conexión con el servidor';
+        setFormError(msg);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -1131,11 +1134,12 @@ export default function AdminTemplatesPage() {
     ? products.filter((p) => p.categoryId === form.categoryId)
     : [];
 
-  // Productos de todas las categorías para mostrar cuando no hay categoría seleccionada
-  const allSellosProducts = products.filter((p) => {
-    const cat = categories.find((c) => c.id === p.categoryId);
-    return cat?.name?.toLowerCase().includes('sello') || cat?.slug?.includes('sello');
-  });
+  const allSellosProducts = !form.categoryId 
+    ? products 
+    : products.filter((p) => {
+        const cat = categories.find((c) => c.id === p.categoryId);
+        return cat?.name?.toLowerCase().includes('sello') || cat?.slug?.includes('sello');
+      });
 
   if (loading) {
     return (
