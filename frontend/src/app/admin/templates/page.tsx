@@ -18,6 +18,7 @@ import { Loader2, Trash2, Plus, X, Eye } from 'lucide-react';
 interface Category {
   id: string;
   name: string;
+  slug?: string;
 }
 
 interface Product {
@@ -122,6 +123,7 @@ export default function AdminTemplatesPage() {
   const [fonts, setFonts] = useState<Font[]>([]);
   const [hideMode, setHideMode] = useState(false);
   const [hiddenCount, setHiddenCount] = useState(0);
+  const [deleteMode, setDeleteMode] = useState(false);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -275,6 +277,19 @@ export default function AdminTemplatesPage() {
       });
 
       if (centers.length < minPaths) return;
+
+      // Contar paths que son muy pequeños (probablemente puntuación: puntos, comas, etc.)
+      let smallPathCount = 0;
+      paths.forEach((p) => {
+        try {
+          const pathEl = p as SVGPathElement;
+          const len = pathEl.getTotalLength();
+          // Un path de puntuación típicamente mide menos de 3 unidades SVG
+          if (len < 3) smallPathCount++;
+        } catch {}
+      });
+      // Si más del 40% de los paths son muy pequeños, descartar (es puntuación decorativa)
+      if (smallPathCount / paths.length > 0.4) return;
 
       const distances = centers.map((c) => Math.sqrt((c.x - circle.x) ** 2 + (c.y - circle.y) ** 2));
       const avgDist = distances.reduce((a, b) => a + b, 0) / distances.length;
@@ -585,11 +600,27 @@ export default function AdminTemplatesPage() {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
-      if (hideMode) {
+      if (hideMode || deleteMode) {
         const svg = container.querySelector('svg');
         if (!svg) return;
         const elToHide = (target.closest('path, text, circle, line, rect, polygon, g') as Element | null) || target;
         if (!elToHide || elToHide === svg || elToHide === container) return;
+        
+        if (deleteMode) {
+          // Modo eliminar: remover el elemento completamente
+          // Si es un área editable detectada, también quitarla de la lista
+          const fieldId = elToHide.getAttribute('data-field');
+          if (fieldId) {
+            setEditableAreas((prev) => prev.filter((a) => a.id !== fieldId));
+          }
+          elToHide.remove();
+          setSvgPreview(container.innerHTML);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
+        // Modo ocultar (existente)
         const currentHide = elToHide.getAttribute('data-hide-on-render');
         if (currentHide === 'true') {
           elToHide.removeAttribute('data-hide-on-render');
@@ -724,7 +755,7 @@ export default function AdminTemplatesPage() {
     return () => {
       container.removeEventListener('click', handleClick);
     };
-  }, [svgPreview, editableAreas.length, hideMode, hiddenCount]);
+  }, [svgPreview, editableAreas.length, hideMode, deleteMode, hiddenCount]);
 
   const extractEditableAreas = (svgContent: string): EditableArea[] => {
     try {
@@ -1098,7 +1129,13 @@ export default function AdminTemplatesPage() {
 
   const filteredProducts = form.categoryId
     ? products.filter((p) => p.categoryId === form.categoryId)
-    : products;
+    : [];
+
+  // Productos de todas las categorías para mostrar cuando no hay categoría seleccionada
+  const allSellosProducts = products.filter((p) => {
+    const cat = categories.find((c) => c.id === p.categoryId);
+    return cat?.name?.toLowerCase().includes('sello') || cat?.slug?.includes('sello');
+  });
 
   if (loading) {
     return (
@@ -1152,21 +1189,29 @@ export default function AdminTemplatesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Categoría</label>
-                <select
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                  value={form.categoryId}
-                  onChange={(e) => {
-                    setForm({ ...form, categoryId: e.target.value });
+                <Select
+                  value={form.categoryId || 'none'}
+                  onValueChange={(value) => {
+                    if (!value || value === 'none') {
+                      setForm({ ...form, categoryId: '' });
+                    } else {
+                      setForm({ ...form, categoryId: value });
+                    }
                     setSelectedProductIds([]);
                   }}
                 >
-                  <option value="">Seleccionar...</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="Seleccionar categoría..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Sin categoría --</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1174,7 +1219,33 @@ export default function AdminTemplatesPage() {
               <label className="text-sm font-medium block mb-2">
                 Modelos de sello asignados
               </label>
-              {filteredProducts.length === 0 ? (
+              {!form.categoryId ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-lg p-3">
+                  {allSellosProducts.length === 0 ? (
+                    <p className="text-sm text-gray-500 col-span-full">No hay modelos de sello disponibles.</p>
+                  ) : (
+                    allSellosProducts.map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex items-start gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedProductIds.includes(p.id)}
+                          onChange={() => toggleProduct(p.id)}
+                          className="mt-1"
+                        />
+                        <div className="text-sm">
+                          <div className="font-medium">{p.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {p.widthMm}mm × {p.heightMm}mm · {p.shape}
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No hay modelos en esta categoría.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto border rounded-lg p-3">
@@ -1235,15 +1306,34 @@ export default function AdminTemplatesPage() {
                     className="mt-3 w-full"
                     onClick={() => {
                       setHideMode((prev) => !prev);
+                      setDeleteMode(false);
                       setSelectedTextIndex(null);
                       setSelectedTextManual(false);
                     }}
                   >
                     {hideMode ? 'Desactivar modo ocultar' : 'Modo ocultar elementos'}
                   </Button>
+                  <Button
+                    variant={deleteMode ? 'destructive' : 'outline'}
+                    size="sm"
+                    className="mt-2 w-full"
+                    onClick={() => {
+                      setDeleteMode((prev) => !prev);
+                      setHideMode(false);
+                      setSelectedTextIndex(null);
+                      setSelectedTextManual(false);
+                    }}
+                  >
+                    {deleteMode ? 'Desactivar modo eliminar' : 'Modo eliminar elementos'}
+                  </Button>
                   {hideMode && (
                     <p className="text-xs text-orange-600 mt-2 text-center">
                       Hacé clic en los elementos que querés ocultar (texto original, líneas decorativas, etc.). {hiddenCount} oculto(s).
+                    </p>
+                  )}
+                  {deleteMode && (
+                    <p className="text-xs text-red-600 mt-2 text-center">
+                      ⚠️ Hacé clic en los elementos que querés eliminar permanentemente del SVG. ¡Cuidado!
                     </p>
                   )}
                 </div>
