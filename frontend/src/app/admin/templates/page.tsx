@@ -34,7 +34,7 @@ interface EditableArea {
   id: string;
   label: string;
   defaultText: string;
-  type?: 'text' | 'circular';
+  type?: 'text' | 'circular' | 'reserved';
   x?: number;
   y?: number;
   radius?: number;
@@ -48,6 +48,9 @@ interface EditableArea {
   multiLine?: boolean;
   maxLines?: number;
   lineHeight?: number;
+  // Propiedades para área reservada
+  width?: number;
+  height?: number;
 }
 
 interface TemplateProduct {
@@ -513,6 +516,39 @@ export default function AdminTemplatesPage() {
         const pathAreas = detectPathTextGroups(doc, circle);
         areas.push(...pathAreas);
       }
+
+      // 3. Detectar áreas reservadas (sellos fechadores)
+      const reservedAreas: { id: string; x: number; y: number; width: number; height: number }[] = [];
+      doc.querySelectorAll('[data-reserved="true"]').forEach((el, idx) => {
+        const fieldId = el.getAttribute('data-field') || `reserved${idx + 1}`;
+        const x = parseFloat(el.getAttribute('x') || '0');
+        const y = parseFloat(el.getAttribute('y') || '0');
+        const width = parseFloat(el.getAttribute('width') || '0');
+        const height = parseFloat(el.getAttribute('height') || '0');
+        
+        reservedAreas.push({ id: fieldId, x, y, width, height });
+        
+        // Asegurar que el elemento tenga los atributos correctos
+        el.setAttribute('data-reserved', 'true');
+        el.setAttribute('data-field', fieldId);
+        if (!el.getAttribute('fill')) el.setAttribute('fill', 'none');
+        if (!el.getAttribute('stroke')) el.setAttribute('stroke', '#999');
+        if (!el.getAttribute('stroke-dasharray')) el.setAttribute('stroke-dasharray', '3,3');
+      });
+
+      // Si hay áreas reservadas, agregarlas a la lista de áreas para el admin
+      reservedAreas.forEach((ra) => {
+        areas.push({
+          id: ra.id,
+          label: 'Área reservada (fechador)',
+          defaultText: '',
+          type: 'reserved',
+          x: ra.x + ra.width / 2,
+          y: ra.y + ra.height / 2,
+          width: ra.width,
+          height: ra.height,
+        });
+      });
 
       return { svgContent: new XMLSerializer().serializeToString(doc.documentElement), areas };
     } catch {

@@ -2,7 +2,7 @@ export interface CircularArea {
   id: string;
   label: string;
   defaultText: string;
-  type?: 'text' | 'circular';
+  type?: 'text' | 'circular' | 'reserved';
   radius?: number;
   centerX?: number;
   centerY?: number;
@@ -22,6 +22,9 @@ export interface CircularArea {
   lineHeight?: number;
   /** Tamaño minimo permitido para esta area (pt). */
   minFontSize?: number;
+  /** Para áreas reservadas (sellos fechadores). */
+  width?: number;
+  height?: number;
 }
 
 /** Información del marco/borde del sello detectado desde paths del SVG. */
@@ -169,12 +172,12 @@ export function renderCircularText(
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, 'image/svg+xml');
 
-  // Buscar si ya existe un textPath para este campo
+  // Buscar si ya existe un textPath para este campo (SVG nativo de Illustrator)
   const textEl = doc.querySelector(`text[data-field="${area.id}"]`);
   if (textEl && textEl.querySelector('textPath')) {
     const tp = textEl.querySelector('textPath');
     if (tp) {
-      // Reemplazar el texto manteniendo la estructura
+      // Reemplazar el texto manteniendo la estructura nativa de Illustrator
       const innerTspan = tp.querySelector('tspan');
       if (innerTspan) {
         const deepest = getDeepestTspan(innerTspan);
@@ -182,11 +185,15 @@ export function renderCircularText(
       } else {
         tp.textContent = text;
       }
+      // Aplicar fuente configurada si es diferente
+      if (area.fontFamily) textEl.setAttribute('font-family', area.fontFamily);
+      if (area.fontSize) textEl.setAttribute('font-size', String(area.fontSize));
       return new XMLSerializer().serializeToString(doc.documentElement);
     }
   }
 
-  // Generar textPath nativo SVG — el navegador maneja rotación, baseline y espaciado
+  // Fallback: si no hay textPath nativo, usar textPath generado
+  // NOTA: Las plantillas antiguas sin textPath nativo deberían ser actualizadas
   return renderCircularTextPath(svgContent, text, area, frame);
 }
 
@@ -472,8 +479,21 @@ export function computeCentralSafeWidthSvg(
     frameWidthSvg = Math.max(0, viewBoxWidth - fontSize * 3);
   }
 
+  // 3. Considerar áreas reservadas (sellos fechadores)
+  const reservedAreas = areas.filter((a) => a.type === 'reserved');
+  let reservedWidthSvg = Infinity;
+  if (reservedAreas.length > 0) {
+    const reservedWidths = reservedAreas.map((ra) => {
+      if (ra.width && ra.height) {
+        return Math.min(ra.width, ra.height) * 0.8;
+      }
+      return Infinity;
+    });
+    reservedWidthSvg = Math.min(...reservedWidths);
+  }
+
   // Retornar el más restrictivo en unidades SVG
-  const result = Math.min(circularWidth, frameWidthSvg);
+  const result = Math.min(circularWidth, frameWidthSvg, reservedWidthSvg);
   if (!isFinite(result)) return fallbackSafeWidthSvg || viewBoxWidth * 0.8 || 0;
   return result;
 }

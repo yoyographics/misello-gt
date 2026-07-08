@@ -5,7 +5,7 @@ export interface CircularArea {
   id: string;
   label: string;
   defaultText: string;
-  type?: 'text' | 'circular';
+  type?: 'text' | 'circular' | 'reserved';
   radius?: number;
   centerX?: number;
   centerY?: number;
@@ -25,6 +25,9 @@ export interface CircularArea {
   lineHeight?: number;
   /** Tamaño minimo permitido para esta area (pt). */
   minFontSize?: number;
+  /** Para áreas reservadas (sellos fechadores). */
+  width?: number;
+  height?: number;
 }
 
 /** Información del marco/borde del sello detectado desde paths del SVG. */
@@ -272,19 +275,22 @@ export function renderCircularText(
   });
   const parsed = parser.parse(svgContent);
 
-  // Buscar text[data-field=area.id] con textPath
+  // Buscar text[data-field=area.id] con textPath (SVG nativo de Illustrator)
   let textPathFound = false;
   walk(parsed, (node) => {
     if (node[':@'] && node[':@']['data-field'] === area.id && node.textPath) {
       textPathFound = true;
       const tp = Array.isArray(node.textPath) ? node.textPath[0] : node.textPath;
-      // Reemplazar texto manteniendo estructura
+      // Reemplazar texto manteniendo estructura nativa
       const deepest = findDeepestTextNode(tp);
       if (deepest) {
         setTextContent(deepest, text);
       } else {
         tp['#text'] = text;
       }
+      // Aplicar fuente configurada si es diferente
+      if (area.fontFamily) node[':@']['font-family'] = area.fontFamily;
+      if (area.fontSize) node[':@']['font-size'] = String(area.fontSize);
     }
   });
 
@@ -298,7 +304,8 @@ export function renderCircularText(
     return builder.build(parsed);
   }
 
-  // Generar textPath nativo SVG
+  // Fallback: generar textPath nativo SVG
+  // NOTA: Las plantillas antiguas sin textPath nativo deberían ser actualizadas
   return renderCircularTextPath(svgContent, text, area, frame);
 }
 
@@ -1026,8 +1033,26 @@ export function computeCentralSafeWidthSvg(
     frameWidthSvg = Math.max(0, viewBoxWidth - fontSize * 3);
   }
 
+  // 3. Considerar áreas reservadas (sellos fechadores)
+  // Las áreas reservadas reducen el espacio disponible para el texto central
+  const reservedAreas = areas.filter((a) => a.type === 'reserved');
+  let reservedWidthSvg = Infinity;
+  if (reservedAreas.length > 0) {
+    // Calcular el ancho más restrictivo impuesto por las áreas reservadas
+    // El texto central debe caber al lado o arriba/debajo de las áreas reservadas
+    const reservedWidths = reservedAreas.map((ra) => {
+      if (ra.width && ra.height) {
+        // Si el área reservada es más ancha que alta, el texto debe caber arriba o debajo
+        // Si es más alta que ancha, el texto debe caber a los lados
+        return Math.min(ra.width, ra.height) * 0.8; // Margen de seguridad
+      }
+      return Infinity;
+    });
+    reservedWidthSvg = Math.min(...reservedWidths);
+  }
+
   // Retornar el más restrictivo en unidades SVG
-  const result = Math.min(circularWidth, frameWidthSvg);
+  const result = Math.min(circularWidth, frameWidthSvg, reservedWidthSvg);
   if (!isFinite(result)) return fallbackSafeWidthSvg || viewBoxWidth * 0.8 || 0;
   return result;
 }
@@ -1222,6 +1247,11 @@ export function applyTemplateFields(
   const frame = detectFrameFromSvg(svgContent);
 
   areas.forEach((area) => {
+    if (area.type === 'reserved') {
+      // Área reservada: no renderizar texto, solo preservar el elemento SVG
+      // El rectángulo reservado ya está en el SVG con stroke dash
+      return;
+    }
     if (area.type === 'circular') {
       const value = fields[area.id] ?? area.defaultText ?? '';
       result = renderCircularText(result, value, area, frame);
