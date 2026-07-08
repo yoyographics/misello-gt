@@ -62,18 +62,19 @@ export function useConfirmDialog() {
   const DialogComponent = useCallback(
     () => (
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{options.title}</DialogTitle>
+        <DialogContent className="sm:max-w-sm p-4 gap-2">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base">{options.title}</DialogTitle>
             {options.description && (
-              <DialogDescription>{options.description}</DialogDescription>
+              <DialogDescription className="text-xs">{options.description}</DialogDescription>
             )}
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={handleCancel}>
+          <DialogFooter className="gap-2 sm:gap-2 mt-2">
+            <Button variant="outline" size="sm" onClick={handleCancel}>
               {options.cancelText}
             </Button>
             <Button
+              size="sm"
               variant={options.variant === 'destructive' ? 'destructive' : 'default'}
               onClick={handleConfirm}
               className={
