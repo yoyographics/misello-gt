@@ -56,24 +56,19 @@ export function useConfirmDialog() {
       if (!isOpen) return null;
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCancel} />
-          <div className="relative z-10 w-full max-w-[320px] rounded-lg bg-white shadow-lg border p-3 space-y-2">
-            <div className="text-sm font-medium text-gray-900">{options.title}</div>
+          <div className="fixed inset-0 bg-black/50" onClick={handleCancel} />
+          <div className="relative z-10 w-[420px] rounded-sm bg-white shadow-xl border p-4">
+            <div className="text-sm font-semibold text-gray-900">{options.title}</div>
             {options.description && (
-              <div className="text-xs text-gray-500">{options.description}</div>
+              <div className="text-xs text-gray-500 mt-1">{options.description}</div>
             )}
-            <div className="flex justify-end gap-2 pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={handleCancel}
-              >
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={handleCancel}>
                 {options.cancelText}
               </Button>
               <Button
                 size="sm"
-                className={`h-7 px-3 text-xs ${
+                className={`${
                   options.variant === 'destructive'
                     ? 'bg-red-600 hover:bg-red-700 text-white'
                     : 'bg-[#1B2A6B] hover:bg-[#141f4d] text-white'
