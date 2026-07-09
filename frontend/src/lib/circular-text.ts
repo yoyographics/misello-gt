@@ -179,35 +179,20 @@ function estimateCharWidth(char: string, fontSize: number): number {
   return fontSize * width * 1.1;
 }
 
+function estimateCharWidthRaw(char: string, fontSize: number): number {
+  const width = WIDTH_MAP[char] ?? 0.5;
+  return fontSize * width;
+}
+
 export function renderCircularText(
   svgContent: string,
   text: string,
   area: CircularArea,
   frame?: FrameInfo | null,
 ): string {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-
-  // Si aun existe un textPath nativo para este campo, eliminarlo para evitar
-  // que interfiera con el renderizado letra-por-letra.
-  const textEl = doc.querySelector(`text[data-field="${area.id}"]`);
-  if (textEl) {
-    const tp = textEl.querySelector('textPath');
-    if (tp) {
-      const href = tp.getAttribute('xlink:href') || tp.getAttribute('href') || '';
-      const pathId = href.replace('#', '');
-      if (pathId) {
-        const pathEl = doc.querySelector(`path[id="${pathId}"]`);
-        if (pathEl) pathEl.remove();
-      }
-      tp.remove();
-    }
-    // Ocultar el elemento editable original; el texto se renderiza en un grupo nuevo.
-    textEl.setAttribute('visibility', 'hidden');
-  }
-
-  const cleanedSvg = new XMLSerializer().serializeToString(doc.documentElement);
-  return renderCircularTextAsLetters(cleanedSvg, text, area, frame);
+  // En el navegador usamos textPath nativo para que el renderizado sea suave
+  // y fiel a como se ve en Illustrator.
+  return renderCircularTextPath(svgContent, text, area, frame);
 }
 
 function getDeepestTspan(el: Element): Element {
@@ -790,21 +775,23 @@ function renderCircularTextPath(
 
   if (!text) text = area.defaultText || '';
 
-  // Calcular ancho del texto para auto-escalado
-  const textWidth = estimateTextWidth(text, fontSize);
+  // Calcular ancho del texto para saber si cabe en el arco.
+  // Usamos un ancho estimado sin holgura porque textPath se encarga del espaciado real.
+  const textWidth = text
+    .split('')
+    .reduce((sum, char) => sum + estimateCharWidthRaw(char, fontSize), 0);
   const arcLength = Math.PI * radius; // Semicírculo
-  const margin = fontSize * 2; // Margen en unidades SVG
+  const margin = fontSize * 0.5; // Margen reducido
   const availableArc = Math.max(0, arcLength - margin * 2);
 
-  // Ya no auto-escalamos silenciosamente: respetamos el tamaño configurado por el usuario.
-  // Si el texto excede el arco, lo truncamos al mínimo configurable.
-  if (textWidth > availableArc && availableArc > 0) {
-    fontSize = Math.max(fontSize, minFontSize);
-    const maxWidth = availableArc;
+  // Solo truncamos si el texto excede ampliamente el arco disponible.
+  // Al bajar el tamaño de fuente el texto debe caber más.
+  if (textWidth > availableArc * 1.3 && availableArc > 0) {
+    const maxWidth = availableArc * 1.3;
     let accumulatedWidth = 0;
     let truncateIndex = 0;
     for (let i = 0; i < text.length; i++) {
-      const charW = estimateCharWidth(text[i], fontSize);
+      const charW = estimateCharWidthRaw(text[i], fontSize);
       if (accumulatedWidth + charW > maxWidth) {
         truncateIndex = i;
         break;
@@ -831,9 +818,8 @@ function renderCircularTextPath(
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke', 'none');
 
-  // Radio ajustado: para arco superior, el path está más afuera (baseline sobre el círculo exterior)
-  // para arco inferior, el path está más adentro (baseline sobre el círculo interior)
-  const pathRadius = isBottom ? radius - fontSize * 0.5 : radius + fontSize * 0.1;
+  // Usamos el radio detectado original para mantener la posición de la plantilla.
+  const pathRadius = radius;
 
   // Crear arco de semicírculo
   // Arco superior: de izquierda (-180) a derecha (0), sentido horario (sweep=1)

@@ -154,8 +154,8 @@ function parseCircleFromPath(d: string): { cx: number; cy: number; radius: numbe
 
 function estimateCharWidth(char: string, fontSize: number): number {
   const width = WIDTH_MAP[char] ?? 0.5;
-  // Factor de holgura para compensar kerning y fuentes bold.
-  return fontSize * width * 1.1;
+  // Ligera holgura para evitar superposición en renderizado letra-por-letra.
+  return fontSize * width * 1.15;
 }
 
 function estimateTextWidth(text: string, fontSize: number): number {
@@ -292,7 +292,7 @@ export function renderCircularText(
   const parsed = parser.parse(svgContent);
 
   // Si aun existe un textPath nativo para este campo, eliminarlo para evitar
-  // que interfiera con el renderizado letra-por-letra.
+  // que interfiera con el renderizado letra-por-letra (resvg no soporta side).
   walk(parsed, (node) => {
     if (node[':@'] && node[':@']['data-field'] === area.id && node.textPath) {
       delete node.textPath;
@@ -339,17 +339,15 @@ function renderCircularTextPath(
 
   if (!text) text = area.defaultText || '';
 
-  // Calcular ancho del texto para auto-escalado
+  // Calcular ancho del texto para saber si cabe en el arco.
   const textWidth = estimateTextWidth(text, fontSize);
   const arcLength = Math.PI * radius; // Semicírculo
-  const margin = fontSize * 2; // Margen en unidades SVG
+  const margin = fontSize * 0.5; // Margen reducido
   const availableArc = Math.max(0, arcLength - margin * 2);
 
-  // Ya no auto-escalamos silenciosamente: respetamos el tamaño configurado por el usuario.
-  // Si el texto excede el arco, lo truncamos al mínimo configurable.
-  if (textWidth > availableArc && availableArc > 0) {
-    fontSize = Math.max(fontSize, minFontSize);
-    const maxWidth = availableArc;
+  // Solo truncamos si el texto excede ampliamente el arco disponible.
+  if (textWidth > availableArc * 1.3 && availableArc > 0) {
+    const maxWidth = availableArc * 1.3;
     let accumulatedWidth = 0;
     let truncateIndex = 0;
     for (let i = 0; i < text.length; i++) {
@@ -423,15 +421,12 @@ function renderCircularTextPath(
   };
 
   const groupNode: any = {
+    g: [pathNode, textNode],
     ':@': {
       'data-circular-field': area.id,
       class: 'circular-text',
     },
-    g: [],
   };
-
-  groupNode.g.push(pathNode);
-  groupNode.g.push(textNode);
 
   appendToSvg(parsed, groupNode);
 
@@ -456,7 +451,7 @@ function renderCircularTextAsLetters(
   const centerY = area.centerY ?? 45.355;
   let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? fontSize * 0.1;
+  const letterSpacing = area.letterSpacing ?? fontSize * 0.08;
   const baseline = area.baseline || 'top';
   const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
   const minFontSize = area.minFontSize ?? 1;
@@ -470,7 +465,7 @@ function renderCircularTextAsLetters(
   // El texto no debe salirse del marco del sello.
   // El arco disponible es un semicírculo (180° = π radianes) menos un margen de seguridad.
   // El margen es proporcional al tamaño de la fuente para evitar que las letras toquen los lados.
-  const marginAngle = Math.max(0.25, (fontSize / radius) * 1.5); // Margen angular más seguro
+  const marginAngle = Math.max(0.12, fontSize / radius); // Margen angular mínimo
   const maxArcAngle = Math.PI - marginAngle * 2; // Semicírculo menos márgenes
 
   // Calcular el ancho total del texto al tamaño configurado
@@ -536,7 +531,7 @@ function renderCircularTextAsLetters(
     // (línea sobre la que se sientan las letras) esté en el círculo.
     // La baseline está aproximadamente a fontSize * 0.35 por debajo del centro.
     // Desplazamos la letra hacia el centro del círculo para alinear la baseline.
-    const baselineOffset = fontSize * 0.55;
+    const baselineOffset = fontSize * 0.35;
     const offsetX = -Math.cos(angle) * baselineOffset;
     const offsetY = -Math.sin(angle) * baselineOffset;
 
