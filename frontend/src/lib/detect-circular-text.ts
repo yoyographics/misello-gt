@@ -235,12 +235,17 @@ export function detectCircularText(
 
         const fontSize = parseFloatFromClass(group[0].element.getAttribute('class') || '', doc) || 9;
 
+        // Calcular centro horizontal real del grupo de letras
+        const minX = Math.min(...group.map((g) => g.x));
+        const maxX = Math.max(...group.map((g) => g.x));
+        const centerXofText = (minX + maxX) / 2;
+
         areas.push({
           id: `line${idx + 1}`,
           label: 'Texto central',
           defaultText: text,
           type: 'text',
-          x: group[0].x,
+          x: centerXofText,
           y: group[0].y,
           fontSize,
           fontFamily: group[0].element.getAttribute('font-family') || undefined,

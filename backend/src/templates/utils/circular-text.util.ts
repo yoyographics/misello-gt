@@ -163,6 +163,21 @@ function estimateTextWidth(text: string, fontSize: number): number {
     .reduce((sum, char) => sum + estimateCharWidth(char, fontSize), 0);
 }
 
+function truncateTextToWidth(text: string, fontSize: number, maxWidth: number): string {
+  let accumulatedWidth = 0;
+  let truncateIndex = 0;
+  for (let i = 0; i < text.length; i++) {
+    const charW = estimateCharWidth(text[i], fontSize);
+    if (accumulatedWidth + charW > maxWidth) {
+      truncateIndex = i;
+      break;
+    }
+    accumulatedWidth += charW;
+    truncateIndex = i + 1;
+  }
+  return text.slice(0, truncateIndex);
+}
+
 function walk(node: any, cb: (n: any) => void): void {
   if (Array.isArray(node)) {
     node.forEach((child) => walk(child, cb));
@@ -351,29 +366,23 @@ function renderCircularTextPath(
   const margin = fontSize * 2; // Margen en unidades SVG
   const availableArc = Math.max(0, arcLength - margin * 2);
 
-  // Auto-escalar si el texto excede el arco disponible
+  // Ya no auto-escalamos silenciosamente: respetamos el tamaño configurado por el usuario.
+  // Si el texto excede el arco, lo truncamos al mínimo configurable.
   if (textWidth > availableArc && availableArc > 0) {
-    const scaleFactor = availableArc / textWidth;
-    const scaledFontSize = fontSize * scaleFactor;
-    if (scaledFontSize >= minFontSize) {
-      fontSize = scaledFontSize;
-    } else {
-      fontSize = minFontSize;
-      // Truncar si no cabe al mínimo
-      const maxWidth = availableArc;
-      let accumulatedWidth = 0;
-      let truncateIndex = 0;
-      for (let i = 0; i < text.length; i++) {
-        const charW = estimateCharWidth(text[i], fontSize);
-        if (accumulatedWidth + charW > maxWidth) {
-          truncateIndex = i;
-          break;
-        }
-        accumulatedWidth += charW;
-        truncateIndex = i + 1;
+    fontSize = Math.max(fontSize, minFontSize);
+    const maxWidth = availableArc;
+    let accumulatedWidth = 0;
+    let truncateIndex = 0;
+    for (let i = 0; i < text.length; i++) {
+      const charW = estimateCharWidth(text[i], fontSize);
+      if (accumulatedWidth + charW > maxWidth) {
+        truncateIndex = i;
+        break;
       }
-      text = text.slice(0, truncateIndex);
+      accumulatedWidth += charW;
+      truncateIndex = i + 1;
     }
+    text = text.slice(0, truncateIndex);
   }
 
   const parser = new XMLParser({
@@ -389,10 +398,13 @@ function renderCircularTextPath(
   const pathId = `circular-path-${area.id}`;
   const pathRadius = isBottom ? radius - fontSize * 0.5 : radius + fontSize * 0.1;
 
-  const startAngle = isBottom ? 180 : -180;
-  const endAngle = 0;
+  // Arco superior: de izquierda (-180) a derecha (0), sentido horario (sweep=1)
+  // Arco inferior: de derecha (0) a izquierda (-180), sentido horario (sweep=1)
+  // Esto hace que el texto fluya de izquierda a derecha en ambos arcos
+  const startAngle = isBottom ? 0 : -180;
+  const endAngle = isBottom ? -180 : 0;
   const largeArc = 1;
-  const sweep = isBottom ? 0 : 1;
+  const sweep = 1;
 
   const x1 = centerX + pathRadius * Math.cos(degToRad(startAngle));
   const y1 = centerY + pathRadius * Math.sin(degToRad(startAngle));
@@ -413,10 +425,8 @@ function renderCircularTextPath(
   const textPathAttrs: any = {
     href: `#${pathId}`,
     startOffset: '50%',
+    // NOTA: no usamos side="right" porque resvg no lo soporta
   };
-  if (isBottom) {
-    textPathAttrs.side = 'right';
-  }
 
   const textPathNode: any = {
     ':@': textPathAttrs,
@@ -1354,17 +1364,17 @@ export function applyTemplateFields(
       const startY = centerY - ((count - 1) * lineHeight) / 2;
 
       clampedLines.forEach((line, idx) => {
-        // Si el texto central excede el ancho seguro, escalar el font-size proporcionalmente
-        // para que no invada los textos circulares. Nunca escalar por debajo del minimo.
-        let effectiveFontSize = fontSize;
+        // Respetamos el tamaño de fuente configurado por el usuario.
+        // Si la línea excede el ancho seguro, se trunca (no se escala silenciosamente).
+        let effectiveLine = line;
         if (safeWidthSvg && area.x !== undefined) {
           const lineWidth = estimateTextWidth(line, fontSize);
           if (lineWidth > safeWidthSvg && lineWidth > 0) {
-            effectiveFontSize = fontSize * (safeWidthSvg / lineWidth);
+            effectiveLine = truncateTextToWidth(line, fontSize, safeWidthSvg);
           }
         }
         const minFontSize = area.minFontSize ?? 1;
-        effectiveFontSize = Math.max(effectiveFontSize, minFontSize);
+        const finalFontSize = Math.max(fontSize, minFontSize);
 
         const textNode: any = {
           ':@': {
@@ -1372,11 +1382,11 @@ export function applyTemplateFields(
             'data-central-line': String(idx),
             x: String(area.x),
             y: String(startY + idx * lineHeight),
-            'font-size': String(effectiveFontSize),
+            'font-size': String(finalFontSize),
             'text-anchor': 'middle',
             'dominant-baseline': 'central',
           },
-          '#text': line,
+          '#text': effectiveLine,
         };
         if (area.fontFamily) {
           textNode[':@']['font-family'] = area.fontFamily;
