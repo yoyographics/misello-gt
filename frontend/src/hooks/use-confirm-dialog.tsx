@@ -1,14 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 interface ConfirmOptions {
@@ -60,35 +52,41 @@ export function useConfirmDialog() {
   }, [resolver]);
 
   const DialogComponent = useCallback(
-    () => (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
-        <DialogContent className="sm:max-w-sm p-4 gap-2">
-          <DialogHeader className="space-y-1">
-            <DialogTitle className="text-base">{options.title}</DialogTitle>
+    () => {
+      if (!isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCancel} />
+          <div className="relative z-10 w-full max-w-[320px] rounded-lg bg-white shadow-lg border p-3 space-y-2">
+            <div className="text-sm font-medium text-gray-900">{options.title}</div>
             {options.description && (
-              <DialogDescription className="text-xs">{options.description}</DialogDescription>
+              <div className="text-xs text-gray-500">{options.description}</div>
             )}
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-2 mt-2">
-            <Button variant="outline" size="sm" onClick={handleCancel}>
-              {options.cancelText}
-            </Button>
-            <Button
-              size="sm"
-              variant={options.variant === 'destructive' ? 'destructive' : 'default'}
-              onClick={handleConfirm}
-              className={
-                options.variant !== 'destructive'
-                  ? 'bg-[#1B2A6B] hover:bg-[#141f4d] text-white'
-                  : undefined
-              }
-            >
-              {options.confirmText}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    ),
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={handleCancel}
+              >
+                {options.cancelText}
+              </Button>
+              <Button
+                size="sm"
+                className={`h-7 px-3 text-xs ${
+                  options.variant === 'destructive'
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-[#1B2A6B] hover:bg-[#141f4d] text-white'
+                }`}
+                onClick={handleConfirm}
+              >
+                {options.confirmText}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    },
     [isOpen, options, handleCancel, handleConfirm]
   );
 
