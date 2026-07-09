@@ -251,7 +251,7 @@ function renderCircularTextAsLetters(
   svgContent: string,
   text: string,
   area: CircularArea,
-  frame?: FrameInfo | null,
+  _frame?: FrameInfo | null,
 ): string {
   const radius = area.radius || 40;
   const centerX = area.centerX ?? 45.355;
@@ -738,8 +738,9 @@ export function applyTemplateFields(
             effectiveLine = truncateTextToWidth(line, fontSize, safeWidthSvg);
           }
         }
-        const minFontSize = area.minFontSize ?? 1;
-        const finalFontSize = Math.max(fontSize, minFontSize);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _minFontSize = area.minFontSize ?? 1;
+        const finalFontSize = Math.max(fontSize, _minFontSize);
 
         const textEl = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
         textEl.setAttribute('data-central-field', area.id);
@@ -762,12 +763,12 @@ function renderCircularTextPath(
   svgContent: string,
   text: string,
   area: CircularArea,
-  frame?: FrameInfo | null,
+  _frame?: FrameInfo | null,
 ): string {
   const radius = area.radius || 40;
   const centerX = area.centerX ?? 45.355;
   const centerY = area.centerY ?? 45.355;
-  let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
+  const fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
   const baseline = area.baseline || 'top';
   const minFontSize = area.minFontSize ?? 1;
