@@ -1210,29 +1210,21 @@ export default function AdminTemplatesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Categoría</label>
-                <Select
-                  value={form.categoryId || 'none'}
-                  onValueChange={(value) => {
-                    if (!value || value === 'none') {
-                      setForm({ ...form, categoryId: '' });
-                    } else {
-                      setForm({ ...form, categoryId: value });
-                    }
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  value={form.categoryId}
+                  onChange={(e) => {
+                    setForm({ ...form, categoryId: e.target.value });
                     setSelectedProductIds([]);
                   }}
                 >
-                  <SelectTrigger className="w-full h-10">
-                    <SelectValue placeholder="Seleccionar categoría..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-- Sin categoría --</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Seleccionar categoría...</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

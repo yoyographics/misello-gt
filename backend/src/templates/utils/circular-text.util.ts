@@ -267,6 +267,13 @@ export function renderCircularText(
   area: CircularArea,
   frame?: FrameInfo | null,
 ): string {
+  // Para texto circular inferior, NO usar el textPath nativo de Illustrator
+  // porque el path está diseñado para arco superior (texto aparece torcido/invertido).
+  // En su lugar, regenerar el path con la orientación correcta.
+  if (area.baseline === 'bottom') {
+    return renderCircularTextPath(svgContent, text, area, frame);
+  }
+
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '',

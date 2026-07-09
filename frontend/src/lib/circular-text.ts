@@ -175,6 +175,34 @@ export function renderCircularText(
   // Buscar si ya existe un textPath para este campo (SVG nativo de Illustrator)
   const textEl = doc.querySelector(`text[data-field="${area.id}"]`);
   if (textEl && textEl.querySelector('textPath')) {
+    // Para texto circular inferior, NO usar el textPath nativo de Illustrator
+    // porque el path está diseñado para arco superior (texto aparece torcido/invertido).
+    // En su lugar, regenerar el path con la orientación correcta.
+    if (area.baseline === 'bottom') {
+      const tp = textEl.querySelector('textPath');
+      if (tp) {
+        // Obtener el ID del path referenciado para eliminarlo
+        const href = tp.getAttribute('xlink:href') || tp.getAttribute('href') || '';
+        const pathId = href.replace('#', '');
+        if (pathId) {
+          const pathEl = doc.querySelector(`path[id="${pathId}"]`);
+          if (pathEl) pathEl.remove();
+        }
+        tp.remove();
+      }
+      // Eliminar atributos de posicionamiento del text original para evitar conflictos
+      textEl.removeAttribute('x');
+      textEl.removeAttribute('y');
+      textEl.removeAttribute('transform');
+      // Generar nuevo textPath con orientación correcta para inferior
+      return renderCircularTextPath(
+        new XMLSerializer().serializeToString(doc.documentElement),
+        text,
+        area,
+        frame,
+      );
+    }
+
     const tp = textEl.querySelector('textPath');
     if (tp) {
       // Reemplazar el texto manteniendo la estructura nativa de Illustrator
