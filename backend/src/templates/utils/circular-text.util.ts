@@ -154,7 +154,8 @@ function parseCircleFromPath(d: string): { cx: number; cy: number; radius: numbe
 
 function estimateCharWidth(char: string, fontSize: number): number {
   const width = WIDTH_MAP[char] ?? 0.5;
-  return fontSize * width;
+  // Factor de holgura para compensar kerning y fuentes bold.
+  return fontSize * width * 1.1;
 }
 
 function estimateTextWidth(text: string, fontSize: number): number {
@@ -282,13 +283,6 @@ export function renderCircularText(
   area: CircularArea,
   frame?: FrameInfo | null,
 ): string {
-  // Para texto circular inferior, NO usar el textPath nativo de Illustrator
-  // porque el path está diseñado para arco superior (texto aparece torcido/invertido).
-  // En su lugar, regenerar el path con la orientación correcta.
-  if (area.baseline === 'bottom') {
-    return renderCircularTextPath(svgContent, text, area, frame);
-  }
-
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '',
@@ -297,38 +291,23 @@ export function renderCircularText(
   });
   const parsed = parser.parse(svgContent);
 
-  // Buscar text[data-field=area.id] con textPath (SVG nativo de Illustrator)
-  let textPathFound = false;
+  // Si aun existe un textPath nativo para este campo, eliminarlo para evitar
+  // que interfiera con el renderizado letra-por-letra.
   walk(parsed, (node) => {
     if (node[':@'] && node[':@']['data-field'] === area.id && node.textPath) {
-      textPathFound = true;
-      const tp = Array.isArray(node.textPath) ? node.textPath[0] : node.textPath;
-      // Reemplazar texto manteniendo estructura nativa
-      const deepest = findDeepestTextNode(tp);
-      if (deepest) {
-        setTextContent(deepest, text);
-      } else {
-        tp['#text'] = text;
-      }
-      // Aplicar fuente configurada si es diferente
-      if (area.fontFamily) node[':@']['font-family'] = area.fontFamily;
-      if (area.fontSize) node[':@']['font-size'] = String(area.fontSize);
+      delete node.textPath;
+      node[':@']['visibility'] = 'hidden';
     }
   });
 
-  if (textPathFound) {
-    const builder = new XMLBuilder({
-      ignoreAttributes: false,
-      attributeNamePrefix: '',
-      preserveOrder: true,
-      format: false,
-    });
-    return builder.build(parsed);
-  }
-
-  // Fallback: generar textPath nativo SVG
-  // NOTA: Las plantillas antiguas sin textPath nativo deberían ser actualizadas
-  return renderCircularTextPath(svgContent, text, area, frame);
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    preserveOrder: true,
+    format: false,
+  });
+  const cleanedSvg = builder.build(parsed);
+  return renderCircularTextAsLetters(cleanedSvg, text, area, frame);
 }
 
 function findDeepestTextNode(node: any): any {
@@ -477,58 +456,47 @@ function renderCircularTextAsLetters(
   const centerY = area.centerY ?? 45.355;
   let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? 0.2;
+  const letterSpacing = area.letterSpacing ?? fontSize * 0.1;
   const baseline = area.baseline || 'top';
   const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
   const minFontSize = area.minFontSize ?? 1;
 
   if (!text) text = area.defaultText || '';
 
+  // Respetar el tamaño configurado: nunca reducir silenciosamente.
+  fontSize = Math.max(fontSize, minFontSize);
+
   // Calcular el arco máximo disponible para el texto circular.
   // El texto no debe salirse del marco del sello.
   // El arco disponible es un semicírculo (180° = π radianes) menos un margen de seguridad.
   // El margen es proporcional al tamaño de la fuente para evitar que las letras toquen los lados.
-  const marginAngle = Math.max(0.1, fontSize / radius); // Margen angular mínimo
+  const marginAngle = Math.max(0.25, (fontSize / radius) * 1.5); // Margen angular más seguro
   const maxArcAngle = Math.PI - marginAngle * 2; // Semicírculo menos márgenes
 
-  // Calcular el ancho total del texto al tamaño actual
+  // Calcular el ancho total del texto al tamaño configurado
   let chars = text.split('');
   let charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
   let totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
   let totalAngleRad = totalWidth / radius;
 
-  // Si el texto excede el arco disponible, intentar reducir el font-size proporcionalmente
+  // Si el texto excede el arco disponible, truncar manteniendo el font-size.
   if (totalAngleRad > maxArcAngle) {
-    const scaleFactor = maxArcAngle / totalAngleRad;
-    const scaledFontSize = fontSize * scaleFactor;
-
-    if (scaledFontSize >= minFontSize) {
-      // Auto-escalar: reducir font-size para que quepa
-      fontSize = scaledFontSize;
-      charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-      totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-      totalAngleRad = totalWidth / radius;
-    } else {
-      // Ni siquiera al mínimo cabe. Truncar el texto.
-      fontSize = minFontSize;
-      // Recalcular cuántos caracteres caben al tamaño mínimo
-      const maxWidth = maxArcAngle * radius;
-      let accumulatedWidth = 0;
-      let truncateIndex = 0;
-      for (let i = 0; i < chars.length; i++) {
-        const charW = estimateCharWidth(chars[i], fontSize);
-        if (accumulatedWidth + charW > maxWidth) {
-          truncateIndex = i;
-          break;
-        }
-        accumulatedWidth += charW + letterSpacing;
-        truncateIndex = i + 1;
+    const maxWidth = maxArcAngle * radius;
+    let accumulatedWidth = 0;
+    let truncateIndex = 0;
+    for (let i = 0; i < chars.length; i++) {
+      const charW = estimateCharWidth(chars[i], fontSize);
+      if (accumulatedWidth + charW > maxWidth) {
+        truncateIndex = i;
+        break;
       }
-      chars = chars.slice(0, truncateIndex);
-      charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-      totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-      totalAngleRad = totalWidth / radius;
+      accumulatedWidth += charW + letterSpacing;
+      truncateIndex = i + 1;
     }
+    chars = chars.slice(0, truncateIndex);
+    charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
+    totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
+    totalAngleRad = totalWidth / radius;
   }
 
   const startAngleRad = degToRad(startAngle);
@@ -548,14 +516,7 @@ function renderCircularTextAsLetters(
   const parsed = parser.parse(svgContent);
   removeCircularGroup(parsed, area.id);
 
-  const groupNode: any = {
-    ':@': {
-      'data-circular-field': area.id,
-      class: 'circular-text',
-    },
-    g: [],
-  };
-
+  const textNodes: any[] = [];
   chars.forEach((char, idx) => {
     const charWidth = charWidths[idx];
     const angle = currentAngle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
@@ -575,11 +536,12 @@ function renderCircularTextAsLetters(
     // (línea sobre la que se sientan las letras) esté en el círculo.
     // La baseline está aproximadamente a fontSize * 0.35 por debajo del centro.
     // Desplazamos la letra hacia el centro del círculo para alinear la baseline.
-    const baselineOffset = fontSize * 0.35;
+    const baselineOffset = fontSize * 0.55;
     const offsetX = -Math.cos(angle) * baselineOffset;
     const offsetY = -Math.sin(angle) * baselineOffset;
 
-    const textNode: any = {
+    textNodes.push({
+      text: [{ '#text': char === ' ' ? '\u00A0' : char }],
       ':@': {
         x: (x + offsetX).toFixed(2),
         y: (y + offsetY).toFixed(2),
@@ -589,12 +551,18 @@ function renderCircularTextAsLetters(
         'text-anchor': 'middle',
         'dominant-baseline': 'central',
       },
-      '#text': char === ' ' ? '\u00A0' : char,
-    };
+    });
 
-    groupNode.g.push(textNode);
     currentAngle = angle + direction * (charWidth / 2 + letterSpacing / 2) / radius;
   });
+
+  const groupNode: any = {
+    g: textNodes,
+    ':@': {
+      'data-circular-field': area.id,
+      class: 'circular-text',
+    },
+  };
 
   appendToSvg(parsed, groupNode);
 
@@ -637,7 +605,7 @@ function removeCircularGroup(node: any, fieldId: string): void {
 
 function isCircularGroup(node: any, fieldId: string): boolean {
   if (typeof node !== 'object' || node === null || Array.isArray(node)) return false;
-  return node[':@'] && node[':@']['data-circular-field'] === fieldId;
+  return node.g && node[':@'] && node[':@']['data-circular-field'] === fieldId;
 }
 
 function appendToSvg(node: any, child: any): void {
@@ -819,12 +787,15 @@ export function detectCircularText(
         if (!text) return;
 
         const fontSize = parseFontSizeFromStyle(group[0].attr.class || '', parsed);
+        const minX = Math.min(...group.map((g) => g.x));
+        const maxX = Math.max(...group.map((g) => g.x));
+        const centerXofText = (minX + maxX) / 2;
         areas.push({
           id: `line${idx + 1}`,
           label: 'Texto central',
           defaultText: text,
           type: 'text',
-          x: group[0].x,
+          x: centerXofText,
           y: group[0].y,
           fontSize,
           fontFamily: group[0].attr['font-family'],
@@ -860,15 +831,21 @@ function findParentText(root: any, target: any): any | null {
 }
 
 function getPathApproxCenter(d: string): { x: number; y: number } {
-  // Heuristica simple: extraer numeros y promediar
-  const numbers = d.match(/-?\d+(?:\.\d+)?/g)?.map(parseFloat) || [];
-  if (numbers.length < 2) return { x: 0, y: 0 };
-  const xs = numbers.filter((_, i) => i % 2 === 0);
-  const ys = numbers.filter((_, i) => i % 2 === 1);
-  return {
-    x: xs.reduce((a, b) => a + b, 0) / xs.length,
-    y: ys.reduce((a, b) => a + b, 0) / ys.length,
-  };
+  try {
+    const properties = new svgPathProperties(d);
+    const len = properties.getTotalLength();
+    return properties.getPointAtLength(len / 2);
+  } catch {
+    // Fallback heuristico: promediar coordenadas numericas del path
+    const numbers = d.match(/-?\d+(?:\.\d+)?/g)?.map(parseFloat) || [];
+    if (numbers.length < 2) return { x: 0, y: 0 };
+    const xs = numbers.filter((_, i) => i % 2 === 0);
+    const ys = numbers.filter((_, i) => i % 2 === 1);
+    return {
+      x: xs.reduce((a, b) => a + b, 0) / xs.length,
+      y: ys.reduce((a, b) => a + b, 0) / ys.length,
+    };
+  }
 }
 
 function removeMarkedNodes(node: any): any {
@@ -887,7 +864,10 @@ function removeMarkedNodes(node: any): any {
       const cleaned = node[key]
         .filter((n: any) => !n?.__delete)
         .map((n: any) => removeMarkedNodes(n));
-      if (cleaned.length > 0) result[key] = cleaned;
+      // Conservar tags vacios que tengan atributos (p. ej. <rect/>, <circle/>).
+      if (cleaned.length > 0 || node[':@']) {
+        result[key] = cleaned;
+      }
     } else {
       result[key] = removeMarkedNodes(node[key]);
     }

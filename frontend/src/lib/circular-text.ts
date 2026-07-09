@@ -175,7 +175,8 @@ function degToRad(deg: number): number {
 
 function estimateCharWidth(char: string, fontSize: number): number {
   const width = WIDTH_MAP[char] ?? 0.5;
-  return fontSize * width;
+  // Factor de holgura para compensar kerning y fuentes bold.
+  return fontSize * width * 1.1;
 }
 
 export function renderCircularText(
@@ -187,57 +188,26 @@ export function renderCircularText(
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, 'image/svg+xml');
 
-  // Buscar si ya existe un textPath para este campo (SVG nativo de Illustrator)
+  // Si aun existe un textPath nativo para este campo, eliminarlo para evitar
+  // que interfiera con el renderizado letra-por-letra.
   const textEl = doc.querySelector(`text[data-field="${area.id}"]`);
-  if (textEl && textEl.querySelector('textPath')) {
-    // Para texto circular inferior, NO usar el textPath nativo de Illustrator
-    // porque el path está diseñado para arco superior (texto aparece torcido/invertido).
-    // En su lugar, regenerar el path con la orientación correcta.
-    if (area.baseline === 'bottom') {
-      const tp = textEl.querySelector('textPath');
-      if (tp) {
-        // Obtener el ID del path referenciado para eliminarlo
-        const href = tp.getAttribute('xlink:href') || tp.getAttribute('href') || '';
-        const pathId = href.replace('#', '');
-        if (pathId) {
-          const pathEl = doc.querySelector(`path[id="${pathId}"]`);
-          if (pathEl) pathEl.remove();
-        }
-        tp.remove();
-      }
-      // Eliminar atributos de posicionamiento del text original para evitar conflictos
-      textEl.removeAttribute('x');
-      textEl.removeAttribute('y');
-      textEl.removeAttribute('transform');
-      // Generar nuevo textPath con orientación correcta para inferior
-      return renderCircularTextPath(
-        new XMLSerializer().serializeToString(doc.documentElement),
-        text,
-        area,
-        frame,
-      );
-    }
-
+  if (textEl) {
     const tp = textEl.querySelector('textPath');
     if (tp) {
-      // Reemplazar el texto manteniendo la estructura nativa de Illustrator
-      const innerTspan = tp.querySelector('tspan');
-      if (innerTspan) {
-        const deepest = getDeepestTspan(innerTspan);
-        deepest.textContent = text;
-      } else {
-        tp.textContent = text;
+      const href = tp.getAttribute('xlink:href') || tp.getAttribute('href') || '';
+      const pathId = href.replace('#', '');
+      if (pathId) {
+        const pathEl = doc.querySelector(`path[id="${pathId}"]`);
+        if (pathEl) pathEl.remove();
       }
-      // Aplicar fuente configurada si es diferente
-      if (area.fontFamily) textEl.setAttribute('font-family', area.fontFamily);
-      if (area.fontSize) textEl.setAttribute('font-size', String(area.fontSize));
-      return new XMLSerializer().serializeToString(doc.documentElement);
+      tp.remove();
     }
+    // Ocultar el elemento editable original; el texto se renderiza en un grupo nuevo.
+    textEl.setAttribute('visibility', 'hidden');
   }
 
-  // Fallback: si no hay textPath nativo, usar textPath generado
-  // NOTA: Las plantillas antiguas sin textPath nativo deberían ser actualizadas
-  return renderCircularTextPath(svgContent, text, area, frame);
+  const cleanedSvg = new XMLSerializer().serializeToString(doc.documentElement);
+  return renderCircularTextAsLetters(cleanedSvg, text, area, frame);
 }
 
 function getDeepestTspan(el: Element): Element {
@@ -303,58 +273,47 @@ function renderCircularTextAsLetters(
   const centerY = area.centerY ?? 45.355;
   let fontSize = area.fontSize || DEFAULT_FONT_SIZE;
   const fontFamily = area.fontFamily || 'Arial, sans-serif';
-  const letterSpacing = area.letterSpacing ?? 0.2;
+  const letterSpacing = area.letterSpacing ?? fontSize * 0.1;
   const baseline = area.baseline || 'top';
   const startAngle = area.startAngle ?? (baseline === 'top' ? -90 : 90);
   const minFontSize = area.minFontSize ?? 1;
 
   if (!text) text = area.defaultText || '';
 
+  // Respetar el tamaño configurado: nunca reducir silenciosamente.
+  fontSize = Math.max(fontSize, minFontSize);
+
   // Calcular el arco máximo disponible para el texto circular.
   // El texto no debe salirse del marco del sello.
   // El arco disponible es un semicírculo (180° = π radianes) menos un margen de seguridad.
   // El margen es proporcional al tamaño de la fuente para evitar que las letras toquen los lados.
-  const marginAngle = Math.max(0.1, fontSize / radius); // Margen angular mínimo
+  const marginAngle = Math.max(0.25, (fontSize / radius) * 1.5); // Margen angular más seguro
   const maxArcAngle = Math.PI - marginAngle * 2; // Semicírculo menos márgenes
 
-  // Calcular el ancho total del texto al tamaño actual
+  // Calcular el ancho total del texto al tamaño configurado
   let chars = text.split('');
   let charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
   let totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
   let totalAngleRad = totalWidth / radius;
 
-  // Si el texto excede el arco disponible, intentar reducir el font-size proporcionalmente
+  // Si el texto excede el arco disponible, truncar manteniendo el font-size.
   if (totalAngleRad > maxArcAngle) {
-    const scaleFactor = maxArcAngle / totalAngleRad;
-    const scaledFontSize = fontSize * scaleFactor;
-
-    if (scaledFontSize >= minFontSize) {
-      // Auto-escalar: reducir font-size para que quepa
-      fontSize = scaledFontSize;
-      charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-      totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-      totalAngleRad = totalWidth / radius;
-    } else {
-      // Ni siquiera al mínimo cabe. Truncar el texto.
-      fontSize = minFontSize;
-      // Recalcular cuántos caracteres caben al tamaño mínimo
-      const maxWidth = maxArcAngle * radius;
-      let accumulatedWidth = 0;
-      let truncateIndex = 0;
-      for (let i = 0; i < chars.length; i++) {
-        const charW = estimateCharWidth(chars[i], fontSize);
-        if (accumulatedWidth + charW > maxWidth) {
-          truncateIndex = i;
-          break;
-        }
-        accumulatedWidth += charW + letterSpacing;
-        truncateIndex = i + 1;
+    const maxWidth = maxArcAngle * radius;
+    let accumulatedWidth = 0;
+    let truncateIndex = 0;
+    for (let i = 0; i < chars.length; i++) {
+      const charW = estimateCharWidth(chars[i], fontSize);
+      if (accumulatedWidth + charW > maxWidth) {
+        truncateIndex = i;
+        break;
       }
-      chars = chars.slice(0, truncateIndex);
-      charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
-      totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
-      totalAngleRad = totalWidth / radius;
+      accumulatedWidth += charW + letterSpacing;
+      truncateIndex = i + 1;
     }
+    chars = chars.slice(0, truncateIndex);
+    charWidths = chars.map((c) => estimateCharWidth(c, fontSize));
+    totalWidth = charWidths.reduce((sum, w) => sum + w + letterSpacing, 0) - letterSpacing;
+    totalAngleRad = totalWidth / radius;
   }
 
   const startAngleRad = degToRad(startAngle);
@@ -401,7 +360,7 @@ function renderCircularTextAsLetters(
     // (línea sobre la que se sientan las letras) esté en el círculo.
     // La baseline está aproximadamente a fontSize * 0.35 por debajo del centro.
     // Desplazamos la letra hacia el centro del círculo para alinear la baseline.
-    const baselineOffset = fontSize * 0.35;
+    const baselineOffset = fontSize * 0.55;
     const offsetX = -Math.cos(angle) * baselineOffset;
     const offsetY = -Math.sin(angle) * baselineOffset;
     textEl.setAttribute('dx', offsetX.toFixed(2));
