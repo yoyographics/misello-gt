@@ -66,17 +66,19 @@ export function useConfirmDialog() {
               <Button variant="outline" size="sm" onClick={handleCancel}>
                 {options.cancelText}
               </Button>
-              <Button
-                size="sm"
-                className={`${
-                  options.variant === 'destructive'
-                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                    : 'bg-[#1B2A6B] hover:bg-[#141f4d] text-white'
-                }`}
-                onClick={handleConfirm}
-              >
-                {options.confirmText}
-              </Button>
+              {options.variant === 'destructive' ? (
+                <Button variant="destructive" size="sm" onClick={handleConfirm}>
+                  {options.confirmText}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="bg-[#1B2A6B] hover:bg-[#141f4d] text-white"
+                  onClick={handleConfirm}
+                >
+                  {options.confirmText}
+                </Button>
+              )}
             </div>
           </div>
         </div>
