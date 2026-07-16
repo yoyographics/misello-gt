@@ -1,61 +1,148 @@
 # ============================================================
-# docker-compose.yml — misello.gt
-# Levanta todo el stack localmente o en cualquier VPS.
+# DOCKER COMPOSE - misello.gt (Local Development)
+# ============================================================
+# Este archivo levanta TODO el proyecto en tu servidor Linux local:
+#   - PostgreSQL 15 (base de datos)
+#   - Backend NestJS (API REST)
+#   - Frontend Next.js (App estática servida por Nginx)
 #
-# Uso:
-#   docker-compose up --build
+# REQUISITOS EN TU SERVIDOR LINUX:
+#   - Docker instalado
+#   - Docker Compose instalado
+#   - Git instalado
 #
-# Requiere:
-#   - Docker + Docker Compose
-#   - Archivo .env en backend/ (copiar de .env.example y completar)
-#   - Frontend buildeado: cd frontend && npm run build
+# USO:
+#   1. Clona el repo: git clone https://github.com/yoyographics/misello-gt.git
+#   2. cd misello-gt
+#   3. Crea backend/.env con las variables (ver .env.example)
+#   4. docker compose up -d
+#   5. Accede a http://IP_DE_TU_SERVIDOR:3001
+#
 # ============================================================
 
-version: '3.8'
+version: "3.8"
 
 services:
-  # ── PostgreSQL ──
+  # --------------------------------------------------
+  # 1. BASE DE DATOS POSTGRESQL
+  # --------------------------------------------------
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: misello-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-misello}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-misello123}
-      POSTGRES_DB: ${POSTGRES_DB:-misello_db}
+      POSTGRES_USER: misello
+      POSTGRES_PASSWORD: misello_local_2024
+      POSTGRES_DB: misello_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups  # para restore de dumps de Railway
+      # Si tienes un backup .sql, descomenta la siguiente línea:
+      # - ./backups/database_backup.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-misello} -d ${POSTGRES_DB:-misello_db}"]
+      test: ["CMD-SHELL", "pg_isready -U misello -d misello_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # ── Backend (NestJS + Frontend estático servido) ──
+  # --------------------------------------------------
+  # 2. BACKEND (NestJS + Prisma)
+  # --------------------------------------------------
   backend:
     build:
       context: ./backend
-      dockerfile: ../Dockerfile
+      dockerfile: Dockerfile
     container_name: misello-backend
     restart: unless-stopped
-    env_file:
-      - ./backend/.env
-    environment:
-      # Override para conectar al contenedor de Postgres
-      DATABASE_URL: postgresql://${POSTGRES_USER:-misello}:${POSTGRES_PASSWORD:-misello123}@postgres:5432/${POSTGRES_DB:-misello_db}
-      NODE_ENV: production
-      PORT: 3000
-    ports:
-      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      # Base de datos (conecta al servicio postgres)
+      DATABASE_URL: postgresql://misello:misello_local_2024@postgres:5432/misello_db
+      # JWT (genera uno fuerte: openssl rand -base64 32)
+      JWT_SECRET: ${JWT_SECRET:-cambia_esto_por_un_secreto_muy_largo_y_seguro_123456789}
+      JWT_EXPIRATION: 7d
+      # Google OAuth (opcional para local)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
+      # Pagos (usar sandbox para local)
+      PAGALO_API_URL: ${PAGALO_API_URL:-https://apitest.pagalo.co/v1}
+      PAGALO_API_KEY: ${PAGALO_API_KEY:-}
+      PAGALO_BUSINESS_UUID: ${PAGALO_BUSINESS_UUID:-}
+      # Facturación electrónica (opcional para local)
+      TEKRA_API_URL: ${TEKRA_API_URL:-https://apicertificacion.desa.tekra.com.gt}
+      TEKRA_USUARIO: ${TEKRA_USUARIO:-}
+      TEKRA_CLAVE: ${TEKRA_CLAVE:-}
+      TEKRA_CLIENTE: ${TEKRA_CLIENTE:-}
+      TEKRA_CONTRATO: ${TEKRA_CONTRATO:-}
+      TEKRA_SEGUIMIENTO_URL: ${TEKRA_SEGUIMIENTO_URL:-https://apiseguimiento.tekra.com.gt}
+      # ReCaptcha (opcional para local)
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+      # Claude AI (opcional para local)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-6}
+      # Correo (opcional para local)
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@misello.gt}
+      # Cloudinary (necesario si usas imágenes)
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      # Entorno
+      NODE_ENV: development
+      PORT: 3000
+      FRONTEND_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
     volumes:
-      - uploads_data:/app/uploads
+      # Hot-reload para desarrollo (opcional)
+      - ./backend:/app
+      - /app/node_modules
+    # Comando de producción (migraciones + start)
+    # Para desarrollo con hot-reload, cambia a: command: npm run start:dev
+    command: >
+      sh -c "npx prisma migrate deploy && npx prisma generate && node dist/src/main"
+
+  # --------------------------------------------------
+  # 3. FRONTEND (Next.js exportado estáticamente)
+  # --------------------------------------------------
+  # El frontend usa 'output: export' (sitio estático).
+  # Lo servimos con Nginx en lugar de Next.js server.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: misello-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3001:80"
+    # El Dockerfile del frontend ya hace el build estático
+    # y Nginx lo sirve. No necesita variables de entorno en runtime
+    # porque Next.js export no soporta variables dinámicas.
+
+  # --------------------------------------------------
+  # 4. NGINX REVERSE PROXY (opcional pero recomendado)
+  # --------------------------------------------------
+  # Si quieres un solo dominio/puerto para todo:
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: misello-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - backend
+  #     - frontend
 
 volumes:
   postgres_data:
-  uploads_data:

@@ -1,24 +1,35 @@
-# Frontend misello.gt — Next.js 14
+# ============================================================
+# FRONTEND DOCKERFILE - misello.gt (Next.js 14 export)
+# ============================================================
+# El frontend usa 'output: export' (sitio estático).
+# Next.js export genera en la carpeta 'out/' por defecto.
+# ============================================================
+
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# Copiar dependencias
 COPY package*.json ./
 RUN npm ci
 
+# Copiar todo el código
 COPY . .
+
+# Build estático (output: export genera carpeta 'out/')
 RUN npm run build
 
-# Production image
-FROM node:20-alpine AS runner
+# ============================================================
+# Servir con Nginx (ligero y rápido para sitios estáticos)
+# ============================================================
+FROM nginx:alpine
 
-WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3001
+# Next.js 'output: export' genera archivos en 'out/'
+COPY --from=builder /app/out /usr/share/nginx/html
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# Configuración de Nginx para SPA (Single Page Application) con rutas
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 3001
+EXPOSE 80
 
-CMD ["node", "server.js"]
+CMD ["nginx", "-g", "daemon off;"]
